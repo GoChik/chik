@@ -17,7 +17,7 @@ import (
 )
 
 // CONFFILE configuration file
-const CONFFILE = "homeserver.json"
+const CONFFILE = "server.json"
 
 type Configuration struct {
 	Port        uint16
