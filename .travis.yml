@@ -1,0 +1,18 @@
+language: go
+
+go:
+    - 1.6
+    - 1.7
+    - master
+
+env:
+    - EXECUTABLE=gpio_client
+    - EXECUTABLE=server
+    - EXECUTABLE=webservice 
+
+script:
+    - mkdir -p $GOPATH/src/iosomething
+    - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/iosomething/
+    - export TRAVIS_BUILD_DIR=$GOPATH/src/iosomething
+    - cd ${TRAVIS_BUILD_DIR}
+    - make $EXECUTABLE
