@@ -10,11 +10,10 @@ import (
 	"os"
 	"sync"
 	"time"
-	"github.com/davecheney/gpio"
 )
 
 var mutex = sync.Mutex{}
-var lastValues = map[int]bool // pin, true: high, false: low
+var lastValues = make(map[int]bool) // pin, true: high, false: low
 
 type GPIOMode uint8
 
@@ -110,7 +109,7 @@ func executeCommand(command *utils.DigitalCommand) {
 
 	case utils.TOGGLE_ON_OFF:
 		oldValue := lastValues[gpiopin.pin]
-		if oldValue  == true {
+		if oldValue == true {
 			gpiopin.Off()
 		} else {
 			gpiopin.On()
