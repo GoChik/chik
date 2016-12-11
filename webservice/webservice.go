@@ -6,7 +6,7 @@ import (
 	"iosomething/utils"
 	"net/http"
 
-	"code.google.com/p/rsc/qr"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 // CONFFILE configuration file name
@@ -27,13 +27,13 @@ func (h qrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(w, "Error parsing configuration")
 	}
 
-	code, err := qr.Encode(conf.Identity, qr.L)
+	code, err := qrcode.Encode(conf.Identity, qrcode.Medium, 256)
 
 	if err != nil {
 		return
 	}
 
-	base64Image := base64.StdEncoding.EncodeToString(code.PNG())
+	base64Image := base64.StdEncoding.EncodeToString(code)
 
 	fmt.Fprintf(w,
 		"<h1>Appliance identity code</h1>"+
