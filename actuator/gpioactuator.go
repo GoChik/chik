@@ -5,14 +5,16 @@ package actuator
 
 import (
 	"fmt"
+	"iosomething/utils"
 	"log"
 	"os"
-	"iosomething/utils"
 	"sync"
 	"time"
+	"github.com/davecheney/gpio"
 )
 
 var mutex = sync.Mutex{}
+var lastValues = map[int]bool // pin, true: high, false: low
 
 type GPIOMode uint8
 
@@ -91,16 +93,29 @@ func executeCommand(command *utils.DigitalCommand) {
 	switch command.Command {
 	case utils.SWITCH_OFF:
 		gpiopin.Off()
+		lastValues[gpiopin.pin] = false
 		break
 
 	case utils.SWITCH_ON:
 		gpiopin.On()
+		lastValues[gpiopin.pin] = true
 		break
 
 	case utils.PUSH_BUTTON:
 		gpiopin.On()
 		time.Sleep(1 * time.Second)
 		gpiopin.Off()
+		lastValues[gpiopin.pin] = false
+		break
+
+	case utils.TOGGLE_ON_OFF:
+		oldValue := lastValues[gpiopin.pin]
+		if oldValue  == true {
+			gpiopin.Off()
+		} else {
+			gpiopin.On()
+		}
+		lastValues[gpiopin.pin] = !oldValue
 		break
 	}
 }
