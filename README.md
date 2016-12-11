@@ -2,6 +2,8 @@
 
 _Internet of something_
 
+[![Build Status](https://travis-ci.org/rferrazz/iosomething.svg?branch=master)](https://travis-ci.org/rferrazz/iosomething)
+
 Client and server applications that are part of a simple network of remote enabled devices.    
 Each client has an unique identifier, it connects to the server that is acting as a bridge between 
 the mobile application that is sending the command and the client that receives the command.  
