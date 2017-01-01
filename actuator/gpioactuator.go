@@ -28,6 +28,8 @@ type GPIOPin struct {
 }
 
 func init() {
+	Initialize = func() {}
+	Deinitialize = func() {}
 	ExecuteCommand = executeCommand
 }
 
