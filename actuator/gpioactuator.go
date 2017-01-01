@@ -14,6 +14,7 @@ import (
 
 var mutex = sync.Mutex{}
 var lastValues = make(map[int]bool) // pin, true: high, false: low
+var pins = make(map[int]*GPIOPin)
 
 type GPIOMode uint8
 
@@ -68,8 +69,7 @@ func NewPin(number int, mode GPIOMode) (*GPIOPin, error) {
 		return nil, err
 	}
 
-	gpio := GPIOPin{number, mode}
-	return &gpio, nil
+	return &GPIOPin{number, mode}, nil
 }
 
 func (g *GPIOPin) On() error {
@@ -84,9 +84,14 @@ func executeCommand(command *utils.DigitalCommand) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	gpiopin, err := NewPin(command.Pin, ModeOutput)
-	if err != nil {
-		fmt.Println(err)
+	gpiopin := pins[command.Pin]
+	if gpiopin == nil {
+		gpiopin, err := NewPin(command.Pin, ModeOutput)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		pins[command.Pin] = gpiopin
 	}
 
 	fmt.Println("Executing command", command)
