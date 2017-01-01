@@ -34,7 +34,7 @@ func init() {
 }
 
 func writefile(file string, text string) error {
-	fd, err := os.OpenFile(file, os.O_WRONLY, 0644)
+	fd, err := os.OpenFile(file, os.O_WRONLY|os.O_SYNC, 0644)
 	if err != nil {
 		return err
 	}
