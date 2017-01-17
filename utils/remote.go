@@ -2,14 +2,15 @@ package utils
 
 import (
 	"encoding/binary"
-	"log"
+	"errors"
 	"net"
-	"sync"
+
+	"github.com/Sirupsen/logrus"
 )
 
 type Remote struct {
-	Conn  net.Conn
-	mutex sync.Mutex
+	Conn   net.Conn
+	buffer chan []byte
 }
 
 func max(a int, b int) int {
@@ -20,41 +21,43 @@ func max(a int, b int) int {
 	return b
 }
 
+// NewRemote creates a new remote
 func NewRemote(conn net.Conn) Remote {
 	remote := Remote{}
-	remote.mutex = sync.Mutex{}
 	remote.Conn = conn
+	remote.buffer = make(chan []byte, 10)
+
+	go func() {
+		for {
+			data, more := <-remote.buffer
+
+			if !more {
+				logrus.Debug("Channel closed, exiting")
+				return
+			}
+
+			err := binary.Write(remote.Conn, binary.BigEndian, data)
+			if err != nil {
+				logrus.Warn("Cannot write data, exiting:", err)
+				return
+			}
+		}
+	}()
 
 	return remote
 }
 
-func (r *Remote) SendMessage(kind MsgType, content ...interface{}) error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	err := binary.Write(r.Conn, binary.BigEndian, kind)
-	if err != nil {
-		return err
+// SendMessage enqueue message to be sent by the remote
+func (r *Remote) SendMessage(data []byte) error {
+	select {
+	case r.buffer <- data:
+		return nil
+	default:
+		return errors.New("Write buffer is full")
 	}
+}
 
-	size := 0
-	for _, data := range content {
-		size += max(binary.Size(data), 0)
-	}
-	log.Println("Writing message of size: ", size)
-	err = binary.Write(r.Conn, binary.BigEndian, uint32(size))
-	if err != nil {
-		return err
-	}
-
-	if size > 0 {
-		for _, data := range content {
-			err = binary.Write(r.Conn, binary.BigEndian, data)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+// Terminate closes the connection and the send channel
+func (r *Remote) Terminate() {
+	r.Conn.Close()
 }

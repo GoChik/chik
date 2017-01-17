@@ -5,14 +5,12 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
-	"io"
+	"fmt"
 	"iosomething/utils"
-	"log"
 	"os"
-	"strconv"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/satori/go.uuid"
 )
 
@@ -27,158 +25,131 @@ type Configuration struct {
 
 var clients = make(map[uuid.UUID]*utils.Remote)
 
-// identity: | UUID |
-func parseIdentity(reader *bufio.Reader, len uint32) (uid uuid.UUID, err error) {
-	raw := make([]byte, 16)
-	_, err = io.ReadFull(reader, raw)
+func forwardMessage(message *utils.Message) error {
+	receiver, err := message.ReceiverUUID()
 	if err != nil {
-		return
+		return err
 	}
 
-	uid, _ = uuid.FromBytes(raw)
-	return
+	if receiver == uuid.Nil { // No reciver specified
+		return nil
+	}
+
+	receiverRemote := clients[receiver]
+	if receiverRemote == nil {
+		return fmt.Errorf("%v disconnected", receiver)
+	}
+
+	return receiverRemote.SendMessage(message.Bytes())
 }
 
-// forwardMessage: | UUID | encrypted data |
-func forwardMessage(from uuid.UUID, reader *bufio.Reader, length uint32) (err error) {
-	reciver, err := parseIdentity(reader, 16)
-	if err != nil {
-		return
-	}
-
-	log.Println("Forwarding to", reciver)
-
-	sender := clients[reciver]
-	if sender == nil {
-		err = errors.New("Cannot forward message, receiver disconnected")
-		return
-	}
-
-	log.Println("Length", length)
-
-	message := make([]byte, length-16)
-	_, err = io.ReadFull(reader, message)
-	if err != nil {
-		return
-	}
-
-	err = sender.SendMessage(utils.MESSAGE, from, message)
-	return
-}
-
-func Heartbeat(client *utils.Remote) error {
+func heartbeat(client *utils.Remote) error {
 	for {
 		time.Sleep(30 * time.Second)
 
-		err := client.SendMessage(utils.HEARTBEAT, "")
+		err := client.SendMessage(utils.NewMessage(utils.HEARTBEAT, uuid.Nil, uuid.Nil, []byte{}).Bytes())
 		if err != nil {
-			log.Println("Stopping heartbeat")
+			logrus.Debug("Stopping heartbeat")
 			return err
 		}
 	}
 }
 
-func Client(client *utils.Remote) {
-	defer client.Conn.Close()
+func clientConnection(client *utils.Remote) {
+	defer client.Terminate()
 
 	reader := bufio.NewReader(client.Conn)
-
-	header, err := utils.ParseHeader(reader)
-
-	switch {
-	case err != nil:
-		log.Println("Error: type header cannot be read", err)
-		return
-
-	case header.MsgType != utils.IDENTITY:
-		log.Println("Error: cannot identify client")
-		return
-	}
-
-	identity, err := parseIdentity(reader, header.MsgLen)
-
-	if err != nil {
-		log.Println("Error: cannot parse client identity")
-		return
-	}
-
-	log.Println("New client:", identity)
-
-	clients[identity] = client
+	var sender = uuid.Nil
 
 	for {
-		header, err := utils.ParseHeader(reader)
-
-		switch {
-		case err != nil:
-			log.Println("Error: type header cannot be read")
-			break
-
-		case header.MsgType != utils.MESSAGE:
-			log.Println("Error: unexpected message")
+		message, err := utils.ParseMessage(reader)
+		if err != nil {
+			logrus.Error("Error parsing message", err)
 			break
 		}
 
-		err = forwardMessage(identity, reader, header.MsgLen)
+		msgtype := message.Type()
+		if msgtype != utils.MESSAGE {
+			logrus.Error("Unexpected message", msgtype)
+			continue
+		}
+
+		newSender, err := message.SenderUUID()
 		if err != nil {
-			log.Println("Message error", err)
+			logrus.Error("Unable to read sender UUID", err)
+			continue
+		}
+
+		if sender == uuid.Nil {
+			logrus.Debug("New client:", newSender)
+			sender = newSender
+			clients[sender] = client
+		}
+
+		if sender != newSender {
+			logrus.Error("Sender uuid has changed")
 			break
+		}
+
+		// forward message
+		err = forwardMessage(message)
+		if err != nil {
+			logrus.Error(err)
+			continue
 		}
 	}
 
-	log.Println("Disconnecting client", identity)
-	delete(clients, identity)
+	logrus.Debug("Disconnecting client", sender)
+	delete(clients, sender)
 }
 
 func main() {
+	logrus.SetLevel(logrus.DebugLevel)
 	conffile := utils.GetConfPath(CONFFILE)
 
 	if conffile == "" {
-		log.Fatalln("Config file not found")
+		logrus.Fatal("Config file not found")
 	}
 
 	fd, err := os.Open(conffile)
-	defer fd.Close()
-
 	if err != nil {
-		log.Fatalln("Cannot open config file", err)
+		logrus.Fatal("Cannot open config file", err)
 	}
+	defer fd.Close()
 
 	decoder := json.NewDecoder(fd)
 	conf := Configuration{}
 	err = decoder.Decode(&conf)
 
 	if err != nil {
-		log.Fatalln("Error reading config file", err)
+		logrus.Fatal("Error reading config file", err)
 	}
 
-	log.Println(conf)
+	logrus.Debug(conf)
 
 	cert, err := tls.LoadX509KeyPair(conf.PubKeyPath, conf.PrivKeyPath)
-
 	if err != nil {
-		log.Fatalln("Error loading tls certificate", err)
+		logrus.Fatal("Error loading tls certificate", err)
 	}
 
 	config := tls.Config{Certificates: []tls.Certificate{cert}}
 	config.Rand = rand.Reader
 
-	listener, err := tls.Listen("tcp", "0.0.0.0:"+strconv.Itoa(int(conf.Port)), &config)
-
+	listener, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.Port), &config)
 	if err != nil {
-		log.Fatalln("Error listening", err)
+		logrus.Fatal("Error listening", err)
 	}
 
 	for {
 		connection, err := listener.Accept()
 		if err != nil {
-			log.Println("Connection error", err)
+			logrus.Debug("Connection error", err)
 			continue
 		}
 
 		client := utils.NewRemote(connection)
 
-		go Heartbeat(&client)
-		go Client(&client)
+		go heartbeat(&client)
+		go clientConnection(&client)
 	}
 }
