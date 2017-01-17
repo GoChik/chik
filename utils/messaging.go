@@ -50,8 +50,13 @@ type DigitalCommand struct {
 
 // NewMessage creates a new message
 func NewMessage(msgtype MsgType, sender uuid.UUID, receiver uuid.UUID, data []byte) *Message {
+	messageLen := uint32(len(data))
+	if msgtype != HEARTBEAT {
+		messageLen += 16 * 2
+	}
+
 	return &Message{
-		header:   msgHeader{MsgType: msgtype, MsgLen: 16*2 + uint32(len(data))},
+		header:   msgHeader{MsgType: msgtype, MsgLen: messageLen},
 		sender:   sender,
 		receiver: receiver,
 		data:     data,
@@ -67,6 +72,8 @@ func ParseMessage(reader *bufio.Reader) (*Message, error) {
 		return nil, err
 	}
 
+	datalength := message.header.MsgLen
+
 	if message.header.MsgType != HEARTBEAT {
 		err := binary.Read(reader, binary.BigEndian, &message.sender)
 		if err != nil {
@@ -77,9 +84,10 @@ func ParseMessage(reader *bufio.Reader) (*Message, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		datalength -= 16 * 2
 	}
 
-	datalength := message.header.MsgLen - 16*2 // 16 is the uuid size
 	if datalength > 0 {
 		message.data = make([]byte, datalength)
 		err := binary.Read(reader, binary.BigEndian, &message.data)
