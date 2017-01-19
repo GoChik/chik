@@ -3,72 +3,48 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
-	"encoding/binary"
 	"encoding/json"
-	"io"
 	"iosomething/actuator"
 	"iosomething/utils"
-	"log"
+	"net"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/satori/go.uuid"
 )
 
 // CONFFILE configuration filename
 const CONFFILE = "client.json"
 
-// Client starts a new client
-func Client(identity string, conn *tls.Conn) {
-	defer conn.Close()
+func client(identity string, conn net.Conn) {
+	remote := utils.NewRemote(conn)
+	defer remote.Terminate()
 
 	actuator.Initialize()
 	defer actuator.Deinitialize()
 
 	id, _ := uuid.FromString(identity)
-	bytes := id.Bytes()
-
-	binary.Write(conn, binary.BigEndian, uint8(utils.IDENTITY))
-	binary.Write(conn, binary.BigEndian, uint32(16))
-	binary.Write(conn, binary.BigEndian, bytes)
+	remote.SendMessage(utils.NewMessage(utils.MESSAGE, id, uuid.Nil, []byte{}).Bytes())
 
 	reader := bufio.NewReader(conn)
 
 	for {
-		header, err := utils.ParseHeader(reader)
+		message, err := utils.ParseMessage(reader)
 		if err != nil {
-			log.Println("Header error", err)
+			logrus.Error("Cannot parse message:", err)
 			break
 		}
 
-		if header.MsgType == utils.HEARTBEAT {
-			log.Println("Heartbeat received")
+		if message.Type() == utils.HEARTBEAT {
+			logrus.Debug("Heartbeat received")
 			continue
 		}
 
-		log.Println("Message header:", header)
-
-		from := make([]byte, 16)
-		_, err = io.ReadFull(reader, from)
-		if err != nil {
-			log.Println("Error parsing sender bytes")
-			break
-		}
-
-		log.Println("Sender", from)
-
-		message := make([]byte, header.MsgLen-16)
-		_, err = io.ReadFull(reader, message)
-		if err != nil {
-			log.Println("Error reading message")
-			break
-		}
-
-		log.Println("Message received")
-
 		command := utils.DigitalCommand{}
-		err = json.Unmarshal(message, &command)
+		err = json.Unmarshal(message.Data(), &command)
 		if err != nil {
-			log.Println("Error parsing command", err)
+			logrus.Error("Error parsing command", err)
+			continue
 		}
 
 		go actuator.ExecuteCommand(&command)
@@ -76,39 +52,39 @@ func Client(identity string, conn *tls.Conn) {
 }
 
 func main() {
+	logrus.SetLevel(logrus.DebugLevel)
 	path := utils.GetConfPath(CONFFILE)
 
 	if path == "" {
-		log.Fatalln("Cannot find config file")
+		logrus.Fatal("Cannot find config file")
 	}
 
 	conf := utils.ClientConfiguration{}
 	err := utils.ParseConf(path, &conf)
-
 	if err != nil {
-		log.Fatalln("Error parsing config file", err)
+		logrus.Fatal("Error parsing config file", err)
 	}
 
 	if conf.Identity == "" {
 		conf.Identity = uuid.NewV1().String()
 		err = utils.UpdateConf(path, &conf)
 		if err != nil {
-			log.Fatalln("Unable to update config file", err)
+			logrus.Fatal("Unable to update config file", err)
 		}
 	}
 
-	log.Println("Identity: ", conf.Identity)
+	logrus.Debug("Identity: ", conf.Identity)
 
 	tlsConf := tls.Config{
 		InsecureSkipVerify: true,
 	}
 
 	for {
-		log.Println("Connecting to: ", conf.Server)
+		logrus.Debug("Connecting to: ", conf.Server)
 
 		conn, err := tls.Dial("tcp", conf.Server, &tlsConf)
 		if err == nil {
-			Client(conf.Identity, conn)
+			client(conf.Identity, conn)
 		}
 
 		time.Sleep(10 * time.Second)
