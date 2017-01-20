@@ -12,6 +12,7 @@ type ClientConfiguration struct {
 	Identity string
 }
 
+// GetConfPath returns directory in which configuration file is
 func GetConfPath(filename string) string {
 	cwd, err := os.Getwd()
 
@@ -35,6 +36,7 @@ func GetConfPath(filename string) string {
 	return ""
 }
 
+// ParseConf parse the config file
 func ParseConf(path string, obj interface{}) error {
 	fd, err := os.Open(path)
 	defer fd.Close()
@@ -53,6 +55,7 @@ func ParseConf(path string, obj interface{}) error {
 	return nil
 }
 
+// UpdateConf updates the config file with data from obj
 func UpdateConf(path string, obj interface{}) error {
 	os.Rename(path, path+".old")
 
