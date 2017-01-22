@@ -25,12 +25,14 @@ type Configuration struct {
 var clients = make(map[uuid.UUID]*utils.Remote)
 
 func forwardMessage(message *utils.Message) error {
+	logrus.Debug("Forwarding init")
 	receiver, err := message.ReceiverUUID()
 	if err != nil {
 		return err
 	}
 
 	if receiver == uuid.Nil { // No reciver specified
+		logrus.Debug("Forwarding stopped")
 		return nil
 	}
 
@@ -40,6 +42,7 @@ func forwardMessage(message *utils.Message) error {
 	}
 
 	receiverRemote.OutBuffer <- message
+	logrus.Debug("Forwarding done")
 	return nil
 }
 

@@ -103,7 +103,6 @@ func (r *Remote) StopChannel() chan bool {
 
 // Terminate closes the connection and the send channel
 func (r *Remote) Terminate() {
-	logrus.Debug("Channel count: ", len(r.stopChannels))
 	for _, c := range r.stopChannels {
 		c <- true
 		close(c)
