@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/tls"
 	"encoding/json"
 	"iosomething/actuator"
@@ -18,36 +17,35 @@ const CONFFILE = "client.json"
 
 func client(identity string, conn net.Conn) {
 	remote := utils.NewRemote(conn)
-	defer remote.Terminate()
+	stop := remote.StopChannel()
 
 	actuator.Initialize()
 	defer actuator.Deinitialize()
 
 	id, _ := uuid.FromString(identity)
-	remote.SendMessage(utils.NewMessage(utils.MESSAGE, id, uuid.Nil, []byte{}).Bytes())
-
-	reader := bufio.NewReader(conn)
+	remote.OutBuffer <- utils.NewMessage(utils.MESSAGE, id, uuid.Nil, []byte{})
 
 	for {
-		message, err := utils.ParseMessage(reader)
-		if err != nil {
-			logrus.Error("Cannot parse message:", err)
-			break
-		}
+		select {
+		case <-stop:
+			logrus.Debug("Exiting client")
+			return
 
-		if message.Type() == utils.HEARTBEAT {
-			logrus.Debug("Heartbeat received")
-			continue
-		}
+		case message := <-remote.InBuffer:
+			if message.Type() == utils.HEARTBEAT {
+				logrus.Debug("Heartbeat received")
+				continue
+			}
 
-		command := utils.DigitalCommand{}
-		err = json.Unmarshal(message.Data(), &command)
-		if err != nil {
-			logrus.Error("Error parsing command", err)
-			continue
-		}
+			command := utils.DigitalCommand{}
+			err := json.Unmarshal(message.Data(), &command)
+			if err != nil {
+				logrus.Error("Error parsing command", err)
+				continue
+			}
 
-		go actuator.ExecuteCommand(&command)
+			go actuator.ExecuteCommand(&command)
+		}
 	}
 }
 

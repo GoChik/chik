@@ -1,63 +1,113 @@
 package utils
 
 import (
-	"encoding/binary"
-	"errors"
+	"bufio"
+	"io"
 	"net"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
 )
 
+var mutex = sync.Mutex{}
+
+const BUFFER_SIZE = 10
+
 type Remote struct {
-	Conn   net.Conn
-	buffer chan []byte
+	conn         net.Conn
+	OutBuffer    chan *Message
+	InBuffer     chan *Message
+	stopChannels []chan bool
 }
 
-func max(a int, b int) int {
-	if a > b {
-		return a
+// NewRemote creates a new Remote
+func NewRemote(conn net.Conn) *Remote {
+	remote := Remote{
+		conn:         conn,
+		OutBuffer:    make(chan *Message, BUFFER_SIZE),
+		InBuffer:     make(chan *Message, BUFFER_SIZE),
+		stopChannels: make([]chan bool, 2),
 	}
 
-	return b
-}
+	remote.stopChannels[0] = make(chan bool, 1)
+	remote.stopChannels[1] = make(chan bool, 1)
 
-// NewRemote creates a new remote
-func NewRemote(conn net.Conn) Remote {
-	remote := Remote{}
-	remote.Conn = conn
-	remote.buffer = make(chan []byte, 10)
-
+	// Send function
 	go func() {
+		stop := remote.stopChannels[0]
 		for {
-			data, more := <-remote.buffer
-
-			if !more {
-				logrus.Debug("Channel closed, exiting")
+			select {
+			case <-stop:
+				logrus.Debug("Terminating OutBuffer")
+				close(remote.OutBuffer)
 				return
-			}
 
-			err := binary.Write(remote.Conn, binary.BigEndian, data)
-			if err != nil {
-				logrus.Warn("Cannot write data, exiting:", err)
-				return
+			case data, more := <-remote.OutBuffer:
+				if !more {
+					logrus.Debug("Channel closed, exiting")
+					remote.Terminate()
+					continue
+				}
+
+				_, err := remote.conn.Write(data.Bytes())
+				if err != nil {
+					logrus.Warn("Cannot write data, exiting:", err)
+					remote.Terminate()
+					continue
+				}
 			}
 		}
 	}()
 
-	return remote
+	// Receive function
+	go func() {
+		stop := remote.stopChannels[1]
+		reader := bufio.NewReader(remote.conn)
+		for {
+			select {
+			case <-stop:
+				logrus.Debug("Terminaing InBuffer")
+				close(remote.InBuffer)
+				return
+
+			default:
+				message, err := ParseMessage(reader)
+				if err == io.EOF {
+					logrus.Debug("Connection closed")
+					remote.Terminate()
+					continue
+				}
+
+				if err != nil {
+					logrus.Error("Invalid message:", err)
+					continue
+				}
+
+				remote.InBuffer <- message
+			}
+		}
+	}()
+
+	return &remote
 }
 
-// SendMessage enqueue message to be sent by the remote
-func (r *Remote) SendMessage(data []byte) error {
-	select {
-	case r.buffer <- data:
-		return nil
-	default:
-		return errors.New("Write buffer is full")
-	}
+// StopChannel returns a channel that gets written on Stop
+func (r *Remote) StopChannel() chan bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	stop := make(chan bool, 1)
+	r.stopChannels = append(r.stopChannels, stop)
+	return stop
 }
 
 // Terminate closes the connection and the send channel
 func (r *Remote) Terminate() {
-	r.Conn.Close()
+	logrus.Debug("Channel count: ", len(r.stopChannels))
+	for _, c := range r.stopChannels {
+		c <- true
+		close(c)
+	}
+
+	r.conn.Close()
 }

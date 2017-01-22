@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
@@ -40,67 +39,64 @@ func forwardMessage(message *utils.Message) error {
 		return fmt.Errorf("%v disconnected", receiver)
 	}
 
-	return receiverRemote.SendMessage(message.Bytes())
+	receiverRemote.OutBuffer <- message
+	return nil
 }
 
-func heartbeat(client *utils.Remote) error {
+func heartbeat(client *utils.Remote) {
+	stop := client.StopChannel()
 	for {
-		time.Sleep(30 * time.Second)
-
-		err := client.SendMessage(utils.NewMessage(utils.HEARTBEAT, uuid.Nil, uuid.Nil, []byte{}).Bytes())
-		if err != nil {
+		select {
+		case <-stop:
 			logrus.Debug("Stopping heartbeat")
-			return err
+			return
+
+		case <-time.After(30 * time.Second):
+			client.OutBuffer <- utils.NewMessage(utils.HEARTBEAT, uuid.Nil, uuid.Nil, []byte{})
 		}
 	}
 }
 
 func clientConnection(client *utils.Remote) {
-	defer client.Terminate()
-
-	reader := bufio.NewReader(client.Conn)
-	var sender = uuid.Nil
+	stop := client.StopChannel()
+	sender := uuid.Nil
 
 	for {
-		message, err := utils.ParseMessage(reader)
-		if err != nil {
-			logrus.Error("Error parsing message", err)
-			break
-		}
+		select {
+		case <-stop:
+			logrus.Debug("Disconnecting client", sender)
+			delete(clients, sender)
+			return
 
-		msgtype := message.Type()
-		if msgtype != utils.MESSAGE {
-			logrus.Error("Unexpected message", msgtype)
-			continue
-		}
+		case message := <-client.InBuffer:
+			logrus.Debug("Message received")
 
-		newSender, err := message.SenderUUID()
-		if err != nil {
-			logrus.Error("Unable to read sender UUID", err)
-			continue
-		}
+			msgtype := message.Type()
+			if msgtype != utils.MESSAGE {
+				logrus.Error("Unexpected message", msgtype)
+				continue
+			}
 
-		if sender == uuid.Nil {
-			logrus.Debug("New client:", newSender)
-			sender = newSender
-			clients[sender] = client
-		}
+			newSender, err := message.SenderUUID()
+			if err != nil {
+				logrus.Error("Unable to read sender UUID", err)
+				continue
+			}
 
-		if sender != newSender {
-			logrus.Error("Sender uuid has changed")
-			break
-		}
+			if sender == uuid.Nil {
+				logrus.Debug("New client:", newSender)
+				sender = newSender
+				clients[sender] = client
+			}
 
-		// forward message
-		err = forwardMessage(message)
-		if err != nil {
-			logrus.Error(err)
-			continue
+			// forward message
+			err = forwardMessage(message)
+			if err != nil {
+				logrus.Error(err)
+				continue
+			}
 		}
 	}
-
-	logrus.Debug("Disconnecting client", sender)
-	delete(clients, sender)
 }
 
 func main() {
@@ -149,7 +145,7 @@ func main() {
 
 		client := utils.NewRemote(connection)
 
-		go heartbeat(&client)
-		go clientConnection(&client)
+		go heartbeat(client)
+		go clientConnection(client)
 	}
 }
