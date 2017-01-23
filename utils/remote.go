@@ -11,8 +11,11 @@ import (
 
 var mutex = sync.Mutex{}
 
+// BUFFER_SIZE is the size of remote buffers
 const BUFFER_SIZE = 10
 
+// Remote represents a remote endpoint, data can be sent or received through
+// InBuffer and OutBuffer
 type Remote struct {
 	conn         net.Conn
 	OutBuffer    chan *Message
