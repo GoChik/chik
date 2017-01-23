@@ -50,4 +50,4 @@ Server configuration contains following parameters:
 
 ## Mobile application
 
-_Wait for it_
+[IoSomePhones](https://github.com/rferrazz/iosomephones)
