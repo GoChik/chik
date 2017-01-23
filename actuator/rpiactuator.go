@@ -3,34 +3,37 @@
 package actuator
 
 import (
+	"iosomething/utils"
 	"log"
 	"sync"
 	"time"
 
-	"iosomething/utils"
-
 	rpio "github.com/stianeikeland/go-rpio"
 )
 
-var mutex = sync.Mutex{}
-
-func init() {
-	Initialize = initialize
-	Deinitialize = deinitialize
-	ExecuteCommand = executeCommand
+type rpiActuator struct {
+	mutex sync.Mutex
 }
 
-func initialize() {
+func init() {
+	NewActuator = newActuator
+}
+
+func newActuator() Actuator {
+	return &rpiActuator{sync.Mutex{}}
+}
+
+func (a *rpiActuator) Initialize() {
 	rpio.Open()
 }
 
-func deinitialize() {
+func (a *rpiActuator) Deinitialize() {
 	rpio.Close()
 }
 
-func executeCommand(command *utils.DigitalCommand) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func (a *rpiActuator) ExecuteCommand(command *utils.DigitalCommand) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
 	log.Println("Executing command", command)
 

@@ -19,8 +19,9 @@ func client(identity string, conn net.Conn) {
 	remote := utils.NewRemote(conn)
 	stop := remote.StopChannel()
 
-	actuator.Initialize()
-	defer actuator.Deinitialize()
+	act := actuator.NewActuator()
+	act.Initialize()
+	defer act.Deinitialize()
 
 	id, _ := uuid.FromString(identity)
 	remote.OutBuffer <- utils.NewMessage(utils.MESSAGE, id, uuid.Nil, []byte{})
@@ -44,7 +45,7 @@ func client(identity string, conn net.Conn) {
 				continue
 			}
 
-			go actuator.ExecuteCommand(&command)
+			go act.ExecuteCommand(&command)
 		}
 	}
 }

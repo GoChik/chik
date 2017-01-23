@@ -1,5 +1,4 @@
 // +build gpio
-//go:generate stringer -type=GPIOMode
 
 package actuator
 
@@ -12,17 +11,24 @@ import (
 	"github.com/davecheney/gpio"
 )
 
-var mutex = sync.Mutex{}
-
-func init() {
-	Initialize = func() {}
-	Deinitialize = func() {}
-	ExecuteCommand = executeCommand
+type gpioActuator struct {
+	mutex sync.Mutex
 }
 
-func executeCommand(command *utils.DigitalCommand) {
-	mutex.Lock()
-	defer mutex.Unlock()
+func init() {
+	NewActuator = newActuator
+}
+
+func newActuator() Actuator {
+	return &gpioActuator{sync.Mutex{}}
+}
+
+func (a *gpioActuator) Initialize()   {}
+func (a *gpioActuator) Deinitialize() {}
+
+func (a *gpioActuator) ExecuteCommand(command *utils.DigitalCommand) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
 	gpiopin, err := gpio.OpenPin(command.Pin, gpio.ModeOutput)
 	if err != nil {
@@ -49,12 +55,11 @@ func executeCommand(command *utils.DigitalCommand) {
 		break
 
 	case utils.TOGGLE_ON_OFF:
-		if true {
+		if gpiopin.Get() {
 			gpiopin.Clear()
 		} else {
 			gpiopin.Set()
 		}
 		break
 	}
-
 }

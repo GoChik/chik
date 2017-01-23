@@ -4,11 +4,17 @@ import (
 	"iosomething/utils"
 )
 
-// Initialize initializes the actuator
-var Initialize func()
+// Actuator interface
+type Actuator interface {
+	// Initialize initializes the actuator
+	Initialize()
+	// Deinitialize is used when actuator is going off
+	Deinitialize()
+	// ExecuteCommand uses the actuator to run a DigitalCommand
+	ExecuteCommand(command *utils.DigitalCommand)
+}
 
-// Deinitialize is used when actuator is going off
-var Deinitialize func()
-
-// ExecuteCommand uses the actuator to run a DigitalCommand
-var ExecuteCommand func(command *utils.DigitalCommand)
+// NewActuator creates a new actuator
+var NewActuator = func() Actuator {
+	return nil
+}
