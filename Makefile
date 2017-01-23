@@ -11,6 +11,7 @@ rpi_client:
 gpio_client:
 	cd ${PWD}/client; \
 	go get; \
+	go get -u "github.com/davecheney/gpio"; \
 	go build -tags gpio
 	mkdir bin && cp -f client/client bin/
 
