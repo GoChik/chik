@@ -31,7 +31,8 @@ Following an example of a valid configuration file:
 
 ## Server
 
-Server sends tls encrypted messages. One server can handle multiple clients.  
+Clients are connecting to the server using a persistent TCP connection TLS encrypted.  
+One server can handle multiple clients.  
 Server is configured by `server.json` config file. It can be stored either aside the server executable
 or inside `/etc/iosomething/` directory.  
 Server configuration contains following parameters:
