@@ -80,8 +80,7 @@ func main() {
 
 	for {
 		logrus.Debug("Connecting to: ", conf.Server)
-
-		conn, err := tls.Dial("tcp", conf.Server, &tlsConf)
+		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", conf.Server, &tlsConf)
 		if err == nil {
 			client(conf.Identity, conn)
 		}
