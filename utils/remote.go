@@ -2,9 +2,9 @@ package utils
 
 import (
 	"bufio"
-	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -13,6 +13,7 @@ var mutex = sync.Mutex{}
 
 // BUFFER_SIZE is the size of remote buffers
 const BUFFER_SIZE = 10
+const WRITE_TIMEOUT = 1 * time.Minute
 
 // Remote represents a remote endpoint, data can be sent or received through
 // InBuffer and OutBuffer
@@ -24,7 +25,7 @@ type Remote struct {
 }
 
 // NewRemote creates a new Remote
-func NewRemote(conn net.Conn) *Remote {
+func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 	remote := Remote{
 		conn:         conn,
 		OutBuffer:    make(chan *Message, BUFFER_SIZE),
@@ -52,6 +53,7 @@ func NewRemote(conn net.Conn) *Remote {
 					continue
 				}
 
+				conn.SetWriteDeadline(time.Now().Add(WRITE_TIMEOUT))
 				_, err := remote.conn.Write(data.Bytes())
 				if err != nil {
 					logrus.Warn("Cannot write data, exiting:", err)
@@ -74,15 +76,14 @@ func NewRemote(conn net.Conn) *Remote {
 				return
 
 			default:
-				message, err := ParseMessage(reader)
-				if err == io.EOF {
-					logrus.Debug("Connection closed")
-					remote.Terminate()
-					continue
+				if readTimeout != 0 {
+					conn.SetReadDeadline(time.Now().Add(readTimeout))
 				}
 
+				message, err := ParseMessage(reader)
 				if err != nil {
 					logrus.Error("Invalid message:", err)
+					remote.Terminate()
 					continue
 				}
 

@@ -16,7 +16,7 @@ import (
 const CONFFILE = "client.json"
 
 func client(identity string, conn net.Conn) {
-	remote := utils.NewRemote(conn)
+	remote := utils.NewRemote(conn, 1*time.Minute)
 	stop := remote.StopChannel()
 
 	act := actuator.NewActuator()

@@ -146,7 +146,7 @@ func main() {
 			continue
 		}
 
-		client := utils.NewRemote(connection)
+		client := utils.NewRemote(connection, 0)
 
 		go heartbeat(client)
 		go clientConnection(client)
