@@ -13,6 +13,7 @@ type ClientConfiguration struct {
 }
 
 // GetConfPath returns directory in which configuration file is
+// returns an empty string if config file cannot be found
 func GetConfPath(filename string) string {
 	cwd, err := os.Getwd()
 
@@ -26,9 +27,7 @@ func GetConfPath(filename string) string {
 	}
 
 	path := filepath.Join("/etc/iosomething", filename)
-
 	_, err = os.Stat(path)
-
 	if err == nil {
 		return path
 	}
@@ -39,11 +38,10 @@ func GetConfPath(filename string) string {
 // ParseConf parse the config file
 func ParseConf(path string, obj interface{}) error {
 	fd, err := os.Open(path)
-	defer fd.Close()
-
 	if err != nil {
 		return err
 	}
+	defer fd.Close()
 
 	decoder := json.NewDecoder(fd)
 	err = decoder.Decode(obj)

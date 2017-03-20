@@ -67,7 +67,7 @@ func clientConnection(client *utils.Remote) {
 	for {
 		select {
 		case <-stop:
-			logrus.Debug("Disconnecting client", sender)
+			logrus.Debug("Disconnecting client ", sender)
 			delete(clients, sender)
 			return
 
