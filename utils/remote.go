@@ -16,10 +16,11 @@ const WRITE_TIMEOUT = 1 * time.Minute
 // Remote represents a remote endpoint, data can be sent or received through
 // InBuffer and OutBuffer
 type Remote struct {
-	conn         net.Conn
-	OutBuffer    chan *Message
-	InBuffer     chan *Message
-	stopChannels []chan bool
+	conn          net.Conn
+	OutBuffer     chan *Message
+	InBuffer      chan *Message
+	stopChannels  []chan bool
+	terminateOnce sync.Once
 	mutex         sync.Mutex
 }
 
@@ -106,10 +107,12 @@ func (r *Remote) StopChannel() chan bool {
 
 // Terminate closes the connection and the send channel
 func (r *Remote) Terminate() {
-	for _, c := range r.stopChannels {
-		c <- true
-		close(c)
-	}
+	r.terminateOnce.Do(func() {
+		for _, c := range r.stopChannels {
+			c <- true
+			close(c)
+		}
 
-	r.conn.Close()
+		r.conn.Close()
+	})
 }
