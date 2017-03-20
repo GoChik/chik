@@ -9,8 +9,6 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-var mutex = sync.Mutex{}
-
 // BUFFER_SIZE is the size of remote buffers
 const BUFFER_SIZE = 10
 const WRITE_TIMEOUT = 1 * time.Minute
@@ -22,6 +20,7 @@ type Remote struct {
 	OutBuffer    chan *Message
 	InBuffer     chan *Message
 	stopChannels []chan bool
+	mutex         sync.Mutex
 }
 
 // NewRemote creates a new Remote
@@ -97,8 +96,8 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 
 // StopChannel returns a channel that gets written on Stop
 func (r *Remote) StopChannel() chan bool {
-	mutex.Lock()
-	defer mutex.Unlock()
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	stop := make(chan bool, 1)
 	r.stopChannels = append(r.stopChannels, stop)
