@@ -3,6 +3,7 @@
 package actuator
 
 import (
+	"encoding/json"
 	"iosomething/utils"
 	"sync"
 	"time"
@@ -11,8 +12,20 @@ import (
 	"github.com/davecheney/gpio"
 )
 
+var configFile = "gpio.json"
+
+type gpioConf struct {
+	Pins map[int]bool
+}
+
+type pin struct {
+	pin      gpio.Pin
+	inverted bool
+}
+
 type gpioActuator struct {
-	mutex sync.Mutex
+	mutex    sync.Mutex
+	openPins map[int]*pin
 }
 
 func init() {
@@ -20,46 +33,115 @@ func init() {
 }
 
 func newActuator() Actuator {
-	return &gpioActuator{sync.Mutex{}}
+	actuator := gpioActuator{
+		sync.Mutex{},
+		map[int]*pin{},
+	}
+
+	confPath := utils.GetConfPath(configFile)
+	if confPath != "" {
+		conf := gpioConf{}
+		err := utils.ParseConf(confPath, &conf)
+		if err != nil {
+			logrus.Error("Cannot parse actuator configuration: ", err)
+			return &actuator
+		}
+
+		for k, v := range conf.Pins {
+			actuator.openPins[k] = createPin(k, v)
+		}
+	}
+
+	return &actuator
 }
 
-func (a *gpioActuator) Initialize()   {}
-func (a *gpioActuator) Deinitialize() {}
+func createPin(number int, inverted bool) *pin {
+	logrus.Debug("Opening pin ", number, " with inverted logic: ", inverted)
+	gpiopin, err := gpio.OpenPin(number, gpio.ModeOutput)
+	if err != nil {
+		logrus.Error("GPIO error:", err)
+		return nil
+	}
 
-func (a *gpioActuator) ExecuteCommand(command *utils.DigitalCommand) {
+	if inverted {
+		gpiopin.Set()
+	}
+
+	return &pin{
+		gpiopin,
+		inverted,
+	}
+}
+
+func (a *gpioActuator) setPin(pin *pin, value bool) {
+	if value != pin.inverted {
+		pin.pin.Set()
+	} else {
+		pin.pin.Clear()
+	}
+}
+
+func (a *gpioActuator) Initialize() {}
+func (a *gpioActuator) Deinitialize() {
+	for _, v := range a.openPins {
+		v.pin.Close()
+	}
+}
+
+func (a *gpioActuator) Execute(data []byte) (reply []byte) {
+	command := DigitalCommand{}
+	err := json.Unmarshal(data, &command)
+	if err != nil {
+		logrus.Error("Error parsing command", err)
+		return
+	}
+
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	gpiopin, err := gpio.OpenPin(command.Pin, gpio.ModeOutput)
-	if err != nil {
-		logrus.Error("GPIO error:", err)
-		return
+	gpiopin := a.openPins[command.Pin]
+	if gpiopin == nil {
+		gpiopin = createPin(command.Pin, false)
+		a.openPins[command.Pin] = gpiopin
 	}
-	defer gpiopin.Close()
 
 	logrus.Debug("Executing command", command)
 
 	switch command.Command {
-	case utils.SWITCH_OFF:
-		gpiopin.Clear()
+	case SWITCH_OFF:
+		a.setPin(gpiopin, false)
 		break
 
-	case utils.SWITCH_ON:
-		gpiopin.Set()
+	case SWITCH_ON:
+		a.setPin(gpiopin, true)
 		break
 
-	case utils.PUSH_BUTTON:
-		gpiopin.Set()
+	case PUSH_BUTTON:
+		a.setPin(gpiopin, true)
 		time.Sleep(1 * time.Second)
-		gpiopin.Clear()
+		a.setPin(gpiopin, false)
 		break
 
-	case utils.TOGGLE_ON_OFF:
-		if gpiopin.Get() {
-			gpiopin.Clear()
+	case TOGGLE_ON_OFF:
+		if gpiopin.pin.Get() || (!gpiopin.pin.Get() && gpiopin.inverted) {
+			a.setPin(gpiopin, false)
 		} else {
-			gpiopin.Set()
+			a.setPin(gpiopin, true)
 		}
 		break
+
+	case GET_STATUS:
+		data, err = json.Marshal(StatusIndication{
+			command.Pin,
+			gpiopin.pin.Get() != gpiopin.inverted,
+		})
+
+		if err != nil {
+			logrus.Error("Unable to encode reply message")
+			return
+		}
+		reply = data
+		break
 	}
+	return
 }

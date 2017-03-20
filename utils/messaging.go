@@ -34,20 +34,6 @@ type Message struct {
 	data     []byte
 }
 
-type CommandType uint8
-
-const (
-	PUSH_BUTTON CommandType = iota
-	SWITCH_ON
-	SWITCH_OFF
-	TOGGLE_ON_OFF
-)
-
-type DigitalCommand struct {
-	Pin     int         `json:",string"`
-	Command CommandType `json:",string"`
-}
-
 // NewMessage creates a new message
 func NewMessage(msgtype MsgType, sender uuid.UUID, receiver uuid.UUID, data []byte) *Message {
 	messageLen := uint32(len(data))

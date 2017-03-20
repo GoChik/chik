@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"iosomething/actuator"
 	"iosomething/utils"
 	"net"
@@ -15,13 +14,20 @@ import (
 // CONFFILE configuration filename
 const CONFFILE = "client.json"
 
+type replyData struct {
+	reply  []byte
+	sender uuid.UUID
+}
+
 func client(identity string, conn net.Conn) {
-	remote := utils.NewRemote(conn, 1*time.Minute)
+	remote := utils.NewRemote(conn, 10*time.Minute)
 	stop := remote.StopChannel()
 
 	act := actuator.NewActuator()
 	act.Initialize()
 	defer act.Deinitialize()
+
+	replyChannel := make(chan replyData, utils.BUFFER_SIZE)
 
 	id, _ := uuid.FromString(identity)
 	remote.OutBuffer <- utils.NewMessage(utils.MESSAGE, id, uuid.Nil, []byte{})
@@ -35,17 +41,26 @@ func client(identity string, conn net.Conn) {
 		case message := <-remote.InBuffer:
 			if message.Type() == utils.HEARTBEAT {
 				logrus.Debug("Heartbeat received")
-				continue
+				break
 			}
 
-			command := utils.DigitalCommand{}
-			err := json.Unmarshal(message.Data(), &command)
-			if err != nil {
-				logrus.Error("Error parsing command", err)
-				continue
-			}
+			go func(message *utils.Message) {
+				reply := act.Execute(message.Data())
+				if len(reply) == 0 {
+					return
+				}
+				sender, err := message.SenderUUID()
+				if err != nil {
+					logrus.Warning("Reply for no one: ", err)
+					return
+				}
+				replyChannel <- replyData{reply, sender}
+			}(message)
+			break
 
-			go act.ExecuteCommand(&command)
+		case reply := <-replyChannel:
+			remote.OutBuffer <- utils.NewMessage(utils.MESSAGE, id, reply.sender, reply.reply)
+			break
 		}
 	}
 }

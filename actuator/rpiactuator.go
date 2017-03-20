@@ -3,11 +3,12 @@
 package actuator
 
 import (
-	"iosomething/utils"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
 	rpio "github.com/stianeikeland/go-rpio"
 )
 
@@ -31,7 +32,14 @@ func (a *rpiActuator) Deinitialize() {
 	rpio.Close()
 }
 
-func (a *rpiActuator) ExecuteCommand(command *utils.DigitalCommand) {
+func (a *rpiActuator) Execute(data []byte) (reply []byte) {
+	command := DigitalCommand{}
+	err := json.Unmarshal(data, &command)
+	if err != nil {
+		logrus.Error("Error parsing command", err)
+		return
+	}
+
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -41,22 +49,36 @@ func (a *rpiActuator) ExecuteCommand(command *utils.DigitalCommand) {
 	rpiPin.Output()
 
 	switch command.Command {
-	case utils.PUSH_BUTTON:
+	case PUSH_BUTTON:
 		rpiPin.Low()
 		time.Sleep(1 * time.Second)
 		rpiPin.High()
 		break
 
-	case utils.TOGGLE_ON_OFF:
+	case TOGGLE_ON_OFF:
 		rpiPin.Toggle()
 		break
 
-	case utils.SWITCH_ON:
+	case SWITCH_ON:
 		rpiPin.High()
 		break
 
-	case utils.SWITCH_OFF:
+	case SWITCH_OFF:
 		rpiPin.Low()
 		break
+
+	case GET_STATUS:
+		data, err := json.Marshal(StatusIndication{
+			command.Pin,
+			rpiPin.Read() == rpio.High,
+		})
+
+		if err != nil {
+			logrus.Error("Error encoding reply")
+			return
+		}
+		reply = data
+		break
 	}
+	return
 }
