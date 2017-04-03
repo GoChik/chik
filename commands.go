@@ -1,4 +1,4 @@
-package actuator
+package iosomething
 
 type CommandType uint8
 
@@ -23,4 +23,11 @@ type DigitalCommand struct {
 type StatusIndication struct {
 	Pin    int
 	Status bool
+}
+
+// AIInfoMessage sent from the android application to inform
+// when user came home and what appliances are enabled
+type AIInfoMessage struct {
+	WiFiStatus    bool
+	AIEnabledPins []int
 }

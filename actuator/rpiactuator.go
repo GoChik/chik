@@ -4,6 +4,7 @@ package actuator
 
 import (
 	"encoding/json"
+	"iosomething"
 	"log"
 	"sync"
 	"time"
@@ -33,7 +34,7 @@ func (a *rpiActuator) Deinitialize() {
 }
 
 func (a *rpiActuator) Execute(data []byte) (reply []byte) {
-	command := DigitalCommand{}
+	command := iosomething.DigitalCommand{}
 	err := json.Unmarshal(data, &command)
 	if err != nil {
 		logrus.Error("Error parsing command", err)
@@ -49,26 +50,26 @@ func (a *rpiActuator) Execute(data []byte) (reply []byte) {
 	rpiPin.Output()
 
 	switch command.Command {
-	case PUSH_BUTTON:
+	case iosomething.PUSH_BUTTON:
 		rpiPin.Low()
 		time.Sleep(1 * time.Second)
 		rpiPin.High()
 		break
 
-	case TOGGLE_ON_OFF:
+	case iosomething.TOGGLE_ON_OFF:
 		rpiPin.Toggle()
 		break
 
-	case SWITCH_ON:
+	case iosomething.SWITCH_ON:
 		rpiPin.High()
 		break
 
-	case SWITCH_OFF:
+	case iosomething.SWITCH_OFF:
 		rpiPin.Low()
 		break
 
-	case GET_STATUS:
-		data, err := json.Marshal(StatusIndication{
+	case iosomething.GET_STATUS:
+		data, err := json.Marshal(iosomething.StatusIndication{
 			command.Pin,
 			rpiPin.Read() == rpio.High,
 		})

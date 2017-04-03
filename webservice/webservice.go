@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"iosomething/utils"
+	"iosomething/core"
 	"net/http"
 
 	qrcode "github.com/skip2/go-qrcode"
@@ -15,14 +15,14 @@ const CONFFILE = "client.json"
 type qrHandler struct{}
 
 func (h qrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	path := utils.GetConfPath(CONFFILE)
+	path := iosomething.GetConfPath(CONFFILE)
 	if path == "" {
 		fmt.Fprintf(w, "Cannot find config file")
 		return
 	}
 
-	conf := utils.ClientConfiguration{}
-	err := utils.ParseConf(path, &conf)
+	conf := iosomething.ClientConfiguration{}
+	err := iosomething.ParseConf(path, &conf)
 	if err != nil {
 		fmt.Fprintf(w, "Error parsing configuration")
 	}

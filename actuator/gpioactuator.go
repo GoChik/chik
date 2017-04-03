@@ -4,7 +4,7 @@ package actuator
 
 import (
 	"encoding/json"
-	"iosomething/utils"
+	"iosomething"
 	"sync"
 	"time"
 
@@ -38,10 +38,10 @@ func newActuator() Actuator {
 		map[int]*pin{},
 	}
 
-	confPath := utils.GetConfPath(configFile)
+	confPath := iosomething.GetConfPath(configFile)
 	if confPath != "" {
 		conf := gpioConf{}
-		err := utils.ParseConf(confPath, &conf)
+		err := iosomething.ParseConf(confPath, &conf)
 		if err != nil {
 			logrus.Error("Cannot parse actuator configuration: ", err)
 			return &actuator
@@ -89,7 +89,7 @@ func (a *gpioActuator) Deinitialize() {
 }
 
 func (a *gpioActuator) Execute(data []byte) (reply []byte) {
-	command := DigitalCommand{}
+	command := iosomething.DigitalCommand{}
 	err := json.Unmarshal(data, &command)
 	if err != nil {
 		logrus.Error("Error parsing command", err)
@@ -108,21 +108,21 @@ func (a *gpioActuator) Execute(data []byte) (reply []byte) {
 	logrus.Debug("Executing command", command)
 
 	switch command.Command {
-	case SWITCH_OFF:
+	case iosomething.SWITCH_OFF:
 		a.setPin(gpiopin, false)
 		break
 
-	case SWITCH_ON:
+	case iosomething.SWITCH_ON:
 		a.setPin(gpiopin, true)
 		break
 
-	case PUSH_BUTTON:
+	case iosomething.PUSH_BUTTON:
 		a.setPin(gpiopin, true)
 		time.Sleep(1 * time.Second)
 		a.setPin(gpiopin, false)
 		break
 
-	case TOGGLE_ON_OFF:
+	case iosomething.TOGGLE_ON_OFF:
 		if gpiopin.pin.Get() || (!gpiopin.pin.Get() && gpiopin.inverted) {
 			a.setPin(gpiopin, false)
 		} else {
@@ -130,8 +130,8 @@ func (a *gpioActuator) Execute(data []byte) (reply []byte) {
 		}
 		break
 
-	case GET_STATUS:
-		data, err = json.Marshal(StatusIndication{
+	case iosomething.GET_STATUS:
+		data, err = json.Marshal(iosomething.StatusIndication{
 			command.Pin,
 			gpiopin.pin.Get() != gpiopin.inverted,
 		})

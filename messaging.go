@@ -1,7 +1,7 @@
 //go:generate stringer -type=MsgType
 //go:generate stringer -type=CommandType
 
-package utils
+package iosomething
 
 import (
 	"bufio"

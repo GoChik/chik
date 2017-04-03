@@ -5,16 +5,19 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"iosomething/utils"
+	"iosomething"
+	"iosomething/handlers"
 	"os"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 // CONFFILE configuration file
 const CONFFILE = "server.json"
+
+var peers = make(map[uuid.UUID]chan<- *iosomething.Message)
 
 type Configuration struct {
 	Port        uint16
@@ -22,89 +25,9 @@ type Configuration struct {
 	PrivKeyPath string
 }
 
-var clients = make(map[uuid.UUID]*utils.Remote)
-
-func forwardMessage(message *utils.Message) error {
-	logrus.Debug("Forwarding init")
-	receiver, err := message.ReceiverUUID()
-	if err != nil {
-		return err
-	}
-
-	if receiver == uuid.Nil { // No reciver specified
-		logrus.Debug("Forwarding stopped")
-		return nil
-	}
-
-	receiverRemote := clients[receiver]
-	if receiverRemote == nil {
-		return fmt.Errorf("%v disconnected", receiver)
-	}
-
-	receiverRemote.OutBuffer <- message
-	logrus.Debug("Forwarding done")
-	return nil
-}
-
-func heartbeat(client *utils.Remote) {
-	stop := client.StopChannel()
-	for {
-		select {
-		case <-stop:
-			logrus.Debug("Stopping heartbeat")
-			return
-
-		case <-time.After(30 * time.Second):
-			client.OutBuffer <- utils.NewMessage(utils.HEARTBEAT, uuid.Nil, uuid.Nil, []byte{})
-		}
-	}
-}
-
-func clientConnection(client *utils.Remote) {
-	stop := client.StopChannel()
-	sender := uuid.Nil
-
-	for {
-		select {
-		case <-stop:
-			logrus.Debug("Disconnecting client ", sender)
-			delete(clients, sender)
-			return
-
-		case message := <-client.InBuffer:
-			logrus.Debug("Message received")
-
-			msgtype := message.Type()
-			if msgtype != utils.MESSAGE {
-				logrus.Error("Unexpected message", msgtype)
-				continue
-			}
-
-			newSender, err := message.SenderUUID()
-			if err != nil {
-				logrus.Error("Unable to read sender UUID", err)
-				continue
-			}
-
-			if sender == uuid.Nil {
-				logrus.Debug("New client:", newSender)
-				sender = newSender
-				clients[sender] = client
-			}
-
-			// forward message
-			err = forwardMessage(message)
-			if err != nil {
-				logrus.Error(err)
-				continue
-			}
-		}
-	}
-}
-
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
-	conffile := utils.GetConfPath(CONFFILE)
+	conffile := iosomething.GetConfPath(CONFFILE)
 
 	if conffile == "" {
 		logrus.Fatal("Config file not found")
@@ -146,9 +69,12 @@ func main() {
 			continue
 		}
 
-		client := utils.NewRemote(connection, 0)
-
-		go heartbeat(client)
-		go clientConnection(client)
+		// Creating the remote that is handling the newly connected client
+		remote := iosomething.NewRemote(connection, 0)
+		msgListener := iosomething.NewListener([]iosomething.Handler{
+			handlers.NewForwardingHandler(peers),
+			handlers.NewHeartBeatHandler("", 2*time.Minute, true),
+		})
+		go msgListener.Listen(remote)
 	}
 }

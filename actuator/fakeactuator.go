@@ -4,6 +4,7 @@ package actuator
 
 import (
 	"encoding/json"
+	"iosomething"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -35,7 +36,7 @@ func (a *fakeActuator) Deinitialize() {
 }
 
 func (a *fakeActuator) Execute(data []byte) (reply []byte) {
-	command := DigitalCommand{}
+	command := iosomething.DigitalCommand{}
 	err := json.Unmarshal(data, &command)
 	if err != nil {
 		logrus.Error("Error parsing command", err)
@@ -43,22 +44,22 @@ func (a *fakeActuator) Execute(data []byte) (reply []byte) {
 	}
 
 	switch command.Command {
-	case PUSH_BUTTON:
+	case iosomething.PUSH_BUTTON:
 		logrus.Debug("PUSH_BUTTON, pin: ", command.Pin)
 		a.pins[command.Pin] = false
 		break
 
-	case SWITCH_ON:
+	case iosomething.SWITCH_ON:
 		logrus.Debug("SWITCH_ON, pin: ", command.Pin)
 		a.pins[command.Pin] = true
 		break
 
-	case SWITCH_OFF:
+	case iosomething.SWITCH_OFF:
 		logrus.Debug("SWITCH_OFF, pin: ", command.Pin)
 		a.pins[command.Pin] = false
 		break
 
-	case TOGGLE_ON_OFF:
+	case iosomething.TOGGLE_ON_OFF:
 		logrus.Debug("TOGGLE_ON_OFF, pin: ", command.Pin)
 		if a.pins[command.Pin] {
 			a.pins[command.Pin] = false
@@ -67,9 +68,9 @@ func (a *fakeActuator) Execute(data []byte) (reply []byte) {
 		}
 		break
 
-	case GET_STATUS:
+	case iosomething.GET_STATUS:
 		logrus.Debug("GET_STATUS, pin: ", command.Pin)
-		reply, err = json.Marshal(StatusIndication{command.Pin, a.pins[command.Pin]})
+		reply, err = json.Marshal(iosomething.StatusIndication{command.Pin, a.pins[command.Pin]})
 		if err != nil {
 			logrus.Error("Error encoding json reply: ", err)
 		}

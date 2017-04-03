@@ -1,4 +1,4 @@
-package utils
+package iosomething
 
 import (
 	"bufio"
@@ -42,8 +42,7 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 		for {
 			select {
 			case <-stop:
-				logrus.Debug("Terminating OutBuffer")
-				close(remote.OutBuffer)
+				logrus.Debug("Stop sending data over the network")
 				return
 
 			case data, more := <-remote.OutBuffer:
