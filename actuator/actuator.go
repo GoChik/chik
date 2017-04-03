@@ -9,7 +9,7 @@ type Actuator interface {
 	Deinitialize()
 
 	// Execute uses the actuator to execute the action specified
-	// on the data passed to it
+	// on the data passed to it, returns the reply
 	Execute(data []byte) []byte
 }
 
