@@ -7,12 +7,28 @@ import (
 	"net"
 	"time"
 
+	"os/exec"
+
 	"github.com/Sirupsen/logrus"
+	"github.com/beevik/ntp"
 	"github.com/satori/go.uuid"
 )
 
 // CONFFILE configuration filename
 const CONFFILE = "client.json"
+
+func setSystemTime() {
+	go func() {
+		for {
+			date, err := ntp.Time("0.pool.ntp.org")
+			if err == nil {
+				cmd := exec.Command("date", "-s", date.Format("2006.01.02-15:04:05"))
+				cmd.Run()
+			}
+			time.Sleep(24 * 7 * time.Hour)
+		}
+	}()
+}
 
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
@@ -21,6 +37,8 @@ func main() {
 	if path == "" {
 		logrus.Fatal("Cannot find config file")
 	}
+
+	setSystemTime()
 
 	conf := iosomething.ClientConfiguration{}
 	err := iosomething.ParseConf(path, &conf)
