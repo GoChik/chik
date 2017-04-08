@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"iosomething/core"
+	"iosomething"
 	"net/http"
 
 	qrcode "github.com/skip2/go-qrcode"
