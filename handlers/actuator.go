@@ -35,7 +35,7 @@ func (h *actuatorHandler) TearDown() {
 func (h *actuatorHandler) Handle(message *iosomething.Message) {
 	receiver, err := message.ReceiverUUID()
 	if message.Type() == iosomething.HEARTBEAT {
-		logrus.Debug("Heartbeat received")
+		// heartbeat is not handled here
 		return
 	}
 
