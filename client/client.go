@@ -4,41 +4,25 @@ import (
 	"crypto/tls"
 	"iosomething"
 	"iosomething/handlers"
+	"iosomething/plugins"
 	"net"
 	"time"
 
-	"os/exec"
-
 	"github.com/Sirupsen/logrus"
-	"github.com/beevik/ntp"
 	"github.com/satori/go.uuid"
 )
 
 // CONFFILE configuration filename
 const CONFFILE = "client.json"
 
-func setSystemTime() {
-	go func() {
-		for {
-			date, err := ntp.Time("0.pool.ntp.org")
-			if err == nil {
-				cmd := exec.Command("date", "-s", date.Format("2006.01.02-15:04:05"))
-				cmd.Run()
-			}
-			time.Sleep(24 * 7 * time.Hour)
-		}
-	}()
-}
-
 func main() {
 	logrus.SetLevel(logrus.DebugLevel)
-	path := iosomething.GetConfPath(CONFFILE)
 
+	// Configuration parsing
+	path := iosomething.GetConfPath(CONFFILE)
 	if path == "" {
 		logrus.Fatal("Cannot find config file")
 	}
-
-	setSystemTime()
 
 	conf := iosomething.ClientConfiguration{}
 	err := iosomething.ParseConf(path, &conf)
@@ -56,15 +40,27 @@ func main() {
 
 	logrus.Debug("Identity: ", conf.Identity)
 
+	// Plugins initialization
+	plugins := []plugins.Plugin{
+		plugins.NewSystemTimePlugin(),
+	}
+
+	for _, p := range plugins {
+		p.Start()
+		defer p.Stop()
+	}
+
 	tlsConf := tls.Config{
 		InsecureSkipVerify: true,
 	}
 
+	// Creating handlers
 	client := iosomething.NewListener([]iosomething.Handler{
 		handlers.NewActuatorHandler(conf.Identity),
 		handlers.NewHeartBeatHandler(conf.Identity, 2*time.Minute, false),
 	})
 
+	// Listening network
 	for {
 		logrus.Debug("Connecting to: ", conf.Server)
 		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", conf.Server, &tlsConf)
