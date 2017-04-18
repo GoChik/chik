@@ -1,0 +1,48 @@
+{
+	"ImportPath": "iosomething",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/Sirupsen/logrus",
+			"Comment": "v0.11.5-12-g10f801e",
+			"Rev": "10f801ebc38b33738c9d17d50860f484a0988ff5"
+		},
+		{
+			"ImportPath": "github.com/beevik/ntp",
+			"Rev": "cb3dae3a7588ae35829eb5724df611cd75152fba"
+		},
+		{
+			"ImportPath": "github.com/davecheney/gpio",
+			"Rev": "a6de66e7e47065fca1a55c62c3f3cab3144694e6"
+		},
+		{
+			"ImportPath": "github.com/satori/go.uuid",
+			"Rev": "08f0718b61e95ddba0ade3346725fe0e4bf28ca6"
+		},
+		{
+			"ImportPath": "github.com/skip2/go-qrcode",
+			"Rev": "5bfceac8c4950ff8f735525ddcde5a6b08d77ab6"
+		},
+		{
+			"ImportPath": "github.com/skip2/go-qrcode/bitset",
+			"Rev": "5bfceac8c4950ff8f735525ddcde5a6b08d77ab6"
+		},
+		{
+			"ImportPath": "github.com/skip2/go-qrcode/reedsolomon",
+			"Rev": "5bfceac8c4950ff8f735525ddcde5a6b08d77ab6"
+		},
+		{
+			"ImportPath": "github.com/stianeikeland/go-rpio",
+			"Comment": "v2.0.0",
+			"Rev": "ab68f61e91349ee0ba15aaddc320a4d8f812d65b"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "f3918c30c5c2cb527c0b071a27c35120a6c0719a"
+		}
+	]
+}
