@@ -18,7 +18,7 @@ server:
 	mkdir bin && cp -f server/server bin/
 
 tests:
-	go test ${PWD}/tests
+	go test ./tests
 
 clean:
 	git clean -dfx
