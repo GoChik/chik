@@ -1,13 +1,12 @@
 language: go
 
 go:
-    - 1.6
-    - 1.7
-    - master
+    - 1.8
 
 env:
     - EXECUTABLE=gpio_client
     - EXECUTABLE=server
+    - EXECUTABLE=tests
 
 script:
     - mkdir -p $GOPATH/src/iosomething
