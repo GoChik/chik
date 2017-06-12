@@ -122,10 +122,11 @@ func (h *digitalHandler) startCounter() {
 	}
 }
 
-func (h *digitalHandler) SetUp(remote chan<- *iosomething.Message) {
+func (h *digitalHandler) SetUp(remote chan<- *iosomething.Message) chan bool {
 	h.Remote = remote
 	h.actuator.Initialize()
 	go h.startCounter()
+	return h.Error
 }
 
 func (h *digitalHandler) TearDown() {

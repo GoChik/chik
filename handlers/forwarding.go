@@ -20,8 +20,9 @@ func NewForwardingHandler(peers map[uuid.UUID]chan<- *iosomething.Message) iosom
 	}
 }
 
-func (h *forwarding) SetUp(remote chan<- *iosomething.Message) {
+func (h *forwarding) SetUp(remote chan<- *iosomething.Message) chan bool {
 	h.Remote = remote
+	return h.Error
 }
 
 func (h *forwarding) TearDown() {

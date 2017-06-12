@@ -8,7 +8,7 @@ import (
 // Handler is the interface that handles network messages
 // and optionally can return a reply
 type Handler interface {
-	SetUp(outChannel chan<- *Message)
+	SetUp(outChannel chan<- *Message) chan bool
 	TearDown()
 	Handle(message *Message)
 }
@@ -16,6 +16,7 @@ type Handler interface {
 type BaseHandler struct {
 	ID     uuid.UUID
 	Remote chan<- *Message
+	Error  chan bool
 }
 
 func NewHandler(identity string) BaseHandler {
@@ -23,5 +24,5 @@ func NewHandler(identity string) BaseHandler {
 	if err != nil || id == uuid.Nil {
 		logrus.Warn("Identity error: ", err)
 	}
-	return BaseHandler{id, nil}
+	return BaseHandler{id, nil, make(chan bool, 1)}
 }

@@ -2,17 +2,21 @@ package handlers
 
 import (
 	"iosomething"
+	"sync/atomic"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 )
 
+const maxErrors = uint32(3)
+
 type heartbeat struct {
 	iosomething.BaseHandler
 	interval time.Duration
 	active   bool
 	stop     chan bool
+	errors   uint32
 }
 
 // NewHeartBeatHandler creates a new heartbeat handler, active is used to specify if the handler is also
@@ -26,27 +30,32 @@ func NewHeartBeatHandler(identity string, interval time.Duration, active bool) i
 	}
 }
 
-func (h *heartbeat) SetUp(remote chan<- *iosomething.Message) {
+func (h *heartbeat) SetUp(remote chan<- *iosomething.Message) chan bool {
 	h.Remote = remote
 	h.Remote <- iosomething.NewMessage(iosomething.MESSAGE, h.ID, uuid.Nil, []byte{})
-	if !h.active {
-		return
-	}
 
 	go func() {
 		for {
 			select {
 			case <-h.stop:
 				logrus.Debug("Stopping heartbeat service")
-				close(h.stop)
 				return
 
 			case <-time.After(h.interval):
-				h.Remote <- iosomething.NewMessage(iosomething.HEARTBEAT, h.ID, uuid.Nil, []byte{})
+				if h.active {
+					h.Remote <- iosomething.NewMessage(iosomething.HEARTBEAT, h.ID, uuid.Nil, []byte{})
+				} else {
+					atomic.AddUint32(&h.errors, 1)
+					if atomic.LoadUint32(&h.errors) >= maxErrors {
+						h.Error <- true
+					}
+				}
 				break
 			}
 		}
 	}()
+
+	return h.Error
 }
 
 func (h *heartbeat) TearDown() {
@@ -55,6 +64,7 @@ func (h *heartbeat) TearDown() {
 
 func (h *heartbeat) Handle(message *iosomething.Message) {
 	if message.Type() == iosomething.HEARTBEAT {
+		atomic.StoreUint32(&h.errors, 0)
 		logrus.Debug("Heartbeat received")
 	}
 }
