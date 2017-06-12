@@ -71,7 +71,6 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 			select {
 			case <-stop:
 				logrus.Debug("Terminaing InBuffer")
-				close(remote.InBuffer)
 				return
 
 			default:
