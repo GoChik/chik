@@ -2,6 +2,7 @@ package iosomething
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 )
@@ -11,6 +12,8 @@ type ClientConfiguration struct {
 	Server   string
 	Identity string
 }
+
+const configPath = "/etc/iosomething"
 
 // GetConfPath returns directory in which configuration file is
 // returns an empty string if config file cannot be found
@@ -26,7 +29,7 @@ func GetConfPath(filename string) string {
 		}
 	}
 
-	path := filepath.Join("/etc/iosomething", filename)
+	path := filepath.Join(configPath, filename)
 	_, err = os.Stat(path)
 	if err == nil {
 		return path
@@ -78,6 +81,32 @@ func UpdateConf(path string, obj interface{}) error {
 	}
 
 	fd.Sync()
+	return nil
+}
 
+// CreateConfigFile creates the physical config file with a provided default configuration
+func CreateConfigFile(filename string, defaultConf interface{}) error {
+	data, err := json.MarshalIndent(defaultConf, "", " ")
+	if err != nil {
+		return err
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	path := filepath.Join(cwd, filename)
+	if _, err = os.Stat(path); err == nil {
+		return errors.New("Config file already exists")
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	file.Write(data)
 	return nil
 }
