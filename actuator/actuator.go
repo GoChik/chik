@@ -8,9 +8,14 @@ type Actuator interface {
 	// Deinitialize is used when actuator is going off
 	Deinitialize()
 
-	// Execute uses the actuator to execute the action specified
-	// on the data passed to it, returns the reply
-	Execute(data []byte) []byte
+	// TurnOn turns the specified pin on
+	TurnOn(pin int)
+
+	// TurnOff turns the specified pin off
+	TurnOff(pin int)
+
+	// getStatus returns wether the pin is on (true) or off (false)
+	GetStatus(pin int) bool
 }
 
 // NewActuator creates a new actuator

@@ -3,18 +3,14 @@
 package actuator
 
 import (
-	"encoding/json"
-	"iosomething"
-	"log"
 	"sync"
-	"time"
 
-	"github.com/Sirupsen/logrus"
 	rpio "github.com/stianeikeland/go-rpio"
 )
 
 type rpiActuator struct {
-	mutex sync.Mutex
+	mutex    sync.Mutex
+	openPins map[int]rpio.Pin
 }
 
 func init() {
@@ -22,7 +18,7 @@ func init() {
 }
 
 func newActuator() Actuator {
-	return &rpiActuator{sync.Mutex{}}
+	return &rpiActuator{sync.Mutex{}, map[int]rpio.Pin{}}
 }
 
 func (a *rpiActuator) Initialize() {
@@ -33,53 +29,35 @@ func (a *rpiActuator) Deinitialize() {
 	rpio.Close()
 }
 
-func (a *rpiActuator) Execute(data []byte) (reply []byte) {
-	command := iosomething.DigitalCommand{}
-	err := json.Unmarshal(data, &command)
-	if err != nil {
-		logrus.Error("Error parsing command", err)
-		return
+func (a *rpiActuator) openPin(pin int) rpio.Pin {
+	if a.openPins[pin] == 0 {
+		p := rpio.Pin(pin)
+		p.Output()
+		a.openPins[pin] = p
 	}
+	return a.openPins[pin]
+}
 
+func (a *rpiActuator) TurnOn(pin int) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	log.Println("Executing command", command)
+	rpiPin := a.openPin(pin)
+	rpiPin.Low()
+}
 
-	rpiPin := rpio.Pin(command.Pin)
-	rpiPin.Output()
+func (a *rpiActuator) TurnOff(pin int) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
-	switch command.Command {
-	case iosomething.PUSH_BUTTON:
-		rpiPin.Low()
-		time.Sleep(1 * time.Second)
-		rpiPin.High()
-		break
+	rpiPin := a.openPin(pin)
+	rpiPin.High()
+}
 
-	case iosomething.TOGGLE_ON_OFF:
-		rpiPin.Toggle()
-		break
+func (a *rpiActuator) GetStatus(pin int) bool {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
-	case iosomething.SWITCH_ON:
-		rpiPin.High()
-		break
-
-	case iosomething.SWITCH_OFF:
-		rpiPin.Low()
-		break
-
-	case iosomething.GET_STATUS:
-		data, err := json.Marshal(iosomething.StatusIndication{
-			command.Pin,
-			rpiPin.Read() == rpio.High,
-		})
-
-		if err != nil {
-			logrus.Error("Error encoding reply")
-			return
-		}
-		reply = data
-		break
-	}
-	return
+	rpiPin := a.openPin(pin)
+	return rpiPin.Read() == rpio.Low
 }
