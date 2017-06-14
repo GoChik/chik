@@ -43,6 +43,7 @@ func (h *heartbeat) SetUp(remote chan<- *iosomething.Message) chan bool {
 
 			case <-time.After(h.interval):
 				if h.active {
+					logrus.Debug("Sending heartbeat")
 					h.Remote <- iosomething.NewMessage(iosomething.HEARTBEAT, h.ID, uuid.Nil, []byte{})
 				} else {
 					atomic.AddUint32(&h.errors, 1)
@@ -64,7 +65,7 @@ func (h *heartbeat) TearDown() {
 
 func (h *heartbeat) Handle(message *iosomething.Message) {
 	if message.Type() == iosomething.HEARTBEAT {
-		atomic.StoreUint32(&h.errors, 0)
 		logrus.Debug("Heartbeat received")
+		atomic.StoreUint32(&h.errors, 0)
 	}
 }
