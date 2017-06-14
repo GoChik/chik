@@ -1,7 +1,6 @@
 package iosomething
 
 import (
-	"bufio"
 	"net"
 	"sync"
 	"time"
@@ -66,7 +65,6 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 	// Receive function
 	go func() {
 		stop := remote.stopChannels[1]
-		reader := bufio.NewReader(remote.conn)
 		for {
 			select {
 			case <-stop:
@@ -78,7 +76,7 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 					conn.SetReadDeadline(time.Now().Add(readTimeout))
 				}
 
-				message, err := ParseMessage(reader)
+				message, err := ParseMessage(conn)
 				if err != nil {
 					logrus.Error("Invalid message:", err)
 					remote.Terminate()

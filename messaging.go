@@ -4,10 +4,10 @@
 package iosomething
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"io"
 
 	"github.com/satori/go.uuid"
 )
@@ -36,10 +36,7 @@ type Message struct {
 
 // NewMessage creates a new message
 func NewMessage(msgtype MsgType, sender uuid.UUID, receiver uuid.UUID, data []byte) *Message {
-	messageLen := uint32(len(data))
-	if msgtype != HEARTBEAT {
-		messageLen += 16 * 2
-	}
+	messageLen := (16 * 2) + uint32(len(data))
 
 	return &Message{
 		header:   msgHeader{MsgType: msgtype, MsgLen: messageLen},
@@ -50,7 +47,7 @@ func NewMessage(msgtype MsgType, sender uuid.UUID, receiver uuid.UUID, data []by
 }
 
 // ParseMessage handles incoming data and creates a Message object
-func ParseMessage(reader *bufio.Reader) (*Message, error) {
+func ParseMessage(reader io.Reader) (*Message, error) {
 	message := Message{}
 
 	err := binary.Read(reader, binary.BigEndian, &message.header)
@@ -60,19 +57,21 @@ func ParseMessage(reader *bufio.Reader) (*Message, error) {
 
 	datalength := message.header.MsgLen
 
-	if message.header.MsgType != HEARTBEAT {
-		err := binary.Read(reader, binary.BigEndian, &message.sender)
-		if err != nil {
-			return nil, err
-		}
-
-		err = binary.Read(reader, binary.BigEndian, &message.receiver)
-		if err != nil {
-			return nil, err
-		}
-
-		datalength -= 16 * 2
+	if datalength < 16*2 {
+		return nil, fmt.Errorf("Message too short, must be at least 32 bytes, got: %d", datalength)
 	}
+
+	err = binary.Read(reader, binary.BigEndian, &message.sender)
+	if err != nil {
+		return nil, err
+	}
+
+	err = binary.Read(reader, binary.BigEndian, &message.receiver)
+	if err != nil {
+		return nil, err
+	}
+
+	datalength -= 16 * 2
 
 	if datalength > 0 {
 		message.data = make([]byte, datalength)
@@ -118,11 +117,6 @@ func (m *Message) Bytes() []byte {
 	buffer := new(bytes.Buffer)
 
 	binary.Write(buffer, binary.BigEndian, m.header)
-
-	if m.header.MsgType == HEARTBEAT {
-		return buffer.Bytes()
-	}
-
 	binary.Write(buffer, binary.BigEndian, m.sender)
 	binary.Write(buffer, binary.BigEndian, m.receiver)
 	binary.Write(buffer, binary.BigEndian, m.data)
