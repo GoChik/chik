@@ -58,6 +58,7 @@ func main() {
 	client := iosomething.NewListener([]iosomething.Handler{
 		handlers.NewDigitalIOHandler(conf.Identity),
 		handlers.NewHeartBeatHandler(conf.Identity, 2*time.Minute, false),
+		handlers.NewUpdater(conf.Identity),
 	})
 
 	// Listening network

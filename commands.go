@@ -3,12 +3,19 @@ package iosomething
 type CommandType uint8
 
 const (
-	PUSH_BUTTON CommandType = iota
-	SWITCH_ON
-	SWITCH_OFF
-	TOGGLE_ON_OFF
-	GET_STATUS
+	PUSH_BUTTON   CommandType = iota // on followed by off command
+	SWITCH_ON                        // Turn on something
+	SWITCH_OFF                       // Turn off something
+	TOGGLE_ON_OFF                    // Toggle somethinf
+	GET_STATUS                       // Get current status of an appliance
+	GET_VERSION                      // Get version and available updates
+	DO_UPDATE                        // Instruct the client to update himself
 )
+
+// SimpleCommand is used to send a basic request regarding the whole system
+type SimpleCommand struct {
+	Command CommandType `json:",int"`
+}
 
 // TimedCommand represent a command with an associated delay in minutes
 // if TimerID is zero it means id has not been set
@@ -41,7 +48,8 @@ type AIInfoMessage struct {
 	AtHome      bool
 }
 
-type AIConfigurationMessage struct {
-	timeSpan        int
-	collectInterval int
+// VersionIndication returns info about the current version and the optional update available
+type VersionIndication struct {
+	CurrentVersion   string `json:",string"`
+	AvailableVersion string `json:",string"`
 }
