@@ -4,13 +4,16 @@ go:
     - 1.8
 
 env:
+    - EXECUTABLE=rpi_client
     - EXECUTABLE=gpio_client
     - EXECUTABLE=server
-    - EXECUTABLE=tests
+    - EXECUTABLE=test
 
 script:
     - mkdir -p $GOPATH/src/iosomething
     - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/iosomething/
     - export TRAVIS_BUILD_DIR=$GOPATH/src/iosomething
+    - export GOOS=linux
+    - export GOARCH=amd64
     - cd ${TRAVIS_BUILD_DIR}
     - make $EXECUTABLE
