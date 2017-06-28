@@ -67,7 +67,7 @@ func (h *updater) TearDown() {}
 func (h *updater) handleRequestCommand(message *iosomething.Message) bool {
 	requestCommand := iosomething.SimpleCommand{}
 	err := json.Unmarshal(message.Data(), &requestCommand)
-	if err != nil {
+	if err != nil || requestCommand.Command != iosomething.GET_VERSION {
 		return false
 	}
 
@@ -96,6 +96,7 @@ func (h *updater) handleUpdateCommand(message *iosomething.Message) bool {
 		return false
 	}
 
+	logrus.Debug("Updating to version: ", h.updater.Info.Version)
 	h.updater.BackgroundRun()
 
 	// relaunch current executable

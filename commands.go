@@ -50,6 +50,6 @@ type AIInfoMessage struct {
 
 // VersionIndication returns info about the current version and the optional update available
 type VersionIndication struct {
-	CurrentVersion   string `json:",string"`
-	AvailableVersion string `json:",string"`
+	CurrentVersion   string
+	AvailableVersion string
 }
