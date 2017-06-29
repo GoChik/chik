@@ -3,10 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"iosomething"
+	"math/rand"
 	"os"
-	"syscall"
-
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
@@ -23,7 +24,8 @@ type configuration struct {
 
 type updater struct {
 	iosomething.BaseHandler
-	updater *selfupdate.Updater
+	updater      *selfupdate.Updater
+	stopChannnel chan bool
 }
 
 // NewUpdater creates an updater from conf stored in config file.
@@ -44,25 +46,45 @@ func NewUpdater(identity string) iosomething.Handler {
 
 	executable, _ := os.Executable()
 	exe := filepath.Base(executable)
+
 	return &updater{
-		iosomething.NewHandler(identity),
-		&selfupdate.Updater{
+		BaseHandler: iosomething.NewHandler(identity),
+		updater: &selfupdate.Updater{
 			CurrentVersion: Version,
 			ApiURL:         conf.UpdatesURL,
 			BinURL:         conf.UpdatesURL,
 			DiffURL:        conf.UpdatesURL,
 			Dir:            "/tmp",
 			CmdName:        exe,
-		}}
+		},
+	}
+}
+
+func (h *updater) checkerRoutine() {
+	ticker := time.NewTicker(24*time.Hour + time.Duration(rand.Int63n(int64(60*time.Minute))))
+	for {
+		select {
+		case <-h.stopChannnel:
+			ticker.Stop()
+			return
+
+		case <-ticker.C:
+			logrus.Debug("Periodically checking for updates")
+			h.updater.FetchInfo()
+		}
+	}
 }
 
 func (h *updater) SetUp(remote chan<- *iosomething.Message) chan bool {
 	logrus.Debug("Current version: ", Version)
 	h.Remote = remote
+	go h.checkerRoutine()
 	return h.Error
 }
 
-func (h *updater) TearDown() {}
+func (h *updater) TearDown() {
+	h.stopChannnel <- true
+}
 
 func (h *updater) handleRequestCommand(message *iosomething.Message) bool {
 	requestCommand := iosomething.SimpleCommand{}
@@ -71,7 +93,12 @@ func (h *updater) handleRequestCommand(message *iosomething.Message) bool {
 		return false
 	}
 
-	h.updater.FetchInfo()
+	logrus.Debug("Getting update info from: ", h.updater.ApiURL)
+
+	if h.updater.Info.Version == "" {
+		logrus.Debug("Checking for updates")
+		h.updater.FetchInfo()
+	}
 
 	data, err := json.Marshal(iosomething.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
 	if err != nil {
