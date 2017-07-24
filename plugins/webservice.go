@@ -44,6 +44,10 @@ func (h *qrHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 			"<img src=\"data:image/png;base64,%s\"/>", base64Image)
 }
 
+func (s *webService) Name() string {
+	return "webervice"
+}
+
 func (s *webService) Start() {
 	go s.server.ListenAndServe()
 }

@@ -22,6 +22,10 @@ func NewSystemTimePlugin() Plugin {
 	}
 }
 
+func (p *systemTime) Name() string {
+	return "systemtime"
+}
+
 func (p *systemTime) Start() {
 	p.ticker = time.NewTicker(24 * 7 * time.Hour)
 	go func() {
@@ -45,5 +49,4 @@ func (p *systemTime) Start() {
 func (p *systemTime) Stop() {
 	p.ticker.Stop()
 	p.stop <- true
-	close(p.stop)
 }

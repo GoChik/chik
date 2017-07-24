@@ -6,6 +6,7 @@ import (
 	"iosomething/handlers"
 	"iosomething/plugins"
 	"net"
+	"sort"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -24,7 +25,7 @@ func main() {
 		logrus.Fatal("Cannot find config file")
 	}
 
-	conf := iosomething.ClientConfiguration{}
+	conf := iosomething.ClientConfiguration{Plugins: []string{}}
 	err := iosomething.ParseConf(path, &conf)
 	if err != nil {
 		logrus.Fatal("Error parsing config file", err)
@@ -43,11 +44,16 @@ func main() {
 	// Plugins initialization
 	plugins := []plugins.Plugin{
 		plugins.NewSystemTimePlugin(),
+		plugins.NewWebServicePlugin(conf.Identity),
 	}
 
 	for _, p := range plugins {
-		p.Start()
-		defer p.Stop()
+		i := sort.SearchStrings(conf.Plugins, p.Name())
+		if i < len(conf.Plugins) && conf.Plugins[i] == p.Name() {
+			logrus.Debug("Starting plugin ", p.Name())
+			p.Start()
+			defer p.Stop()
+		}
 	}
 
 	tlsConf := tls.Config{

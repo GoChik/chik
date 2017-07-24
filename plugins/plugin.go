@@ -5,6 +5,7 @@ package plugins
 
 // Plugin functions
 type Plugin interface {
+	Name() string
 	Start()
 	Stop()
 }

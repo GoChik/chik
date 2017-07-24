@@ -11,6 +11,7 @@ import (
 type ClientConfiguration struct {
 	Server   string
 	Identity string
+	Plugins  []string
 }
 
 const configPath = "/etc/iosomething"
