@@ -1,5 +1,5 @@
 VERSION = $(shell git describe --always)
-GOFLAGS = -ldflags="-X iosomething/handlers.Version=$(VERSION)"
+GOFLAGS = -ldflags="-X iosomething/handlers.Version=$(VERSION) -s -w"
 
 .PHONY: default rpi_client gpio_client test server deploy help
 
