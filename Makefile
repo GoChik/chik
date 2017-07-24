@@ -36,6 +36,7 @@ deploy:
 	GOOS=linux GOARCH=amd64 make server
 	go-selfupdate -o release/client bin/client $(VERSION)
 	go-selfupdate -o release/server bin/server $(VERSION)
+	cd release && tar -czvf release.tar.gz {server,client}
 
 clean:
 	git clean -dfx
