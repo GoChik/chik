@@ -57,6 +57,7 @@ func NewUpdater(identity string) iosomething.Handler {
 			Dir:            "/tmp",
 			CmdName:        exe,
 		},
+		stopChannnel: make(chan bool, 1),
 	}
 }
 
