@@ -38,7 +38,7 @@ func (l *Listener) Listen(remote *Remote) {
 		case <-errorChannel:
 			logrus.Error("Handler error detected")
 			remote.Terminate()
-			return
+			break
 
 		case message := <-remote.InBuffer:
 			// handling message
