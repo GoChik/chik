@@ -14,18 +14,15 @@ const maxErrors = uint32(3)
 type heartbeat struct {
 	iosomething.BaseHandler
 	interval time.Duration
-	active   bool
 	stop     chan bool
 	errors   uint32
 }
 
-// NewHeartBeatHandler creates a new heartbeat handler, active is used to specify if the handler is also
-// sending heartbeat messages
-func NewHeartBeatHandler(identity string, interval time.Duration, active bool) iosomething.Handler {
+// NewHeartBeatHandler creates a new heartbeat handler
+func NewHeartBeatHandler(identity string, interval time.Duration) iosomething.Handler {
 	return &heartbeat{
 		BaseHandler: iosomething.NewHandler(identity),
 		interval:    interval,
-		active:      active,
 		stop:        make(chan bool, 1),
 	}
 }
@@ -42,14 +39,11 @@ func (h *heartbeat) SetUp(remote chan<- *iosomething.Message) chan bool {
 				return
 
 			case <-time.After(h.interval):
-				if h.active {
-					logrus.Debug("Sending heartbeat")
-					h.Remote <- iosomething.NewMessage(iosomething.HEARTBEAT, h.ID, uuid.Nil, []byte{})
-				} else {
-					atomic.AddUint32(&h.errors, 1)
-					if atomic.LoadUint32(&h.errors) >= maxErrors {
-						h.Error <- true
-					}
+				logrus.Debug("Sending heartbeat")
+				h.Remote <- iosomething.NewMessage(iosomething.HEARTBEAT, h.ID, uuid.Nil, []byte{})
+				atomic.AddUint32(&h.errors, 1)
+				if atomic.LoadUint32(&h.errors) >= maxErrors {
+					h.Error <- true
 				}
 				break
 			}

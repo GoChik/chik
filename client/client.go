@@ -63,7 +63,7 @@ func main() {
 	// Creating handlers
 	client := iosomething.NewListener([]iosomething.Handler{
 		handlers.NewDigitalIOHandler(conf.Identity),
-		handlers.NewHeartBeatHandler(conf.Identity, 2*time.Minute, false),
+		handlers.NewHeartBeatHandler(conf.Identity, 2*time.Minute),
 		handlers.NewUpdater(conf.Identity),
 	})
 

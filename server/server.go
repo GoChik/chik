@@ -73,7 +73,7 @@ func main() {
 		remote := iosomething.NewRemote(connection, 0)
 		msgListener := iosomething.NewListener([]iosomething.Handler{
 			handlers.NewForwardingHandler(peers),
-			handlers.NewHeartBeatHandler("", 2*time.Minute, true),
+			handlers.NewHeartBeatHandler("", 2*time.Minute),
 		})
 		go msgListener.Listen(remote)
 	}
