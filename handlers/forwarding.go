@@ -33,7 +33,7 @@ func (h *forwarding) TearDown() {
 func (h *forwarding) Handle(message *iosomething.Message) {
 	sender, err := message.SenderUUID()
 	if err != nil {
-		logrus.Error("Unable to get sender UUID", err)
+		logrus.Error("Unable to get sender UUID ", err)
 		return
 	}
 
