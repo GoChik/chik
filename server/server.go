@@ -49,6 +49,9 @@ func main() {
 
 	logrus.Debug(conf)
 
+	updater := handlers.NewUpdater("", true)
+	updater.SetUp(make(chan<- *iosomething.Message))
+
 	cert, err := tls.LoadX509KeyPair(conf.PubKeyPath, conf.PrivKeyPath)
 	if err != nil {
 		logrus.Fatal("Error loading tls certificate", err)

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
+	"github.com/satori/go.uuid"
 )
 
 // Current software version
@@ -24,13 +25,14 @@ type configuration struct {
 
 type updater struct {
 	iosomething.BaseHandler
+	autoUpdate   bool
 	updater      *selfupdate.Updater
 	stopChannnel chan bool
 }
 
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
-func NewUpdater(identity string) iosomething.Handler {
+func NewUpdater(identity string, autoUpdate bool) iosomething.Handler {
 	conf := configuration{"http://127.0.0.1"}
 	confPath := iosomething.GetConfPath(configFile)
 	if confPath == "" {
@@ -49,6 +51,7 @@ func NewUpdater(identity string) iosomething.Handler {
 
 	return &updater{
 		BaseHandler: iosomething.NewHandler(identity),
+		autoUpdate:  autoUpdate,
 		updater: &selfupdate.Updater{
 			CurrentVersion: Version,
 			ApiURL:         conf.UpdatesURL,
@@ -72,6 +75,14 @@ func (h *updater) checkerRoutine() {
 		case <-ticker.C:
 			logrus.Debug("Periodically checking for updates")
 			h.updater.FetchInfo()
+			if h.autoUpdate {
+				command, _ := json.Marshal(iosomething.SimpleCommand{iosomething.DO_UPDATE})
+				h.handleUpdateCommand(iosomething.NewMessage(
+					iosomething.MESSAGE,
+					uuid.Nil,
+					uuid.Nil,
+					command))
+			}
 		}
 	}
 }
