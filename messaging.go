@@ -101,10 +101,6 @@ func (m *Message) Type() MsgType {
 
 // SenderUUID returns the sender identity
 func (m *Message) SenderUUID() (uuid.UUID, error) {
-	if m.header.MsgType == HEARTBEAT {
-		return uuid.Nil, errors.New("HEARTBEAT message does not have a sender")
-	}
-
 	return m.sender, nil
 }
 
