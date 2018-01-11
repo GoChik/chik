@@ -19,6 +19,14 @@ gpio_client:
 	mkdir -p bin/client
 	mv client/client bin/client/$(GOOS)-$(GOARCH)
 
+fake_client:
+	test -n "$(GOOS)" # GOOS
+	test -n "$(GOARCH)" # GOARCH
+	cd ${PWD}/client; \
+	go build -tags fake $(GOFLAGS)
+	mkdir -p bin/client
+	mv client/client bin/client/$(GOOS)-$(GOARCH)
+
 server:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
@@ -31,12 +39,22 @@ test:
 	go test -cover ./... | grep -v vendor/
 
 deploy:
+	go get github.com/jfrogdev/jfrog-cli-go/jfrog-cli/jfrog
+	go get github.com/rferrazz/go-selfupdate
 	make rpi_client
 	GOOS=linux GOARCH=mipsle make gpio_client
+	GOOS=darwin GOARCH=amd64 make fake_client
+	GOOS=linux GOARCH=amd64 make fake_client
 	GOOS=linux GOARCH=amd64 make server
+	GOOS=darwin GOARCH=amd64 make server
+	mkdir -p release/{client,server}
+	rm -rf release/{client,server}/*
+	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user rferrazz --key $(BINTRAY_API_KEY) rferrazz/IO-Something/client/rolling release/
 	go-selfupdate -o release/client bin/client $(VERSION)
+	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user rferrazz --key $(BINTRAY_API_KEY) --flat false --publish true client/ rferrazz/IO-Something/client/rolling
+	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user rferrazz --key $(BINTRAY_API_KEY) rferrazz/IO-Something/server/rolling release/
 	go-selfupdate -o release/server bin/server $(VERSION)
-	cd release && tar -czvf release.tar.gz {server,client}
+	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user rferrazz --key $(BINTRAY_API_KEY) --flat false --publish true server/ rferrazz/IO-Something/server/rolling
 
 clean:
 	git clean -dfx
