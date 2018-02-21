@@ -31,7 +31,7 @@ type updater struct {
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
 func NewUpdater(identity string) iosomething.Handler {
-	conf := configuration{"https://dl.bintray.com/rferrazz/IO-Something"}
+	conf := configuration{"http://dl.bintray.com/rferrazz/IO-Something"}
 	confPath := iosomething.GetConfPath(configFile)
 	if confPath == "" {
 		if iosomething.CreateConfigFile(configFile, conf) != nil {
