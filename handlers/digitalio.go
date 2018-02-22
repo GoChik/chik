@@ -3,14 +3,14 @@ package handlers
 import (
 	"iosomething"
 	"iosomething/actuator"
+	"math"
 	"time"
 
 	"encoding/json"
 
-	"math"
-
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
+	"github.com/thoas/go-funk"
 )
 
 type digitalHandler struct {
@@ -44,12 +44,42 @@ func (h *digitalHandler) getTimers(pin int) []iosomething.TimedCommand {
 			result = append(result, iosomething.TimedCommand{
 				timer.TimerID,
 				timer.Command,
-				timer.DelayMinutes,
+				timer.Time,
+				timer.Repeat,
 			})
 		}
 	}
 
 	return result
+}
+
+func (h *digitalHandler) addTimer(timer iosomething.DigitalCommand) {
+	logrus.Debugf("Setting timer with time: %d:%d and repeat: %d",
+		time.Time(timer.Time).Hour(), time.Time(timer.Time).Minute(), timer.Repeat)
+
+	timer.TimerID = h.lastTimer
+	h.timers = append(h.timers, timer)
+	h.lastTimer = (h.lastTimer + 1) % math.MaxUint16
+	if h.lastTimer == 0 {
+		h.lastTimer = 1
+	}
+}
+
+func (h *digitalHandler) deleteTimer(timerID uint16) {
+	logrus.Debug("Deleting timer ", timerID)
+	funk.Filter(h.timers, func(t iosomething.DigitalCommand) bool {
+		return t.TimerID != timerID
+	})
+}
+
+func (h *digitalHandler) editTimer(timer iosomething.DigitalCommand) {
+	logrus.Debug("Altering timer ", timer.TimerID)
+	for index, storedTimer := range h.timers {
+		if storedTimer.TimerID == timer.TimerID {
+			h.timers[index] = timer
+			break
+		}
+	}
 }
 
 func (h *digitalHandler) execute(command iosomething.CommandType, pin int) []byte {
@@ -103,17 +133,24 @@ func (h *digitalHandler) startCounter() {
 	for {
 		select {
 		case <-ticker.C:
-			i := 0
+			recurringTimers := make([]iosomething.DigitalCommand, 0)
 			for _, timer := range h.timers {
-				timer.DelayMinutes = timer.DelayMinutes - 1
-				if timer.DelayMinutes <= 0 {
-					h.execute(timer.Command, timer.Pin)
+				timeNow := time.Now()
+				timerTime := time.Time(timer.Time)
+				if timerTime.Hour() == timeNow.Hour() &&
+					timerTime.Minute() == timeNow.Minute() {
+					currentDay := iosomething.EnabledDays(timeNow.Day() + 1)
+					if timer.Repeat == 0 || timer.Repeat&currentDay != 0 {
+						h.execute(timer.Command, timer.Pin)
+					}
+					if (timer.Repeat) != 0 {
+						recurringTimers = append(recurringTimers, timer)
+					}
 				} else {
-					h.timers[i] = timer
-					i++
+					recurringTimers = append(recurringTimers, timer)
 				}
 			}
-			h.timers = h.timers[:i]
+			h.timers = recurringTimers
 			break
 
 		case <-h.stopCounter:
@@ -148,28 +185,32 @@ func (h *digitalHandler) Handle(message *iosomething.Message) {
 	command := iosomething.DigitalCommand{}
 	err = json.Unmarshal(message.Data(), &command)
 	if err != nil {
-		logrus.Debug("DigitalIO unable to handle such message")
 		return
 	}
 
-	if command.DelayMinutes > 0 {
-		command.TimerID = h.lastTimer
-		h.timers = append(h.timers, command)
-		h.lastTimer = (h.lastTimer + 1) % math.MaxUint16
-		if h.lastTimer == 0 {
-			h.lastTimer = 1
-		}
-		return
-	}
+	switch {
+	case command.Command == iosomething.DELETE_TIMER:
+		h.deleteTimer(command.TimerID)
+		break
 
-	reply := h.execute(command.Command, command.Pin)
-	if reply != nil {
-		sender, err := message.SenderUUID()
-		if err != nil {
-			logrus.Warning("Reply for no one: ", err)
-			return
-		}
+	case command.TimerID == 0 && !time.Time(command.Time).IsZero():
+		h.addTimer(command)
+		break
 
-		h.Remote <- iosomething.NewMessage(iosomething.MESSAGE, h.ID, sender, reply)
+	case command.TimerID != 0:
+		h.editTimer(command)
+		break
+
+	default:
+		reply := h.execute(command.Command, command.Pin)
+		if reply != nil {
+			sender, err := message.SenderUUID()
+			if err != nil {
+				logrus.Warning("Reply for no one: ", err)
+				return
+			}
+
+			h.Remote <- iosomething.NewMessage(iosomething.MESSAGE, h.ID, sender, reply)
+		}
 	}
 }
