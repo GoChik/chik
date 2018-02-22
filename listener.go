@@ -41,6 +41,12 @@ func (l *Listener) Listen(remote *Remote) {
 			break
 
 		case message := <-remote.InBuffer:
+			sender, err := message.SenderUUID()
+			if err != nil {
+				logrus.Debug("Received a message from an unknown sender. data: ", string(message.Data()))
+			} else {
+				logrus.Debugf("Received message from: %s data: %s", sender, string(message.Data()))
+			}
 			// handling message
 			for _, h := range l.handlers {
 				h.Handle(message)
