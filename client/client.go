@@ -43,7 +43,6 @@ func main() {
 
 	// Plugins initialization
 	plugins := []plugins.Plugin{
-		plugins.NewSystemTimePlugin(),
 		plugins.NewWebServicePlugin(conf.Identity),
 	}
 
