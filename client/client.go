@@ -4,9 +4,7 @@ import (
 	"crypto/tls"
 	"iosomething"
 	"iosomething/handlers"
-	"iosomething/plugins"
 	"net"
-	"sort"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -25,7 +23,7 @@ func main() {
 		logrus.Fatal("Cannot find config file")
 	}
 
-	conf := iosomething.ClientConfiguration{Plugins: []string{}}
+	conf := iosomething.ClientConfiguration{}
 	err := iosomething.ParseConf(path, &conf)
 	if err != nil {
 		logrus.Fatal("Error parsing config file", err)
@@ -40,20 +38,6 @@ func main() {
 	}
 
 	logrus.Debug("Identity: ", conf.Identity)
-
-	// Plugins initialization
-	plugins := []plugins.Plugin{
-		plugins.NewWebServicePlugin(conf.Identity),
-	}
-
-	for _, p := range plugins {
-		i := sort.SearchStrings(conf.Plugins, p.Name())
-		if i < len(conf.Plugins) && conf.Plugins[i] == p.Name() {
-			logrus.Debug("Starting plugin ", p.Name())
-			p.Start()
-			defer p.Stop()
-		}
-	}
 
 	tlsConf := tls.Config{
 		InsecureSkipVerify: true,
