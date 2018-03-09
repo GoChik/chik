@@ -3,7 +3,6 @@ package handlers
 import (
 	"iosomething"
 	"iosomething/actuator"
-	"math"
 	"time"
 
 	"encoding/json"
@@ -13,12 +12,16 @@ import (
 	"github.com/thoas/go-funk"
 )
 
+type timeredCommand struct {
+	command *iosomething.DigitalCommand
+	timer   *time.Timer
+}
+
 type digitalHandler struct {
 	iosomething.BaseHandler
-	actuator    actuator.Actuator
-	timers      []iosomething.DigitalCommand
-	stopCounter chan bool
-	lastTimer   uint16
+	actuator  actuator.Actuator
+	timers    []timeredCommand
+	lastTimer uint16
 }
 
 type replyData struct {
@@ -31,21 +34,62 @@ func NewDigitalIOHandler(identity string) iosomething.Handler {
 	return &digitalHandler{
 		iosomething.NewHandler(identity),
 		actuator.NewActuator(),
-		make([]iosomething.DigitalCommand, 0),
-		make(chan bool, 1),
+		make([]timeredCommand, 0),
 		1,
 	}
+}
+
+func calculateNextAlarmTime(alarm iosomething.JSONTime) time.Time {
+	now := time.Now()
+	then := time.Date(now.Year(), now.Month(), now.Day(),
+		time.Time(alarm).Hour(), time.Time(alarm).Minute(),
+		0, 0, now.Location())
+	if then.Sub(now) < 0 {
+		then = then.AddDate(0, 0, 1)
+	}
+	return then
+}
+
+func (h *digitalHandler) execTimeredCommand(timer *timeredCommand) {
+	<-timer.timer.C
+
+	now := time.Now()
+	then := calculateNextAlarmTime(timer.command.Time)
+	currentDay := iosomething.EnabledDays(now.Day() + 1)
+
+	if timer.command.Repeat == 0 || timer.command.Repeat&currentDay != 0 {
+		h.execute(timer.command.Command, timer.command.Pin)
+	}
+	if timer.command.Repeat != 0 {
+		timer.timer.Reset(then.Sub(now))
+		go h.execTimeredCommand(timer)
+	} else {
+		h.deleteTimer(timer.command.TimerID)
+	}
+}
+
+func (h *digitalHandler) addTimer(command *iosomething.DigitalCommand) {
+	logrus.Debugf("Setting timer with time: %d:%d and repeat: %d",
+		time.Time(command.Time).Hour(), time.Time(command.Time).Minute(), command.Repeat)
+
+	command.TimerID = h.lastTimer
+	h.lastTimer++
+	then := calculateNextAlarmTime(command.Time)
+
+	timer := timeredCommand{command, time.NewTimer(time.Until(then))}
+	go h.execTimeredCommand(&timer)
+	h.timers = append(h.timers, timer)
 }
 
 func (h *digitalHandler) getTimers(pin int) []iosomething.TimedCommand {
 	result := []iosomething.TimedCommand{}
 	for _, timer := range h.timers {
-		if timer.Pin == pin {
+		if timer.command.Pin == pin {
 			result = append(result, iosomething.TimedCommand{
-				timer.TimerID,
-				timer.Command,
-				timer.Time,
-				timer.Repeat,
+				TimerID: timer.command.TimerID,
+				Command: timer.command.Command,
+				Time:    timer.command.Time,
+				Repeat:  timer.command.Repeat,
 			})
 		}
 	}
@@ -53,30 +97,25 @@ func (h *digitalHandler) getTimers(pin int) []iosomething.TimedCommand {
 	return result
 }
 
-func (h *digitalHandler) addTimer(timer iosomething.DigitalCommand) {
-	logrus.Debugf("Setting timer with time: %d:%d and repeat: %d",
-		time.Time(timer.Time).Hour(), time.Time(timer.Time).Minute(), timer.Repeat)
-
-	timer.TimerID = h.lastTimer
-	h.timers = append(h.timers, timer)
-	h.lastTimer = (h.lastTimer + 1) % math.MaxUint16
-	if h.lastTimer == 0 {
-		h.lastTimer = 1
-	}
-}
-
 func (h *digitalHandler) deleteTimer(timerID uint16) {
 	logrus.Debug("Deleting timer ", timerID)
-	funk.Filter(h.timers, func(t iosomething.DigitalCommand) bool {
-		return t.TimerID != timerID
-	})
+
+	h.timers = funk.Filter(h.timers, func(t timeredCommand) bool {
+		if t.command.TimerID == timerID {
+			t.timer.Stop()
+			return false
+		}
+		return true
+	}).([]timeredCommand)
 }
 
-func (h *digitalHandler) editTimer(timer iosomething.DigitalCommand) {
+func (h *digitalHandler) editTimer(timer *iosomething.DigitalCommand) {
 	logrus.Debug("Altering timer ", timer.TimerID)
+
 	for index, storedTimer := range h.timers {
-		if storedTimer.TimerID == timer.TimerID {
-			h.timers[index] = timer
+		if storedTimer.command.TimerID == timer.TimerID {
+			storedTimer.timer.Reset(time.Until(calculateNextAlarmTime(timer.Time)))
+			h.timers[index].command = timer
 			break
 		}
 	}
@@ -128,47 +167,17 @@ func (h *digitalHandler) execute(command iosomething.CommandType, pin int) []byt
 	return nil
 }
 
-func (h *digitalHandler) startCounter() {
-	ticker := time.NewTicker(1 * time.Minute)
-	for {
-		select {
-		case <-ticker.C:
-			recurringTimers := make([]iosomething.DigitalCommand, 0)
-			for _, timer := range h.timers {
-				timeNow := time.Now()
-				timerTime := time.Time(timer.Time)
-				if timerTime.Hour() == timeNow.Hour() &&
-					timerTime.Minute() == timeNow.Minute() {
-					currentDay := iosomething.EnabledDays(timeNow.Day() + 1)
-					if timer.Repeat == 0 || timer.Repeat&currentDay != 0 {
-						h.execute(timer.Command, timer.Pin)
-					}
-					if (timer.Repeat) != 0 {
-						recurringTimers = append(recurringTimers, timer)
-					}
-				} else {
-					recurringTimers = append(recurringTimers, timer)
-				}
-			}
-			h.timers = recurringTimers
-			break
-
-		case <-h.stopCounter:
-			return
-		}
-	}
-}
-
 func (h *digitalHandler) SetUp(remote chan<- *iosomething.Message) chan bool {
 	h.Remote = remote
 	h.actuator.Initialize()
-	go h.startCounter()
 	return h.Error
 }
 
 func (h *digitalHandler) TearDown() {
+	for _, timer := range h.timers {
+		timer.timer.Stop()
+	}
 	h.actuator.Deinitialize()
-	h.stopCounter <- true
 }
 
 func (h *digitalHandler) Handle(message *iosomething.Message) {
@@ -194,11 +203,11 @@ func (h *digitalHandler) Handle(message *iosomething.Message) {
 		break
 
 	case command.TimerID == 0 && !time.Time(command.Time).IsZero():
-		h.addTimer(command)
+		h.addTimer(&command)
 		break
 
 	case command.TimerID != 0:
-		h.editTimer(command)
+		h.editTimer(&command)
 		break
 
 	default:
