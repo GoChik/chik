@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/satori/go.uuid"
 )
 
@@ -64,8 +63,6 @@ func ParseMessage(reader io.Reader) (*Message, error) {
 	if datalength < 16*2 {
 		return nil, fmt.Errorf("Message too short, must be at least 32 bytes, got: %d", datalength)
 	}
-
-	logrus.Debugf("Message size: %d", datalength)
 
 	if message.header.MsgType >= MessageBound {
 		return nil, fmt.Errorf("Message type out of bound %v", message.header.MsgType)
