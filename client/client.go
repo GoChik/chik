@@ -59,7 +59,5 @@ func main() {
 			remote := iosomething.NewRemote(conn, 10*time.Minute)
 			client.Listen(remote)
 		}
-
-		time.Sleep(10 * time.Second)
 	}
 }

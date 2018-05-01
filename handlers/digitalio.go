@@ -51,20 +51,20 @@ func calculateNextAlarmTime(alarm iosomething.JSONTime) time.Time {
 }
 
 func (h *digitalHandler) execTimeredCommand(timer *timeredCommand) {
-	<-timer.timer.C
+	for range timer.timer.C {
+		now := time.Now()
+		then := calculateNextAlarmTime(timer.command.Time)
+		currentDay := iosomething.EnabledDays(now.Day() + 1)
 
-	now := time.Now()
-	then := calculateNextAlarmTime(timer.command.Time)
-	currentDay := iosomething.EnabledDays(now.Day() + 1)
-
-	if timer.command.Repeat == 0 || timer.command.Repeat&currentDay != 0 {
-		h.execute(timer.command.Command, timer.command.Pin)
-	}
-	if timer.command.Repeat != 0 {
-		timer.timer.Reset(then.Sub(now))
-		go h.execTimeredCommand(timer)
-	} else {
-		h.deleteTimer(timer.command.TimerID)
+		if timer.command.Repeat == 0 || timer.command.Repeat&currentDay != 0 {
+			h.execute(timer.command.Command, timer.command.Pin)
+		}
+		if timer.command.Repeat != 0 {
+			timer.timer.Reset(then.Sub(now))
+			go h.execTimeredCommand(timer)
+		} else {
+			h.deleteTimer(timer.command.TimerID)
+		}
 	}
 }
 
