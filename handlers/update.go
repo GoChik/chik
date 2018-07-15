@@ -3,14 +3,13 @@ package handlers
 import (
 	"encoding/json"
 	"iosomething"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"syscall"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
+	"github.com/satori/go.uuid"
 )
 
 // Current software version
@@ -23,14 +22,14 @@ type configuration struct {
 }
 
 type updater struct {
-	iosomething.BaseHandler
-	updater      *selfupdate.Updater
-	stopChannnel chan bool
+	id      uuid.UUID
+	updater *selfupdate.Updater
 }
 
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
-func NewUpdater(identity string) iosomething.Handler {
+func NewUpdater(identity uuid.UUID) iosomething.Handler {
+	logrus.Debug("Current version: ", Version)
 	conf := configuration{"http://dl.bintray.com/rferrazz/IO-Something"}
 	confPath := iosomething.GetConfPath(configFile)
 	if confPath == "" {
@@ -48,7 +47,7 @@ func NewUpdater(identity string) iosomething.Handler {
 	exe := filepath.Base(executable)
 
 	return &updater{
-		BaseHandler: iosomething.NewHandler(identity),
+		id: identity,
 		updater: &selfupdate.Updater{
 			CurrentVersion: Version,
 			ApiURL:         conf.UpdatesURL,
@@ -57,73 +56,28 @@ func NewUpdater(identity string) iosomething.Handler {
 			Dir:            "/tmp",
 			CmdName:        exe,
 		},
-		stopChannnel: make(chan bool, 1),
 	}
 }
 
-func (h *updater) checkerRoutine() {
-	ticker := time.NewTicker(24*time.Hour + time.Duration(rand.Int63n(int64(60*time.Minute))))
-	for {
-		select {
-		case <-h.stopChannnel:
-			ticker.Stop()
-			return
-
-		case <-ticker.C:
-			logrus.Debug("Periodically checking for updates")
-			h.updater.FetchInfo()
-		}
-	}
-}
-
-func (h *updater) SetUp(remote chan<- *iosomething.Message) chan bool {
-	logrus.Debug("Current version: ", Version)
-	h.Remote = remote
-	go h.checkerRoutine()
-	return h.Error
-}
-
-func (h *updater) TearDown() {
-	h.stopChannnel <- true
-}
-
-func (h *updater) handleRequestCommand(message *iosomething.Message) bool {
-	requestCommand := iosomething.SimpleCommand{}
-	err := json.Unmarshal(message.Data(), &requestCommand)
-	if err != nil || requestCommand.Command != iosomething.GET_VERSION {
-		return false
-	}
-
-	logrus.Debug("Getting update info from: ", h.updater.ApiURL)
-
+func (h *updater) fetchVersion() {
 	if h.updater.Info.Version == "" {
 		logrus.Debug("Checking for updates")
 		h.updater.FetchInfo()
 	}
-
-	data, err := json.Marshal(iosomething.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
-	if err != nil {
-		logrus.Error("Unable to marshal version message")
-		h.Error <- true
-	}
-
-	sender, err := message.SenderUUID()
-	if err != nil {
-		logrus.Error("Cannot fetch message sender")
-		return false
-	}
-
-	h.Remote <- iosomething.NewMessage(iosomething.MESSAGE, h.ID, sender, data)
-	return true
 }
 
-func (h *updater) handleUpdateCommand(message *iosomething.Message) bool {
-	updateCommand := iosomething.SimpleCommand{}
-	err := json.Unmarshal(message.Data(), &updateCommand)
-	if (err != nil) || (updateCommand.Command != iosomething.DO_UPDATE) {
-		return false
-	}
+func (h *updater) handleRequestCommand(command *iosomething.SimpleCommand, sender uuid.UUID) *iosomething.Message {
+	logrus.Debug("Getting update info from: ", h.updater.ApiURL)
 
+	h.fetchVersion()
+	data, err := json.Marshal(iosomething.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
+	if err != nil {
+		return nil
+	}
+	return iosomething.NewMessage(iosomething.VersionIndicationType, h.id, sender, data)
+}
+
+func (h *updater) update() {
 	logrus.Debug("Updating to version: ", h.updater.Info.Version)
 	h.updater.BackgroundRun()
 
@@ -133,16 +87,47 @@ func (h *updater) handleUpdateCommand(message *iosomething.Message) bool {
 	syscall.Exec(h.updater.CmdName, args, os.Environ())
 	// and exit
 	os.Exit(0)
-
-	return true
 }
 
-func (h *updater) Handle(message *iosomething.Message) {
-	switch {
-	case h.handleRequestCommand(message):
-		return
+func (h *updater) HandlerRoutine(remote *iosomething.Remote) {
+	logrus.Debug("starting version handler")
+	in := remote.PubSub.Sub(iosomething.SimpleCommandType.String())
+	for data := range in {
+		message := data.(*iosomething.Message)
+		command := iosomething.SimpleCommand{}
+		err := json.Unmarshal(message.Data(), &command)
+		if err != nil {
+			logrus.Warn("Unexpected message")
+			continue
+		}
 
-	case h.handleUpdateCommand(message):
-		return
+		switch command.Command {
+		case iosomething.GET_VERSION:
+			sender, err := message.SenderUUID()
+			if err != nil {
+				logrus.Warn("Cannot get sender")
+				break
+			}
+			reply := h.handleRequestCommand(&command, sender)
+			if reply != nil {
+				remote.PubSub.Pub(reply, "out")
+			}
+
+		case iosomething.DO_UPDATE:
+			h.update()
+		}
 	}
+	logrus.Debug("shutting down version handler")
+}
+
+func (h *updater) Status() interface{} {
+	h.fetchVersion()
+	return map[string]interface{}{
+		"current": h.updater.CurrentVersion,
+		"latest":  h.updater.Info.Version,
+	}
+}
+
+func (h *updater) String() string {
+	return "version"
 }

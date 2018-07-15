@@ -2,64 +2,73 @@ package handlers
 
 import (
 	"iosomething"
-	"sync/atomic"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
 )
 
-const maxErrors = uint32(3)
+const maxErrors uint32 = 3
 
 type heartbeat struct {
-	iosomething.BaseHandler
+	id       uuid.UUID
 	interval time.Duration
-	stop     chan bool
 	errors   uint32
 }
 
 // NewHeartBeatHandler creates a new heartbeat handler
-func NewHeartBeatHandler(identity string, interval time.Duration) iosomething.Handler {
+func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) iosomething.Handler {
+	if interval <= 100*time.Millisecond {
+		logrus.Error("Interval value too low: ", interval)
+		return nil
+	}
 	return &heartbeat{
-		BaseHandler: iosomething.NewHandler(identity),
-		interval:    interval,
-		stop:        make(chan bool, 1),
+		id:       identity,
+		interval: interval,
 	}
 }
 
-func (h *heartbeat) SetUp(remote chan<- *iosomething.Message) chan bool {
-	h.Remote = remote
-	h.Remote <- iosomething.NewMessage(iosomething.MESSAGE, h.ID, uuid.Nil, []byte{})
+func (h *heartbeat) HandlerRoutine(remote *iosomething.Remote) {
+	sendHeartBeat := func() {
+		logrus.Debug("Sending heartbeat")
+		remote.PubSub.Pub(iosomething.NewMessage(iosomething.HeartbeatType, h.id, uuid.Nil, []byte{}), "out")
+	}
 
-	go func() {
-		for {
-			select {
-			case <-h.stop:
-				logrus.Debug("Stopping heartbeat service")
+	logrus.Debug("starting heartbeat handler")
+	sendHeartBeat()
+
+	in := remote.PubSub.Sub(iosomething.HeartbeatType.String())
+	for {
+		select {
+		case data, more := <-in:
+			if !more {
+				logrus.Debug("Shutting down heartbeat")
 				return
-
-			case <-time.After(h.interval):
-				logrus.Debug("Sending heartbeat")
-				h.Remote <- iosomething.NewMessage(iosomething.HEARTBEAT, h.ID, uuid.Nil, []byte{})
-				atomic.AddUint32(&h.errors, 1)
-				if atomic.LoadUint32(&h.errors) >= maxErrors {
-					h.Error <- true
-				}
-				break
 			}
+			message := data.(*iosomething.Message)
+
+			if message.Type() == iosomething.HeartbeatType {
+				h.errors = 0
+			}
+			break
+
+		case <-time.After(h.interval):
+			sendHeartBeat()
+			h.errors++
+			if h.errors >= maxErrors {
+				logrus.Error("Heartbeat error threshold exceeded: shutting down remote connection")
+				remote.Terminate()
+				return
+			}
+			break
 		}
-	}()
-
-	return h.Error
-}
-
-func (h *heartbeat) TearDown() {
-	h.stop <- true
-}
-
-func (h *heartbeat) Handle(message *iosomething.Message) {
-	if message.Type() == iosomething.HEARTBEAT {
-		logrus.Debug("Heartbeat received")
-		atomic.StoreUint32(&h.errors, 0)
 	}
+}
+
+func (h *heartbeat) Status() interface{} {
+	return nil
+}
+
+func (h *heartbeat) String() string {
+	return "heartbeat"
 }

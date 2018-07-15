@@ -17,7 +17,7 @@ import (
 // CONFFILE configuration file
 const CONFFILE = "server.json"
 
-var peers = make(map[uuid.UUID]chan<- *iosomething.Message)
+var peers = make(map[uuid.UUID]*iosomething.Remote)
 
 type Configuration struct {
 	Port        uint16
@@ -71,10 +71,7 @@ func main() {
 
 		// Creating the remote that is handling the newly connected client
 		remote := iosomething.NewRemote(connection, 0)
-		msgListener := iosomething.NewListener([]iosomething.Handler{
-			handlers.NewForwardingHandler(peers),
-			handlers.NewHeartBeatHandler("", 2*time.Minute),
-		})
-		go msgListener.Listen(remote)
+		go handlers.NewForwardingHandler(peers).HandlerRoutine(remote)
+		go handlers.NewHeartBeatHandler(uuid.NewV1(), 2*time.Minute).HandlerRoutine(remote)
 	}
 }
