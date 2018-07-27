@@ -62,7 +62,7 @@ func main() {
 		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", conf.Server, &tlsConf)
 		if err == nil {
 			logrus.Debug("New connection")
-			remote := iosomething.NewRemote(conn, 10*time.Minute)
+			remote := iosomething.NewRemote(conn, 5*time.Minute)
 			wg := sync.WaitGroup{}
 			wg.Add(len(handlerList))
 			for _, h := range handlerList {
