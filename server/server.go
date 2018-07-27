@@ -70,7 +70,7 @@ func main() {
 		}
 
 		// Creating the remote that is handling the newly connected client
-		remote := iosomething.NewRemote(connection, 0)
+		remote := iosomething.NewRemote(connection, 5*time.Minute)
 		go handlers.NewForwardingHandler(peers).HandlerRoutine(remote)
 		go handlers.NewHeartBeatHandler(uuid.NewV1(), 2*time.Minute).HandlerRoutine(remote)
 	}
