@@ -50,7 +50,6 @@ func (h *heartbeat) HandlerRoutine(remote *iosomething.Remote) {
 			if message.Type() == iosomething.HeartbeatType {
 				h.errors = 0
 			}
-			break
 
 		case <-time.After(h.interval):
 			sendHeartBeat()
@@ -60,7 +59,6 @@ func (h *heartbeat) HandlerRoutine(remote *iosomething.Remote) {
 				remote.Terminate()
 				return
 			}
-			break
 		}
 	}
 }
