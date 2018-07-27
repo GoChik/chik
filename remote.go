@@ -2,6 +2,7 @@ package iosomething
 
 import (
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -17,8 +18,9 @@ const WriteTimeout = 1 * time.Minute
 // Remote represents a remote endpoint, data can be sent or received through
 // InBuffer and OutBuffer
 type Remote struct {
-	conn   net.Conn
-	PubSub *pubsub.PubSub
+	PubSub   *pubsub.PubSub
+	conn     net.Conn
+	stopOnce sync.Once
 }
 
 // NewRemote creates a new Remote
@@ -71,6 +73,8 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 
 // Terminate closes the connection and the send channel
 func (r *Remote) Terminate() {
-	r.conn.Close()
-	r.PubSub.Shutdown()
+	r.stopOnce.Do(func() {
+		r.conn.Close()
+		r.PubSub.Shutdown()
+	})
 }
