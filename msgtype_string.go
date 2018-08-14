@@ -4,9 +4,9 @@ package iosomething
 
 import "strconv"
 
-const _MsgType_name = "SimpleCommandTypeDigitalCommandTypeStatusIndicationTypeVersionIndicationTypeHeartbeatTypemessageBound"
+const _MsgType_name = "SimpleCommandTypeDigitalCommandTypeTimedCommandTypeStatusIndicationTypeVersionIndicationTypeHeartbeatTypemessageBound"
 
-var _MsgType_index = [...]uint8{0, 17, 35, 55, 76, 89, 101}
+var _MsgType_index = [...]uint8{0, 17, 35, 51, 71, 92, 105, 117}
 
 func (i MsgType) String() string {
 	if i >= MsgType(len(_MsgType_index)-1) {

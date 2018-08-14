@@ -38,7 +38,7 @@ func TestInvalidRead(t *testing.T) {
 	}{
 		{"Empty message", []byte{0}},
 		{"Invalid length", []byte{0, 0, 0, 0, 2, 0, 0}},
-		{"Type out of bound", []byte{byte(MessageBound), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"Type out of bound", []byte{byte(SimpleCommandType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	} {
 		testRoutine(t, func(c net.Conn, r *Remote) {
 			stop := r.StopChannel()
