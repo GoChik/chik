@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"iosomething"
-	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,11 +11,9 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-var peers = make(map[uuid.UUID]*iosomething.Remote)
+var peers = sync.Map{}
 
 func TestForwarding(t *testing.T) {
-	logrus.SetOutput(os.Stderr)
-	logrus.SetLevel(logrus.DebugLevel)
 	CreateServer(t)
 
 	client1, err := CreateClient()

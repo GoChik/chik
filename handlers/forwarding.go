@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"iosomething"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
 	uuid "github.com/satori/go.uuid"
@@ -10,10 +11,10 @@ import (
 
 type forwarding struct {
 	id    uuid.UUID
-	peers map[uuid.UUID]*iosomething.Remote
+	peers *sync.Map
 }
 
-func NewForwardingHandler(peers map[uuid.UUID]*iosomething.Remote) iosomething.Handler {
+func NewForwardingHandler(peers *sync.Map) iosomething.Handler {
 	return &forwarding{
 		id:    uuid.Nil,
 		peers: peers,
@@ -22,7 +23,7 @@ func NewForwardingHandler(peers map[uuid.UUID]*iosomething.Remote) iosomething.H
 
 func (h *forwarding) terminate() {
 	logrus.Debug(fmt.Sprintf("Disconnecting peer %v", h.id))
-	delete(h.peers, h.id)
+	h.peers.Delete(h.id)
 }
 
 func (h *forwarding) HandlerRoutine(remote *iosomething.Remote) {
@@ -49,7 +50,7 @@ func (h *forwarding) HandlerRoutine(remote *iosomething.Remote) {
 		if h.id == uuid.Nil {
 			logrus.Debug(fmt.Sprintf("Adding peer %v", sender))
 			h.id = sender
-			h.peers[h.id] = remote
+			h.peers.Store(h.id, remote)
 		} else if h.id != sender {
 			logrus.Errorf("Unexpected sender, expecting: %v got: %v", h.id, sender)
 			remote.Terminate()
@@ -74,13 +75,13 @@ func (h *forwarding) HandlerRoutine(remote *iosomething.Remote) {
 		default:
 			logrus.Debug("Forwarding a message to: ", receiver)
 
-			receiverRemote := h.peers[receiver]
+			receiverRemote, _ := h.peers.Load(receiver)
 			if receiverRemote == nil {
 				logrus.Error(fmt.Sprintf("%v disconnected: ", receiver))
 				continue
 			}
 
-			receiverRemote.PubSub.Pub(message, "out")
+			receiverRemote.(*iosomething.Remote).PubSub.Pub(message, "out")
 		}
 	}
 	logrus.Debug("shutting down forwarding handler")
