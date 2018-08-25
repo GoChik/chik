@@ -46,7 +46,7 @@ server:
 
 test:
 	go generate
-	go test -cover ./... | grep -v vendor/
+	go test -cover ./...
 
 deploy:
 	make rpi_client
