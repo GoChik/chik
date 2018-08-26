@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gofrs/uuid"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
-	"github.com/satori/go.uuid"
 )
 
 // Current software version

@@ -5,7 +5,7 @@ import (
 
 	"bytes"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 )
 
 type TestData struct {

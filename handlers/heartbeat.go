@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 )
 
 const maxErrors uint32 = 3

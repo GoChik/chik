@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 	"github.com/thoas/go-funk"
 )
 

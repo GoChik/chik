@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 )
 
 type msgHeader struct {
