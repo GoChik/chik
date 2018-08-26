@@ -5,10 +5,11 @@ import (
 	"iosomething"
 	"iosomething/handlers"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 )
 
 // CONFFILE configuration filename
@@ -29,8 +30,11 @@ func main() {
 		logrus.Fatal("Error parsing config file", err)
 	}
 
-	if conf.Identity == "" {
-		conf.Identity = uuid.NewV1().String()
+	identity, err := uuid.FromString(conf.Identity)
+
+	if err != nil {
+		identity = uuid.NewV1()
+		conf.Identity = identity.String()
 		err = iosomething.UpdateConf(path, &conf)
 		if err != nil {
 			logrus.Fatal("Unable to update config file", err)
@@ -44,11 +48,13 @@ func main() {
 	}
 
 	// Creating handlers
-	client := iosomething.NewListener([]iosomething.Handler{
-		handlers.NewDigitalIOHandler(conf.Identity),
-		handlers.NewHeartBeatHandler(conf.Identity, 2*time.Minute),
-		handlers.NewUpdater(conf.Identity),
-	})
+	handlerList := []iosomething.Handler{
+		handlers.NewIoHandler(identity),
+		handlers.NewTimers(identity),
+		handlers.NewHeartBeatHandler(identity, 2*time.Minute),
+		handlers.NewUpdater(identity),
+	}
+	handlerList = append(handlerList, handlers.NewStatusHandler(identity, handlerList))
 
 	// Listening network
 	for {
@@ -56,10 +62,17 @@ func main() {
 		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", conf.Server, &tlsConf)
 		if err == nil {
 			logrus.Debug("New connection")
-			remote := iosomething.NewRemote(conn, 10*time.Minute)
-			client.Listen(remote)
+			remote := iosomething.NewRemote(conn, 5*time.Minute)
+			wg := sync.WaitGroup{}
+			wg.Add(len(handlerList))
+			for _, h := range handlerList {
+				go func(h iosomething.Handler) {
+					h.HandlerRoutine(remote)
+					wg.Done()
+				}(h)
+			}
+			wg.Wait()
 		}
-
 		time.Sleep(10 * time.Second)
 	}
 }

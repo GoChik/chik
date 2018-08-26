@@ -3,73 +3,94 @@ package handlers
 import (
 	"fmt"
 	"iosomething"
+	"sync"
 
 	"github.com/Sirupsen/logrus"
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 )
 
 type forwarding struct {
-	iosomething.BaseHandler
-	peers map[uuid.UUID]chan<- *iosomething.Message
+	id    uuid.UUID
+	peers *sync.Map
 }
 
-func NewForwardingHandler(peers map[uuid.UUID]chan<- *iosomething.Message) iosomething.Handler {
+func NewForwardingHandler(peers *sync.Map) iosomething.Handler {
 	return &forwarding{
-		BaseHandler: iosomething.NewHandler(""),
-		peers:       peers,
+		id:    uuid.Nil,
+		peers: peers,
 	}
 }
 
-func (h *forwarding) SetUp(remote chan<- *iosomething.Message) chan bool {
-	h.Remote = remote
-	return h.Error
+func (h *forwarding) terminate() {
+	logrus.Debug(fmt.Sprintf("Disconnecting peer %v", h.id))
+	h.peers.Delete(h.id)
 }
 
-func (h *forwarding) TearDown() {
-	logrus.Debug(fmt.Sprintf("Disconnecting peer %v", h.ID))
-	delete(h.peers, h.ID)
+func (h *forwarding) HandlerRoutine(remote *iosomething.Remote) {
+	logrus.Debug("starting forwarding handler")
+
+	defer h.terminate()
+	defer remote.Terminate()
+
+	in := remote.PubSub.Sub("in")
+	for data := range in {
+		message := data.(*iosomething.Message)
+		sender, err := message.SenderUUID()
+		if err != nil {
+			logrus.Error("Unable to get sender UUID ", err)
+			break
+		}
+
+		if sender == uuid.Nil {
+			logrus.Error("Empty UUID")
+			// TODO: maybe we can trigger an error here (to check if it is possible that we have messages from unknown peers)
+			break
+		}
+
+		if h.id == uuid.Nil {
+			logrus.Debug(fmt.Sprintf("Adding peer %v", sender))
+			h.id = sender
+			h.peers.Store(h.id, remote)
+		} else if h.id != sender {
+			logrus.Errorf("Unexpected sender, expecting: %v got: %v", h.id, sender)
+			remote.Terminate()
+			break
+		}
+
+		receiver, err := message.ReceiverUUID()
+		if err != nil {
+			logrus.Warn("Unable to read receiver UUID", err)
+			continue
+		}
+
+		switch receiver {
+		case uuid.Nil:
+			logrus.Warning("No receiver specified")
+			continue
+
+		case h.id:
+			logrus.Warning("Not forwarding message to self")
+			continue
+
+		default:
+			logrus.Debug("Forwarding a message to: ", receiver)
+
+			receiverRemote, _ := h.peers.Load(receiver)
+			if receiverRemote == nil {
+				logrus.Error(fmt.Sprintf("%v disconnected: ", receiver))
+				continue
+			}
+
+			receiverRemote.(*iosomething.Remote).PubSub.Pub(message, "out")
+		}
+	}
+	logrus.Debug("shutting down forwarding handler")
 }
 
-func (h *forwarding) Handle(message *iosomething.Message) {
-	sender, err := message.SenderUUID()
-	if err != nil {
-		logrus.Error("Unable to get sender UUID ", err)
-		return
-	}
+func (h *forwarding) Status() interface{} {
+	return nil
+}
 
-	if sender == uuid.Nil {
-		logrus.Error("Empty UUID")
-		// TODO: maybe we can trigger an error here (to check if it is possible that we have messages from unknown peers)
-		return
-	}
-
-	if h.ID == uuid.Nil {
-		logrus.Debug(fmt.Sprintf("Adding peer %v", sender))
-		h.ID = sender
-		h.peers[h.ID] = h.Remote
-	} else if h.ID != sender {
-		logrus.Errorf("Unexpected sender, expecting: %v got: %v", h.ID, sender)
-		h.Error <- true
-		return
-	}
-
-	receiver, err := message.ReceiverUUID()
-	if err != nil {
-		logrus.Error("Unable to read receiver UUID", err)
-		return
-	}
-
-	if receiver == uuid.Nil {
-		// No reciver specified
-		logrus.Warning("No receiver specified")
-		return
-	}
-
-	receiverRemote := h.peers[receiver]
-	if receiverRemote == nil {
-		logrus.Error(fmt.Sprintf("%v disconnected: ", receiver))
-		return
-	}
-
-	receiverRemote <- message
+func (h *forwarding) String() string {
+	return "forward"
 }

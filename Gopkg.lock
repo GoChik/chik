@@ -8,16 +8,22 @@
   version = "v1.0.4"
 
 [[projects]]
-  name = "github.com/beevik/ntp"
+  name = "github.com/cskr/pubsub"
   packages = ["."]
-  revision = "62c80a04de2086884d8296004b6d74ee1846c582"
-  version = "v0.2.0"
+  revision = "a1dc30a0b38055a251f1f04ceb4cc1c7207b0540"
+  version = "v1.0.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/davecheney/gpio"
   packages = ["."]
   revision = "a6de66e7e47065fca1a55c62c3f3cab3144694e6"
+
+[[projects]]
+  name = "github.com/gofrs/uuid"
+  packages = ["."]
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -38,22 +44,6 @@
   revision = "021ed3dc246937cd331b09e4ab3634903326f064"
 
 [[projects]]
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/skip2/go-qrcode"
-  packages = [
-    ".",
-    "bitset",
-    "reedsolomon"
-  ]
-  revision = "cf5f9fa2f0d847edb8e038db7ed975e239095e1a"
-
-[[projects]]
   name = "github.com/stianeikeland/go-rpio"
   packages = ["."]
   revision = "a6b0dffd47b6b1ddf7f1bfe2144f05bf335e911d"
@@ -70,17 +60,6 @@
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   revision = "49796115aa4b964c318aad4f3084fdb41e9aa067"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/net"
-  packages = [
-    "bpf",
-    "internal/iana",
-    "internal/socket",
-    "ipv4"
-  ]
-  revision = "cbe0f9307d0156177f9dd5dc85da1a31abc5f2fb"
 
 [[projects]]
   branch = "master"
@@ -103,6 +82,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9eec331117fb39fa6768a0bf80f0a9d2c8554bb6dca242645e6ffd99b204de7d"
+  inputs-digest = "770bc1edbe7bd166874f2f888e73981e802c7f53df6edafd8e8b1dbf54ac8408"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -8,16 +8,17 @@ import (
 	"iosomething"
 	"iosomething/handlers"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 )
 
 // CONFFILE configuration file
 const CONFFILE = "server.json"
 
-var peers = make(map[uuid.UUID]chan<- *iosomething.Message)
+var peers = sync.Map{}
 
 type Configuration struct {
 	Port        uint16
@@ -70,11 +71,8 @@ func main() {
 		}
 
 		// Creating the remote that is handling the newly connected client
-		remote := iosomething.NewRemote(connection, 0)
-		msgListener := iosomething.NewListener([]iosomething.Handler{
-			handlers.NewForwardingHandler(peers),
-			handlers.NewHeartBeatHandler("", 2*time.Minute),
-		})
-		go msgListener.Listen(remote)
+		remote := iosomething.NewRemote(connection, 5*time.Minute)
+		go handlers.NewForwardingHandler(&peers).HandlerRoutine(remote)
+		go handlers.NewHeartBeatHandler(uuid.NewV1(), 2*time.Minute).HandlerRoutine(remote)
 	}
 }

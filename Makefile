@@ -1,12 +1,18 @@
 VERSION = $(shell git describe --always)
 GOFLAGS = -ldflags="-X iosomething/handlers.Version=$(VERSION) -s -w"
 
-.PHONY: default rpi_client gpio_client test server deploy help
+.PHONY: default dependencies rpi_client gpio_client test server deploy help
 
 default: help
 
+dependencies:
+	curl -fL https://getcli.jfrog.io | sh 
+	go get -u github.com/rferrazz/go-selfupdate
+	go get -u golang.org/x/tools/cmd/stringer
+
 rpi_client:
-	cd ${PWD}/client; \
+	cd ${PWD}/client && \
+	go generate && \
 	GOOS=linux GOARCH=arm GOARM=6 go build -tags raspberrypi $(GOFLAGS)
 	mkdir -p bin/client
 	mv client/client bin/client/linux-arm
@@ -14,7 +20,8 @@ rpi_client:
 gpio_client:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
-	cd ${PWD}/client; \
+	cd ${PWD}/client && \
+	go generate && \
 	go build -tags gpio $(GOFLAGS)
 	mkdir -p bin/client
 	mv client/client bin/client/$(GOOS)-$(GOARCH)
@@ -22,7 +29,8 @@ gpio_client:
 fake_client:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
-	cd ${PWD}/client; \
+	cd ${PWD}/client && \
+	go generate && \
 	go build -tags fake $(GOFLAGS)
 	mkdir -p bin/client
 	mv client/client bin/client/$(GOOS)-$(GOARCH)
@@ -30,17 +38,17 @@ fake_client:
 server:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
-	cd ${PWD}/server; \
+	cd ${PWD}/server && \
+	go generate && \
 	go build $(GOFLAGS)
 	mkdir -p bin/server
 	mv server/server bin/server/$(GOOS)-$(GOARCH)
 
 test:
-	go test -cover ./... | grep -v vendor/
+	go generate
+	go test -cover ./...
 
 deploy:
-	go get github.com/jfrogdev/jfrog-cli-go/jfrog-cli/jfrog
-	go get github.com/rferrazz/go-selfupdate
 	make rpi_client
 	GOOS=linux GOARCH=mipsle make gpio_client
 	GOOS=darwin GOARCH=amd64 make fake_client

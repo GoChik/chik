@@ -13,9 +13,10 @@ jobs:
       - mkdir -p $GOPATH/src/iosomething
       - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/iosomething/
       - export TRAVIS_BUILD_DIR=$GOPATH/src/iosomething
+      - cd ${TRAVIS_BUILD_DIR}
+      - make dependencies
       - export GOOS=linux
       - export GOARCH=amd64
-      - cd ${TRAVIS_BUILD_DIR}
       - make test
     - stage: deploy
       if: tag IS present
@@ -23,7 +24,8 @@ jobs:
       - mkdir -p $GOPATH/src/iosomething
       - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/iosomething/
       - export TRAVIS_BUILD_DIR=$GOPATH/src/iosomething
+      - cd ${TRAVIS_BUILD_DIR}
+      - make dependencies
       - export GOOS=linux
       - export GOARCH=amd64
-      - cd ${TRAVIS_BUILD_DIR}
       - make deploy

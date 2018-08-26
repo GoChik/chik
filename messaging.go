@@ -1,5 +1,4 @@
 //go:generate stringer -type=MsgType
-//go:generate stringer -type=CommandType
 
 package iosomething
 
@@ -10,20 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/satori/go.uuid"
-)
-
-// MsgType represent the type of the current message
-type MsgType uint8
-
-// MESSAGE: Message with receiver and content
-// HEARTBEAT: Empty message
-const (
-	MESSAGE MsgType = iota
-	HEARTBEAT
-
-	MessageBound
+	"github.com/gofrs/uuid"
 )
 
 type msgHeader struct {
@@ -65,9 +51,7 @@ func ParseMessage(reader io.Reader) (*Message, error) {
 		return nil, fmt.Errorf("Message too short, must be at least 32 bytes, got: %d", datalength)
 	}
 
-	logrus.Debugf("Message size: %d", datalength)
-
-	if message.header.MsgType >= MessageBound {
+	if message.header.MsgType >= messageBound {
 		return nil, fmt.Errorf("Message type out of bound %v", message.header.MsgType)
 	}
 
@@ -106,7 +90,7 @@ func (m *Message) SenderUUID() (uuid.UUID, error) {
 
 // ReceiverUUID returns the receiver identity
 func (m *Message) ReceiverUUID() (uuid.UUID, error) {
-	if m.header.MsgType == HEARTBEAT {
+	if m.header.MsgType == HeartbeatType {
 		return uuid.Nil, errors.New("HEARTBEAT message does not have a receiver")
 	}
 

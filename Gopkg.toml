@@ -42,7 +42,7 @@
   name = "github.com/rferrazz/go-selfupdate"
 
 [[constraint]]
-  name = "github.com/satori/go.uuid"
+  name = "github.com/gofrs/uuid"
   version = "1.2.0"
 
 [[constraint]]

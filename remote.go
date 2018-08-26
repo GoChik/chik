@@ -6,107 +6,75 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cskr/pubsub"
 )
 
-// BUFFER_SIZE is the size of remote buffers
-const BUFFER_SIZE = 10
-const WRITE_TIMEOUT = 1 * time.Minute
+// BufferSize is the size of channel buffers
+const BufferSize = 10
+
+// WriteTimeout defines the time after which a write operation is considered failed
+const WriteTimeout = 1 * time.Minute
 
 // Remote represents a remote endpoint, data can be sent or received through
 // InBuffer and OutBuffer
 type Remote struct {
-	conn         net.Conn
-	OutBuffer    chan *Message
-	InBuffer     chan *Message
-	stopChannels []chan bool
-	mutex        sync.Mutex
+	PubSub   *pubsub.PubSub
+	conn     net.Conn
+	stopOnce sync.Once
 }
 
 // NewRemote creates a new Remote
 func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 	remote := Remote{
-		conn:         conn,
-		OutBuffer:    make(chan *Message, BUFFER_SIZE),
-		InBuffer:     make(chan *Message, BUFFER_SIZE),
-		stopChannels: make([]chan bool, 2),
+		conn:   conn,
+		PubSub: pubsub.New(BufferSize),
 	}
-
-	remote.stopChannels[0] = make(chan bool, 1)
-	remote.stopChannels[1] = make(chan bool, 1)
 
 	// Send function
 	go func() {
-		stop := remote.stopChannels[0]
-		for {
-			select {
-			case <-stop:
-				logrus.Debug("Stop sending data over the network")
+		logrus.Debug("Sender started")
+		// heartbeat outgoing messages have a special type in order to avoid being bounced back
+		out := remote.PubSub.Sub("out")
+		for data := range out {
+			message := data.(*Message)
+			logrus.Debug("Sending message", message)
+			conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
+			_, err := remote.conn.Write(message.Bytes())
+			if err != nil {
+				logrus.Warn("Cannot write data, exiting:", err)
+				remote.Terminate()
 				return
-
-			case data, more := <-remote.OutBuffer:
-				if !more {
-					logrus.Debug("Channel closed, exiting")
-					remote.Terminate()
-					continue
-				}
-
-				conn.SetWriteDeadline(time.Now().Add(WRITE_TIMEOUT))
-				_, err := remote.conn.Write(data.Bytes())
-				if err != nil {
-					logrus.Warn("Cannot write data, exiting:", err)
-					remote.Terminate()
-					continue
-				}
 			}
 		}
 	}()
 
 	// Receive function
 	go func() {
-		stop := remote.stopChannels[1]
+		logrus.Debug("Receivr started")
 		for {
-			select {
-			case <-stop:
-				logrus.Debug("Terminaing InBuffer")
-				return
-
-			default:
-				if readTimeout != 0 {
-					conn.SetReadDeadline(time.Now().Add(readTimeout))
-				}
-
-				message, err := ParseMessage(conn)
-				if err != nil {
-					logrus.Error("Invalid message:", err)
-					remote.Terminate()
-				} else {
-					remote.InBuffer <- message
-				}
+			if readTimeout != 0 {
+				conn.SetReadDeadline(time.Now().Add(readTimeout))
 			}
+
+			message, err := ParseMessage(conn)
+			if err != nil {
+				logrus.Error("Invalid message:", err)
+				remote.Terminate()
+				return
+			}
+			id, _ := message.SenderUUID()
+			logrus.Debug("Message received from:", id)
+			remote.PubSub.Pub(message, "in", message.Type().String())
 		}
 	}()
 
 	return &remote
 }
 
-// StopChannel returns a channel that gets written on Stop
-func (r *Remote) StopChannel() chan bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	stop := make(chan bool, 1)
-	r.stopChannels = append(r.stopChannels, stop)
-	return stop
-}
-
 // Terminate closes the connection and the send channel
 func (r *Remote) Terminate() {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	for _, c := range r.stopChannels {
-		c <- true
-	}
-
-	r.conn.Close()
+	r.stopOnce.Do(func() {
+		r.conn.Close()
+		r.PubSub.Shutdown()
+	})
 }
