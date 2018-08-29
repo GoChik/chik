@@ -6,7 +6,7 @@ GOFLAGS = -ldflags="-X iosomething/handlers.Version=$(VERSION) -s -w"
 default: help
 
 dependencies:
-	curl -fL https://getcli.jfrog.io | sh 
+	go get -u github.com/jfrog/jfrog-cli-go/jfrog-cli/jfrog
 	go get -u github.com/rferrazz/go-selfupdate
 	go get -u golang.org/x/tools/cmd/stringer
 
@@ -57,12 +57,12 @@ deploy:
 	GOOS=darwin GOARCH=amd64 make server
 	mkdir -p release/{client,server}
 	rm -rf release/{client,server}/*
-	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user rferrazz --key $(BINTRAY_API_KEY) rferrazz/IO-Something/client/rolling release/
+	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user=rferrazz --key=$(BINTRAY_API_KEY) rferrazz/IO-Something/client/rolling release/
 	go-selfupdate -o release/client bin/client $(VERSION)
-	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user rferrazz --key $(BINTRAY_API_KEY) --flat false --publish true client/ rferrazz/IO-Something/client/rolling
-	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user rferrazz --key $(BINTRAY_API_KEY) rferrazz/IO-Something/server/rolling release/
+	cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user=rferrazz --key=$(BINTRAY_API_KEY) --flat=false --publish=true client/ rferrazz/IO-Something/client/rolling
+	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user=rferrazz --key=$(BINTRAY_API_KEY) rferrazz/IO-Something/server/rolling release/
 	go-selfupdate -o release/server bin/server $(VERSION)
-	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user rferrazz --key $(BINTRAY_API_KEY) --flat false --publish true server/ rferrazz/IO-Something/server/rolling
+	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user=rferrazz --key=$(BINTRAY_API_KEY) --flat=false --publish=true server/ rferrazz/IO-Something/server/rolling
 
 clean:
 	git clean -dfx
