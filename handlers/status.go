@@ -17,7 +17,7 @@ func NewStatusHandler(id uuid.UUID, handlers []iosomething.Handler) iosomething.
 	return &handler{id, handlers}
 }
 
-func (h *handler) HandlerRoutine(remote *iosomething.Remote) {
+func (h *handler) Run(remote *iosomething.Remote) {
 	incoming := remote.PubSub.Sub(iosomething.SimpleCommandType.String())
 	for rawMessage := range incoming {
 		message := rawMessage.(*iosomething.Message)

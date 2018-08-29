@@ -89,7 +89,7 @@ func (h *updater) update() {
 	os.Exit(0)
 }
 
-func (h *updater) HandlerRoutine(remote *iosomething.Remote) {
+func (h *updater) Run(remote *iosomething.Remote) {
 	logrus.Debug("starting version handler")
 	in := remote.PubSub.Sub(iosomething.SimpleCommandType.String())
 	for data := range in {

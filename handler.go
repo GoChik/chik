@@ -6,6 +6,6 @@ import "fmt"
 // and optionally can return a reply
 type Handler interface {
 	fmt.Stringer
-	HandlerRoutine(remote *Remote)
+	Run(remote *Remote)
 	Status() interface{}
 }

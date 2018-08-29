@@ -30,7 +30,7 @@ func CreateServer(t *testing.T) net.Listener {
 				t.Fatal(err)
 			}
 			srv := iosomething.NewRemote(conn, 10*time.Millisecond)
-			go NewForwardingHandler(&peers).HandlerRoutine(srv)
+			go NewForwardingHandler(&peers).Run(srv)
 		}
 	}()
 	return listener

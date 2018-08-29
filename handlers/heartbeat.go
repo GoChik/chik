@@ -28,7 +28,7 @@ func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) iosomething
 	}
 }
 
-func (h *heartbeat) HandlerRoutine(remote *iosomething.Remote) {
+func (h *heartbeat) Run(remote *iosomething.Remote) {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
 		remote.PubSub.Pub(iosomething.NewMessage(iosomething.HeartbeatType, h.id, uuid.Nil, []byte{}), "out")

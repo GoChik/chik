@@ -13,7 +13,7 @@ func TestHeartbeat(t *testing.T) {
 	}
 	heartbeat := NewHeartBeatHandler(client.id, 200*time.Millisecond)
 	sub := client.remote.PubSub.Sub("out")
-	go heartbeat.HandlerRoutine(client.remote)
+	go heartbeat.Run(client.remote)
 
 	select {
 	case <-sub:

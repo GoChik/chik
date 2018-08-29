@@ -72,7 +72,7 @@ func (h *timers) editTimer(timer iosomething.TimedCommand) {
 	logrus.Warning("Editing not yet implemented")
 }
 
-func (h *timers) HandlerRoutine(remote *iosomething.Remote) {
+func (h *timers) Run(remote *iosomething.Remote) {
 	ticker := h.timeTicker(remote)
 	defer ticker.Stop()
 

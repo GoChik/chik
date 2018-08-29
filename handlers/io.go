@@ -25,7 +25,7 @@ func NewIoHandler(uuid uuid.UUID) iosomething.Handler {
 	}
 }
 
-func (h *io) HandlerRoutine(remote *iosomething.Remote) {
+func (h *io) Run(remote *iosomething.Remote) {
 	logrus.Debug("starting io handler")
 	h.actuator.Initialize()
 	defer h.actuator.Deinitialize()

@@ -26,7 +26,7 @@ func (h *forwarding) terminate() {
 	h.peers.Delete(h.id)
 }
 
-func (h *forwarding) HandlerRoutine(remote *iosomething.Remote) {
+func (h *forwarding) Run(remote *iosomething.Remote) {
 	logrus.Debug("starting forwarding handler")
 
 	defer h.terminate()

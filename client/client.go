@@ -67,7 +67,7 @@ func main() {
 			wg.Add(len(handlerList))
 			for _, h := range handlerList {
 				go func(h iosomething.Handler) {
-					h.HandlerRoutine(remote)
+					h.Run(remote)
 					wg.Done()
 				}(h)
 			}
