@@ -59,10 +59,10 @@ deploy:
 	rm -rf release/{client,server}/*
 	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user=rferrazz --key=$(BINTRAY_API_KEY) rferrazz/IO-Something/client/rolling release/
 	go-selfupdate -o release/client bin/client $(VERSION)
-	cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user=rferrazz --key=$(BINTRAY_API_KEY) --flat=false --publish=true client/ rferrazz/IO-Something/client/rolling
+	cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user=rferrazz --key=$(BINTRAY_API_KEY) --override=true --flat=false --publish=true client/ rferrazz/IO-Something/client/rolling
 	@JFROG_CLI_OFFER_CONFIG=false jfrog bt dlv --user=rferrazz --key=$(BINTRAY_API_KEY) rferrazz/IO-Something/server/rolling release/
 	go-selfupdate -o release/server bin/server $(VERSION)
-	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user=rferrazz --key=$(BINTRAY_API_KEY) --flat=false --publish=true server/ rferrazz/IO-Something/server/rolling
+	@cd release && JFROG_CLI_OFFER_CONFIG=false jfrog bt u --user=rferrazz --key=$(BINTRAY_API_KEY) --override=true --flat=false --publish=true server/ rferrazz/IO-Something/server/rolling
 
 clean:
 	git clean -dfx
