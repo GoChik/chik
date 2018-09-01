@@ -59,17 +59,10 @@ func NewUpdater(identity uuid.UUID) iosomething.Handler {
 	}
 }
 
-func (h *updater) fetchVersion() {
-	if h.updater.Info.Version == "" {
-		logrus.Debug("Checking for updates")
-		h.updater.FetchInfo()
-	}
-}
-
 func (h *updater) handleRequestCommand(command *iosomething.SimpleCommand, sender uuid.UUID) *iosomething.Message {
 	logrus.Debug("Getting update info from: ", h.updater.ApiURL)
 
-	h.fetchVersion()
+	h.updater.FetchInfo()
 	data, err := json.Marshal(iosomething.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
 	if err != nil {
 		return nil
@@ -121,7 +114,9 @@ func (h *updater) Run(remote *iosomething.Remote) {
 }
 
 func (h *updater) Status() interface{} {
-	h.fetchVersion()
+	if h.updater.Info.Version == "" {
+		h.updater.FetchInfo()
+	}
 	return map[string]interface{}{
 		"current": h.updater.CurrentVersion,
 		"latest":  h.updater.Info.Version,
