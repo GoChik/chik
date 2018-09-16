@@ -2,9 +2,9 @@ package main
 
 import (
 	"crypto/tls"
-	"iosomething"
-	"iosomething/config"
-	"iosomething/handlers"
+	"chik"
+	"chik/config"
+	"chik/handlers"
 	"net"
 	"sync"
 	"time"
@@ -18,7 +18,7 @@ func main() {
 
 	// Config stuff
 	config.SetConfigFileName("client.conf")
-	config.AddSearchPath("/etc/iosomething")
+	config.AddSearchPath("/etc/chik")
 	config.AddSearchPath(".")
 	err := config.ParseConfig()
 
@@ -46,7 +46,7 @@ func main() {
 	}
 
 	// Creating handlers
-	handlerList := []iosomething.Handler{
+	handlerList := []chik.Handler{
 		handlers.NewIoHandler(identity),
 		handlers.NewTimers(identity),
 		handlers.NewHeartBeatHandler(identity, 2*time.Minute),
@@ -61,11 +61,11 @@ func main() {
 		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tlsConf)
 		if err == nil {
 			logrus.Debug("New connection")
-			remote := iosomething.NewRemote(conn, 5*time.Minute)
+			remote := chik.NewRemote(conn, 5*time.Minute)
 			wg := sync.WaitGroup{}
 			wg.Add(len(handlerList))
 			for _, h := range handlerList {
-				go func(h iosomething.Handler) {
+				go func(h chik.Handler) {
 					h.Run(remote)
 					wg.Done()
 				}(h)

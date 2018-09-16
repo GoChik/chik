@@ -10,9 +10,9 @@ jobs:
     include:
     - stage: test
       script:
-      - mkdir -p $GOPATH/src/iosomething
-      - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/iosomething/
-      - export TRAVIS_BUILD_DIR=$GOPATH/src/iosomething
+      - mkdir -p $GOPATH/src/chik
+      - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/chik/
+      - export TRAVIS_BUILD_DIR=$GOPATH/src/chik
       - cd ${TRAVIS_BUILD_DIR}
       - make dependencies
       - export GOOS=linux
@@ -21,9 +21,9 @@ jobs:
     - stage: deploy
       if: tag IS present
       script:
-      - mkdir -p $GOPATH/src/iosomething
-      - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/iosomething/
-      - export TRAVIS_BUILD_DIR=$GOPATH/src/iosomething
+      - mkdir -p $GOPATH/src/chik
+      - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/chik/
+      - export TRAVIS_BUILD_DIR=$GOPATH/src/chik
       - cd ${TRAVIS_BUILD_DIR}
       - make dependencies
       - export GOOS=linux

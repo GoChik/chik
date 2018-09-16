@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"iosomething"
+	"chik"
 	"net"
 	"testing"
 	"time"
@@ -10,7 +10,7 @@ import (
 )
 
 type TestClient struct {
-	remote *iosomething.Remote
+	remote *chik.Remote
 	id     uuid.UUID
 }
 
@@ -29,7 +29,7 @@ func CreateServer(t *testing.T) net.Listener {
 			if err != nil {
 				t.Fatal(err)
 			}
-			srv := iosomething.NewRemote(conn, 10*time.Millisecond)
+			srv := chik.NewRemote(conn, 10*time.Millisecond)
 			go NewForwardingHandler(&peers).Run(srv)
 		}
 	}()
@@ -42,6 +42,6 @@ func CreateClient() (client TestClient, err error) {
 		return
 	}
 
-	client = TestClient{iosomething.NewRemote(conn, 10*time.Millisecond), uuid.NewV1()}
+	client = TestClient{chik.NewRemote(conn, 10*time.Millisecond), uuid.NewV1()}
 	return
 }

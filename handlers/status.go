@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"iosomething"
+	"chik"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gofrs/uuid"
@@ -10,24 +10,24 @@ import (
 
 type handler struct {
 	id       uuid.UUID
-	handlers []iosomething.Handler
+	handlers []chik.Handler
 }
 
-func NewStatusHandler(id uuid.UUID, handlers []iosomething.Handler) iosomething.Handler {
+func NewStatusHandler(id uuid.UUID, handlers []chik.Handler) chik.Handler {
 	return &handler{id, handlers}
 }
 
-func (h *handler) Run(remote *iosomething.Remote) {
-	incoming := remote.PubSub.Sub(iosomething.SimpleCommandType.String())
+func (h *handler) Run(remote *chik.Remote) {
+	incoming := remote.PubSub.Sub(chik.SimpleCommandType.String())
 	for rawMessage := range incoming {
-		message := rawMessage.(*iosomething.Message)
-		command := iosomething.SimpleCommand{}
+		message := rawMessage.(*chik.Message)
+		command := chik.SimpleCommand{}
 		err := json.Unmarshal(message.Data(), &command)
-		if err != nil || command.Command != iosomething.GET_STATUS {
+		if err != nil || command.Command != chik.GET_STATUS {
 			continue
 		}
 
-		status := make(iosomething.Status)
+		status := make(chik.Status)
 		// compose version message
 		for _, handler := range h.handlers {
 			status[handler.String()] = handler.Status()
@@ -44,7 +44,7 @@ func (h *handler) Run(remote *iosomething.Remote) {
 			continue
 		}
 
-		reply := iosomething.NewMessage(iosomething.StatusIndicationType, h.id, sender, replyData)
+		reply := chik.NewMessage(chik.StatusIndicationType, h.id, sender, replyData)
 		remote.PubSub.Pub(reply, "out")
 	}
 }

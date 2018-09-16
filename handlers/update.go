@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"iosomething"
-	"iosomething/config"
+	"chik"
+	"chik/config"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -23,7 +23,7 @@ type updater struct {
 
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
-func NewUpdater(identity uuid.UUID) iosomething.Handler {
+func NewUpdater(identity uuid.UUID) chik.Handler {
 	logrus.Debug("Version: ", Version)
 	updatesURL := "http://dl.bintray.com/rferrazz/IO-Something"
 	value := config.Get("updater.url")
@@ -49,15 +49,15 @@ func NewUpdater(identity uuid.UUID) iosomething.Handler {
 	}
 }
 
-func (h *updater) handleRequestCommand(command *iosomething.SimpleCommand, sender uuid.UUID) *iosomething.Message {
+func (h *updater) handleRequestCommand(command *chik.SimpleCommand, sender uuid.UUID) *chik.Message {
 	logrus.Debug("Getting update info from: ", h.updater.ApiURL)
 
 	h.updater.FetchInfo()
-	data, err := json.Marshal(iosomething.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
+	data, err := json.Marshal(chik.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
 	if err != nil {
 		return nil
 	}
-	return iosomething.NewMessage(iosomething.VersionIndicationType, h.id, sender, data)
+	return chik.NewMessage(chik.VersionIndicationType, h.id, sender, data)
 }
 
 func (h *updater) update() {
@@ -72,12 +72,12 @@ func (h *updater) update() {
 	os.Exit(0)
 }
 
-func (h *updater) Run(remote *iosomething.Remote) {
+func (h *updater) Run(remote *chik.Remote) {
 	logrus.Debug("starting version handler")
-	in := remote.PubSub.Sub(iosomething.SimpleCommandType.String())
+	in := remote.PubSub.Sub(chik.SimpleCommandType.String())
 	for data := range in {
-		message := data.(*iosomething.Message)
-		command := iosomething.SimpleCommand{}
+		message := data.(*chik.Message)
+		command := chik.SimpleCommand{}
 		err := json.Unmarshal(message.Data(), &command)
 		if err != nil {
 			logrus.Warn("Unexpected message")
@@ -85,7 +85,7 @@ func (h *updater) Run(remote *iosomething.Remote) {
 		}
 
 		switch command.Command {
-		case iosomething.GET_VERSION:
+		case chik.GET_VERSION:
 			sender, err := message.SenderUUID()
 			if err != nil {
 				logrus.Warn("Cannot get sender")
@@ -96,7 +96,7 @@ func (h *updater) Run(remote *iosomething.Remote) {
 				remote.PubSub.Pub(reply, "out")
 			}
 
-		case iosomething.DO_UPDATE:
+		case chik.DO_UPDATE:
 			h.update()
 		}
 	}

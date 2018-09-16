@@ -1,4 +1,4 @@
-package iosomething
+package chik
 
 import (
 	"bytes"

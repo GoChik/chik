@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"iosomething"
+	"chik"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -12,19 +12,19 @@ import (
 
 type timers struct {
 	id          uuid.UUID
-	timers      []iosomething.TimedCommand
+	timers      []chik.TimedCommand
 	lastTimerID uint16
 }
 
-func NewTimers(id uuid.UUID) iosomething.Handler {
+func NewTimers(id uuid.UUID) chik.Handler {
 	return &timers{
 		id,
-		make([]iosomething.TimedCommand, 0),
+		make([]chik.TimedCommand, 0),
 		1,
 	}
 }
 
-func (h *timers) timeTicker(remote *iosomething.Remote) *time.Ticker {
+func (h *timers) timeTicker(remote *chik.Remote) *time.Ticker {
 	ticker := time.NewTicker(30 * time.Second)
 	go func() {
 		lastMinute := 61
@@ -36,7 +36,7 @@ func (h *timers) timeTicker(remote *iosomething.Remote) *time.Ticker {
 			for _, timer := range h.timers {
 				timerTime := time.Time(timer.Time)
 				if timerTime.Hour() == tick.Hour() && timerTime.Minute() == tick.Minute() {
-					command, err := json.Marshal(iosomething.DigitalCommand{
+					command, err := json.Marshal(chik.DigitalCommand{
 						Command: timer.Command,
 						Pin:     timer.Pin,
 					})
@@ -44,8 +44,8 @@ func (h *timers) timeTicker(remote *iosomething.Remote) *time.Ticker {
 						logrus.Fatal("cannot marshal a digitalcommand: ", err)
 					}
 					remote.PubSub.Pub(
-						iosomething.NewMessage(iosomething.DigitalCommandType, h.id, h.id, command),
-						iosomething.DigitalCommandType.String())
+						chik.NewMessage(chik.DigitalCommandType, h.id, h.id, command),
+						chik.DigitalCommandType.String())
 				}
 			}
 		}
@@ -53,33 +53,33 @@ func (h *timers) timeTicker(remote *iosomething.Remote) *time.Ticker {
 	return ticker
 }
 
-func (h *timers) addTimer(timer iosomething.TimedCommand) {
+func (h *timers) addTimer(timer chik.TimedCommand) {
 	timer.TimerID = h.lastTimerID
 	h.lastTimerID++
 	h.timers = append(h.timers, timer)
 }
 
-func (h *timers) deleteTimer(timer iosomething.TimedCommand) {
-	h.timers = funk.Filter(h.timers, func(t iosomething.TimedCommand) bool {
+func (h *timers) deleteTimer(timer chik.TimedCommand) {
+	h.timers = funk.Filter(h.timers, func(t chik.TimedCommand) bool {
 		if t.TimerID == timer.TimerID {
 			return false
 		}
 		return true
-	}).([]iosomething.TimedCommand)
+	}).([]chik.TimedCommand)
 }
 
-func (h *timers) editTimer(timer iosomething.TimedCommand) {
+func (h *timers) editTimer(timer chik.TimedCommand) {
 	logrus.Warning("Editing not yet implemented")
 }
 
-func (h *timers) Run(remote *iosomething.Remote) {
+func (h *timers) Run(remote *chik.Remote) {
 	ticker := h.timeTicker(remote)
 	defer ticker.Stop()
 
-	incoming := remote.PubSub.Sub(iosomething.TimedCommandType.String())
+	incoming := remote.PubSub.Sub(chik.TimedCommandType.String())
 	for rawMessage := range incoming {
-		message := rawMessage.(*iosomething.Message)
-		command := iosomething.TimedCommand{}
+		message := rawMessage.(*chik.Message)
+		command := chik.TimedCommand{}
 		err := json.Unmarshal(message.Data(), &command)
 		if err != nil {
 			logrus.Warn("Failed decoding timer: ", err)
@@ -88,7 +88,7 @@ func (h *timers) Run(remote *iosomething.Remote) {
 
 		if command.TimerID == 0 {
 			h.addTimer(command)
-		} else if command.Command == iosomething.DELETE_TIMER {
+		} else if command.Command == chik.DELETE_TIMER {
 			h.deleteTimer(command)
 		} else {
 			h.editTimer(command)

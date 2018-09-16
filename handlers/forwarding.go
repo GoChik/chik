@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"iosomething"
+	"chik"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -14,7 +14,7 @@ type forwarding struct {
 	peers *sync.Map
 }
 
-func NewForwardingHandler(peers *sync.Map) iosomething.Handler {
+func NewForwardingHandler(peers *sync.Map) chik.Handler {
 	return &forwarding{
 		id:    uuid.Nil,
 		peers: peers,
@@ -26,7 +26,7 @@ func (h *forwarding) terminate() {
 	h.peers.Delete(h.id)
 }
 
-func (h *forwarding) Run(remote *iosomething.Remote) {
+func (h *forwarding) Run(remote *chik.Remote) {
 	logrus.Debug("starting forwarding handler")
 
 	defer h.terminate()
@@ -34,7 +34,7 @@ func (h *forwarding) Run(remote *iosomething.Remote) {
 
 	in := remote.PubSub.Sub("in")
 	for data := range in {
-		message := data.(*iosomething.Message)
+		message := data.(*chik.Message)
 		sender, err := message.SenderUUID()
 		if err != nil {
 			logrus.Error("Unable to get sender UUID ", err)
@@ -81,7 +81,7 @@ func (h *forwarding) Run(remote *iosomething.Remote) {
 				continue
 			}
 
-			receiverRemote.(*iosomething.Remote).PubSub.Pub(message, "out")
+			receiverRemote.(*chik.Remote).PubSub.Pub(message, "out")
 		}
 	}
 	logrus.Debug("shutting down forwarding handler")

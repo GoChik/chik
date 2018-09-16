@@ -1,6 +1,6 @@
 //go:generate stringer -type=MsgType
 
-package iosomething
+package chik
 
 import (
 	"bytes"

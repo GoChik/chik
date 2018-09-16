@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"iosomething"
+	"chik"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -17,7 +17,7 @@ type heartbeat struct {
 }
 
 // NewHeartBeatHandler creates a new heartbeat handler
-func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) iosomething.Handler {
+func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) chik.Handler {
 	if interval <= 100*time.Millisecond {
 		logrus.Error("Interval value too low: ", interval)
 		return nil
@@ -28,16 +28,16 @@ func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) iosomething
 	}
 }
 
-func (h *heartbeat) Run(remote *iosomething.Remote) {
+func (h *heartbeat) Run(remote *chik.Remote) {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		remote.PubSub.Pub(iosomething.NewMessage(iosomething.HeartbeatType, h.id, uuid.Nil, []byte{}), "out")
+		remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, h.id, uuid.Nil, []byte{}), "out")
 	}
 
 	logrus.Debug("starting heartbeat handler")
 	sendHeartBeat()
 
-	in := remote.PubSub.Sub(iosomething.HeartbeatType.String())
+	in := remote.PubSub.Sub(chik.HeartbeatType.String())
 	for {
 		select {
 		case data, more := <-in:
@@ -45,9 +45,9 @@ func (h *heartbeat) Run(remote *iosomething.Remote) {
 				logrus.Debug("Shutting down heartbeat")
 				return
 			}
-			message := data.(*iosomething.Message)
+			message := data.(*chik.Message)
 
-			if message.Type() == iosomething.HeartbeatType {
+			if message.Type() == chik.HeartbeatType {
 				h.errors = 0
 			}
 

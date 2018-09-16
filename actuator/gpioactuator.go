@@ -3,18 +3,12 @@
 package actuator
 
 import (
-	"iosomething"
+	"chik/config"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/davecheney/gpio"
 )
-
-const configFile = "gpio.json"
-
-type gpioConf struct {
-	Pins map[int]bool
-}
 
 type pin struct {
 	pin      gpio.Pin
@@ -90,18 +84,16 @@ func (a *gpioActuator) GetStatus(pin int) bool {
 }
 
 func (a *gpioActuator) Initialize() {
-	confPath := iosomething.GetConfPath(configFile)
-	if confPath != "" {
-		conf := gpioConf{}
-		err := iosomething.ParseConf(confPath, &conf)
-		if err != nil {
-			logrus.Error("Cannot parse actuator configuration: ", err)
-			return
-		}
+	pins, ok := config.Get("gpio_actuator.pin_layout").(map[int]bool)
+	if !ok {
+		config.Set("gpoi_actuator.pin_layout", map[int]bool{0: false})
+		config.Sync()
+		logrus.Error("Cannot find gpio_actuator.pin_layout in config file, stub created")
+		return
+	}
 
-		for k, v := range conf.Pins {
-			a.openPins[k] = createPin(k, v)
-		}
+	for k, v := range pins {
+		a.openPins[k] = createPin(k, v)
 	}
 }
 

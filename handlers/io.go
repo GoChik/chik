@@ -2,8 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
-	"iosomething"
-	"iosomething/actuator"
+	"chik"
+	"chik/actuator"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -17,7 +17,7 @@ type io struct {
 	pins     map[int]bool
 }
 
-func NewIoHandler(uuid uuid.UUID) iosomething.Handler {
+func NewIoHandler(uuid uuid.UUID) chik.Handler {
 	return &io{
 		uuid,
 		actuator.NewActuator(),
@@ -25,16 +25,16 @@ func NewIoHandler(uuid uuid.UUID) iosomething.Handler {
 	}
 }
 
-func (h *io) Run(remote *iosomething.Remote) {
+func (h *io) Run(remote *chik.Remote) {
 	logrus.Debug("starting io handler")
 	h.actuator.Initialize()
 	defer h.actuator.Deinitialize()
 
-	in := remote.PubSub.Sub(iosomething.DigitalCommandType.String())
+	in := remote.PubSub.Sub(chik.DigitalCommandType.String())
 	for data := range in {
-		message := data.(*iosomething.Message)
+		message := data.(*chik.Message)
 
-		command := iosomething.DigitalCommand{}
+		command := chik.DigitalCommand{}
 		err := json.Unmarshal(message.Data(), &command)
 		if err != nil {
 			logrus.Error("cannot decode digital command: ", err)
@@ -44,21 +44,21 @@ func (h *io) Run(remote *iosomething.Remote) {
 		h.pins[command.Pin] = true
 
 		switch command.Command {
-		case iosomething.SWITCH_OFF:
+		case chik.SWITCH_OFF:
 			logrus.Debug("Turning off pin ", command.Pin)
 			h.actuator.TurnOff(command.Pin)
 
-		case iosomething.SWITCH_ON:
+		case chik.SWITCH_ON:
 			logrus.Debug("Turning on pin ", command.Pin)
 			h.actuator.TurnOn(command.Pin)
 
-		case iosomething.PUSH_BUTTON:
+		case chik.PUSH_BUTTON:
 			logrus.Debug("Turning on and off pin ", command.Pin)
 			h.actuator.TurnOn(command.Pin)
 			time.Sleep(1 * time.Second)
 			h.actuator.TurnOff(command.Pin)
 
-		case iosomething.TOGGLE_ON_OFF:
+		case chik.TOGGLE_ON_OFF:
 			logrus.Debug("Switching pin ", command.Pin)
 			if h.actuator.GetStatus(command.Pin) {
 				h.actuator.TurnOff(command.Pin)

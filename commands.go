@@ -1,6 +1,6 @@
 //go:generate stringer -type=MsgType
 
-package iosomething
+package chik
 
 // CommandType is an enum of all the possible commands
 type CommandType uint16
