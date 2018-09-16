@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"iosomething"
+	"iosomething/config"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -15,12 +16,6 @@ import (
 // Current software version
 var Version = "dev"
 
-const configFile = "updates.json"
-
-type configuration struct {
-	UpdatesURL string
-}
-
 type updater struct {
 	id      uuid.UUID
 	updater *selfupdate.Updater
@@ -29,18 +24,13 @@ type updater struct {
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
 func NewUpdater(identity uuid.UUID) iosomething.Handler {
-	logrus.Debug("Current version: ", Version)
-	conf := configuration{"http://dl.bintray.com/rferrazz/IO-Something"}
-	confPath := iosomething.GetConfPath(configFile)
-	if confPath == "" {
-		if iosomething.CreateConfigFile(configFile, conf) != nil {
-			logrus.Error("Cannot write updater configuration file")
-		}
-		confPath = iosomething.GetConfPath(configFile)
-	}
-	err := iosomething.ParseConf(confPath, &conf)
-	if err != nil {
-		logrus.Error("Cannot parse configuration")
+	logrus.Debug("Version: ", Version)
+	updatesURL := "http://dl.bintray.com/rferrazz/IO-Something"
+	value := config.Get("updater.url")
+	if value == nil {
+		config.Set("updater.url", updatesURL)
+	} else {
+		updatesURL = value.(string)
 	}
 
 	executable, _ := os.Executable()
@@ -50,9 +40,9 @@ func NewUpdater(identity uuid.UUID) iosomething.Handler {
 		id: identity,
 		updater: &selfupdate.Updater{
 			CurrentVersion: Version,
-			ApiURL:         conf.UpdatesURL,
-			BinURL:         conf.UpdatesURL,
-			DiffURL:        conf.UpdatesURL,
+			ApiURL:         updatesURL,
+			BinURL:         updatesURL,
+			DiffURL:        updatesURL,
 			Dir:            "/tmp",
 			CmdName:        exe,
 		},

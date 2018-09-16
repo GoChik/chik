@@ -3,11 +3,10 @@ package main
 import (
 	"crypto/rand"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"iosomething"
+	"iosomething/config"
 	"iosomething/handlers"
-	"os"
 	"sync"
 	"time"
 
@@ -15,42 +14,41 @@ import (
 	uuid "github.com/gofrs/uuid"
 )
 
-// CONFFILE configuration file
-const CONFFILE = "server.json"
-
 var peers = sync.Map{}
 
-type Configuration struct {
-	Port        uint16
-	PubKeyPath  string
-	PrivKeyPath string
-}
-
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
-	conffile := iosomething.GetConfPath(CONFFILE)
+	logrus.SetLevel(logrus.WarnLevel)
+	config.SetConfigFileName("server.conf")
+	config.AddSearchPath("/etc/iosomething")
+	config.AddSearchPath(".")
 
-	if conffile == "" {
-		logrus.Fatal("Config file not found")
-	}
-
-	fd, err := os.Open(conffile)
+	err := config.ParseConfig()
 	if err != nil {
-		logrus.Fatal("Cannot open config file", err)
-	}
-	defer fd.Close()
-
-	decoder := json.NewDecoder(fd)
-	conf := Configuration{}
-	err = decoder.Decode(&conf)
-
-	if err != nil {
-		logrus.Fatal("Error reading config file", err)
+		if _, ok := err.(*config.FileNotFoundError); ok {
+			config.Set("connection.port", 6767)
+			config.Set("connection.public_key_path", "")
+			config.Set("connection.private_key_path", "")
+			config.Sync()
+		}
+		logrus.Fatal("Cannot parse config file: ", err)
 	}
 
-	logrus.Debug(conf)
+	publicKeyPath := config.Get("connection.public_key_path").(string)
+	if publicKeyPath == "" {
+		logrus.Fatal("Cannot get public key path from config file")
+	}
 
-	cert, err := tls.LoadX509KeyPair(conf.PubKeyPath, conf.PrivKeyPath)
+	privateKeyPath := config.Get("connection.private_key_path").(string)
+	if privateKeyPath == "" {
+		logrus.Fatal("Cannot get private key path from config file")
+	}
+
+	port := config.Get("connection.port").(uint16)
+	if port == 0 {
+		logrus.Fatal("Cannot get port from config file")
+	}
+
+	cert, err := tls.LoadX509KeyPair(publicKeyPath, privateKeyPath)
 	if err != nil {
 		logrus.Fatal("Error loading tls certificate", err)
 	}
@@ -58,7 +56,7 @@ func main() {
 	config := tls.Config{Certificates: []tls.Certificate{cert}}
 	config.Rand = rand.Reader
 
-	listener, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", conf.Port), &config)
+	listener, err := tls.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", port), &config)
 	if err != nil {
 		logrus.Fatal("Error listening", err)
 	}

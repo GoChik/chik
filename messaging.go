@@ -104,12 +104,12 @@ func (m *Message) Data() []byte {
 
 // Bytes returns the binary rapresentation of the message
 func (m *Message) Bytes() []byte {
-	buffer := new(bytes.Buffer)
+	buffer := bytes.Buffer{}
 
-	binary.Write(buffer, binary.BigEndian, m.header)
-	binary.Write(buffer, binary.BigEndian, m.sender)
-	binary.Write(buffer, binary.BigEndian, m.receiver)
-	binary.Write(buffer, binary.BigEndian, m.data)
+	binary.Write(&buffer, binary.BigEndian, m.header)
+	binary.Write(&buffer, binary.BigEndian, m.sender)
+	binary.Write(&buffer, binary.BigEndian, m.receiver)
+	binary.Write(&buffer, binary.BigEndian, m.data)
 
 	return buffer.Bytes()
 }

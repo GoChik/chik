@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"iosomething"
+	"iosomething/config"
 	"iosomething/handlers"
 	"net"
 	"sync"
@@ -12,36 +13,33 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-// CONFFILE configuration filename
-const CONFFILE = "client.json"
-
 func main() {
-	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetLevel(logrus.WarnLevel)
 
-	// Configuration parsing
-	path := iosomething.GetConfPath(CONFFILE)
-	if path == "" {
-		logrus.Fatal("Cannot find config file")
-	}
-
-	conf := iosomething.ClientConfiguration{}
-	err := iosomething.ParseConf(path, &conf)
-	if err != nil {
-		logrus.Fatal("Error parsing config file", err)
-	}
-
-	identity, err := uuid.FromString(conf.Identity)
+	// Config stuff
+	config.SetConfigFileName("client.conf")
+	config.AddSearchPath("/etc/iosomething")
+	config.AddSearchPath(".")
+	err := config.ParseConfig()
 
 	if err != nil {
-		identity = uuid.NewV1()
-		conf.Identity = identity.String()
-		err = iosomething.UpdateConf(path, &conf)
-		if err != nil {
-			logrus.Fatal("Unable to update config file", err)
+		if _, ok := err.(*config.FileNotFoundError); ok {
+			config.Set("id", uuid.NewV1())
+			config.Set("server", "")
+			config.Sync()
 		}
+		logrus.Fatal("Config file not found: stub created")
 	}
 
-	logrus.Debug("Identity: ", conf.Identity)
+	identity := config.Get("id").(uuid.UUID)
+	if identity == uuid.Nil {
+		logrus.Fatal("Cannot get id from config")
+	}
+
+	server := config.Get("server").(string)
+	if server == "" {
+		logrus.Fatal("Cannot get server from config")
+	}
 
 	tlsConf := tls.Config{
 		InsecureSkipVerify: true,
@@ -58,8 +56,9 @@ func main() {
 
 	// Listening network
 	for {
-		logrus.Debug("Connecting to: ", conf.Server)
-		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", conf.Server, &tlsConf)
+		logrus.Debug("Identity: ", identity)
+		logrus.Debug("Server: ", server)
+		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tlsConf)
 		if err == nil {
 			logrus.Debug("New connection")
 			remote := iosomething.NewRemote(conn, 5*time.Minute)
