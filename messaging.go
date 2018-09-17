@@ -120,11 +120,11 @@ func Equal(v1, v2 *Message) bool {
 		return false
 	}
 
-	if !uuid.Equal(v1.sender, v2.sender) {
+	if v1.sender != v2.sender {
 		return false
 	}
 
-	if !uuid.Equal(v1.receiver, v2.receiver) {
+	if v1.receiver != v2.receiver {
 		return false
 	}
 
