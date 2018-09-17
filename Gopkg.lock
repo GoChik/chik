@@ -2,86 +2,118 @@
 
 
 [[projects]]
+  digest = "1:d867dfa6751c8d7a435821ad3b736310c2ed68945d05b50fb9d23aee0540c8cc"
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
+  pruneopts = "UT"
+  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
+  version = "v1.0.6"
 
 [[projects]]
+  digest = "1:259651ca4058543532c88dbdd650fe99d8b02f785dceeae01ba0435a6c9f7c72"
   name = "github.com/cskr/pubsub"
   packages = ["."]
+  pruneopts = "UT"
   revision = "a1dc30a0b38055a251f1f04ceb4cc1c7207b0540"
   version = "v1.0.1"
 
 [[projects]]
   branch = "master"
+  digest = "1:a1b7ef07a5ee7ae02375bf6fa2d48cec2f734cf836fba9c7888895d81a4d18b4"
   name = "github.com/davecheney/gpio"
   packages = ["."]
+  pruneopts = "UT"
   revision = "a6de66e7e47065fca1a55c62c3f3cab3144694e6"
 
 [[projects]]
+  digest = "1:274f67cb6fed9588ea2521ecdac05a6d62a8c51c074c1fccc6a49a40ba80e925"
   name = "github.com/gofrs/uuid"
   packages = ["."]
+  pruneopts = "UT"
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:caf6db28595425c0e0f2301a00257d11712f65c1878e12cffc42f6b9a9cf3f23"
   name = "github.com/kardianos/osext"
   packages = ["."]
+  pruneopts = "UT"
   revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
 
 [[projects]]
-  branch = "master"
+  digest = "1:7ad278b575635babef38e4ad4219500c299a58ea14b30eb21383d0efca00b369"
   name = "github.com/kr/binarydist"
   packages = ["."]
-  revision = "3035450ff8b987ec4373f65c40767f096b35f2d2"
+  pruneopts = "UT"
+  revision = "88f551ae580780cc79d12ab4c218ba1ca346b83a"
+  version = "v0.1.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:f9ee1aa942851908b69b9ea7df069492740b628425cec5f78a013a25716326b8"
   name = "github.com/rferrazz/go-selfupdate"
   packages = ["selfupdate"]
+  pruneopts = "UT"
   revision = "021ed3dc246937cd331b09e4ab3634903326f064"
 
 [[projects]]
+  digest = "1:9edc0b172ea0685d33efea40c0d2e6991b2ffc71d5fde5c39dfba8e3adee3c05"
   name = "github.com/stianeikeland/go-rpio"
   packages = ["."]
-  revision = "a6b0dffd47b6b1ddf7f1bfe2144f05bf335e911d"
-  version = "4.0.0"
+  pruneopts = "UT"
+  revision = "3abdd2207d33843c1c3fbea540bdf07990075c03"
+  version = "4.1.0"
 
 [[projects]]
+  digest = "1:605c5808c114b92d69ede58e20e4477594085ab01e19295ee8c692ca471feadb"
   name = "github.com/thoas/go-funk"
   packages = ["."]
+  pruneopts = "UT"
   revision = "14304e8530de7dbb909c8305591b3a8370dd9dbb"
   version = "0.2"
 
 [[projects]]
   branch = "master"
+  digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "49796115aa4b964c318aad4f3084fdb41e9aa067"
+  pruneopts = "UT"
+  revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
 
 [[projects]]
   branch = "master"
+  digest = "1:374fc90fcb026e9a367e3fad29e988e5dd944b68ca3f24a184d77abc5307dda4"
   name = "golang.org/x/sys"
   packages = [
     "unix",
-    "windows"
+    "windows",
   ]
-  revision = "c1138c84af3a9927aee1a1b8b7ce06c9b7ea52bc"
+  pruneopts = "UT"
+  revision = "d0be0721c37eeb5299f245a996a483160fc36940"
 
 [[projects]]
   branch = "v0"
+  digest = "1:580aa4af38b87e235950c3a09841bb7f9f329e2495ec5d43c42d7f7fb7f5a464"
   name = "gopkg.in/inconshreveable/go-update.v0"
   packages = [
     ".",
-    "download"
+    "download",
   ]
+  pruneopts = "UT"
   revision = "d8b0b1d421aa1cbf392c05869f8abbc669bb7066"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "770bc1edbe7bd166874f2f888e73981e802c7f53df6edafd8e8b1dbf54ac8408"
+  input-imports = [
+    "github.com/Sirupsen/logrus",
+    "github.com/cskr/pubsub",
+    "github.com/davecheney/gpio",
+    "github.com/gofrs/uuid",
+    "github.com/rferrazz/go-selfupdate/selfupdate",
+    "github.com/stianeikeland/go-rpio",
+    "github.com/thoas/go-funk",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
