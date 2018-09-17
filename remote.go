@@ -7,6 +7,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cskr/pubsub"
+	"github.com/gofrs/uuid"
 )
 
 // BufferSize is the size of channel buffers
@@ -19,13 +20,19 @@ const WriteTimeout = 1 * time.Minute
 // InBuffer and OutBuffer
 type Remote struct {
 	PubSub   *pubsub.PubSub
+	id       uuid.UUID
 	conn     net.Conn
 	stopOnce sync.Once
 }
 
 // NewRemote creates a new Remote
-func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
+func NewRemote(id string, conn net.Conn, readTimeout time.Duration) *Remote {
+	uid, err := uuid.FromString(id)
+	if err != nil {
+		logrus.Fatal("Failed to parse node id")
+	}
 	remote := Remote{
+		id:     uid,
 		conn:   conn,
 		PubSub: pubsub.New(BufferSize),
 	}
@@ -36,7 +43,12 @@ func NewRemote(conn net.Conn, readTimeout time.Duration) *Remote {
 		// heartbeat outgoing messages have a special type in order to avoid being bounced back
 		out := remote.PubSub.Sub("out")
 		for data := range out {
-			message := data.(*Message)
+			message, ok := data.(*Message)
+			if !ok {
+				logrus.Warn("Trying to something that's not a message")
+				continue
+			}
+			message.sender = remote.id
 			logrus.Debug("Sending message", message)
 			conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
 			_, err := remote.conn.Write(message.Bytes())

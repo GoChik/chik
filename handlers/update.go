@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
 	"chik"
 	"chik/config"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -17,13 +17,12 @@ import (
 var Version = "dev"
 
 type updater struct {
-	id      uuid.UUID
 	updater *selfupdate.Updater
 }
 
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
-func NewUpdater(identity uuid.UUID) chik.Handler {
+func NewUpdater() chik.Handler {
 	logrus.Debug("Version: ", Version)
 	updatesURL := "http://dl.bintray.com/rferrazz/IO-Something"
 	value := config.Get("updater.url")
@@ -37,7 +36,6 @@ func NewUpdater(identity uuid.UUID) chik.Handler {
 	exe := filepath.Base(executable)
 
 	return &updater{
-		id: identity,
 		updater: &selfupdate.Updater{
 			CurrentVersion: Version,
 			ApiURL:         updatesURL,
@@ -57,7 +55,7 @@ func (h *updater) handleRequestCommand(command *chik.SimpleCommand, sender uuid.
 	if err != nil {
 		return nil
 	}
-	return chik.NewMessage(chik.VersionIndicationType, h.id, sender, data)
+	return chik.NewMessage(chik.VersionIndicationType, uuid.Nil, sender, data)
 }
 
 func (h *updater) update() {

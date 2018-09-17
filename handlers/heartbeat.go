@@ -11,19 +11,17 @@ import (
 const maxErrors uint32 = 3
 
 type heartbeat struct {
-	id       uuid.UUID
 	interval time.Duration
 	errors   uint32
 }
 
 // NewHeartBeatHandler creates a new heartbeat handler
-func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) chik.Handler {
+func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 	if interval <= 100*time.Millisecond {
 		logrus.Error("Interval value too low: ", interval)
 		return nil
 	}
 	return &heartbeat{
-		id:       identity,
 		interval: interval,
 	}
 }
@@ -31,7 +29,7 @@ func NewHeartBeatHandler(identity uuid.UUID, interval time.Duration) chik.Handle
 func (h *heartbeat) Run(remote *chik.Remote) {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, h.id, uuid.Nil, []byte{}), "out")
+		remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, uuid.Nil, []byte{}), "out")
 	}
 
 	logrus.Debug("starting heartbeat handler")

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"crypto/tls"
 	"chik"
 	"chik/config"
 	"chik/handlers"
+	"crypto/tls"
 	"net"
 	"sync"
 	"time"
@@ -24,15 +24,16 @@ func main() {
 
 	if err != nil {
 		if _, ok := err.(*config.FileNotFoundError); ok {
-			config.Set("id", uuid.NewV1())
+			id, _ := uuid.NewV1()
+			config.Set("id", id)
 			config.Set("server", "")
 			config.Sync()
 		}
 		logrus.Fatal("Config file not found: stub created")
 	}
 
-	identity := config.Get("id").(uuid.UUID)
-	if identity == uuid.Nil {
+	identity, ok := config.Get("id").(string)
+	if !ok {
 		logrus.Fatal("Cannot get id from config")
 	}
 
@@ -47,12 +48,12 @@ func main() {
 
 	// Creating handlers
 	handlerList := []chik.Handler{
-		handlers.NewIoHandler(identity),
-		handlers.NewTimers(identity),
-		handlers.NewHeartBeatHandler(identity, 2*time.Minute),
-		handlers.NewUpdater(identity),
+		handlers.NewIoHandler(),
+		handlers.NewTimers(),
+		handlers.NewHeartBeatHandler(2 * time.Minute),
+		handlers.NewUpdater(),
 	}
-	handlerList = append(handlerList, handlers.NewStatusHandler(identity, handlerList))
+	handlerList = append(handlerList, handlers.NewStatusHandler(handlerList))
 
 	// Listening network
 	for {
@@ -61,7 +62,7 @@ func main() {
 		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tlsConf)
 		if err == nil {
 			logrus.Debug("New connection")
-			remote := chik.NewRemote(conn, 5*time.Minute)
+			remote := chik.NewRemote(identity, conn, 5*time.Minute)
 			wg := sync.WaitGroup{}
 			wg.Add(len(handlerList))
 			for _, h := range handlerList {

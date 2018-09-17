@@ -1,20 +1,20 @@
 package handlers
 
 import (
-	"encoding/json"
 	"chik"
+	"encoding/json"
+
+	"github.com/gofrs/uuid"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/gofrs/uuid"
 )
 
 type handler struct {
-	id       uuid.UUID
 	handlers []chik.Handler
 }
 
-func NewStatusHandler(id uuid.UUID, handlers []chik.Handler) chik.Handler {
-	return &handler{id, handlers}
+func NewStatusHandler(handlers []chik.Handler) chik.Handler {
+	return &handler{handlers}
 }
 
 func (h *handler) Run(remote *chik.Remote) {
@@ -44,7 +44,7 @@ func (h *handler) Run(remote *chik.Remote) {
 			continue
 		}
 
-		reply := chik.NewMessage(chik.StatusIndicationType, h.id, sender, replyData)
+		reply := chik.NewMessage(chik.StatusIndicationType, uuid.Nil, sender, replyData)
 		remote.PubSub.Pub(reply, "out")
 	}
 }

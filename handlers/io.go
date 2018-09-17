@@ -1,25 +1,21 @@
 package handlers
 
 import (
-	"encoding/json"
 	"chik"
 	"chik/actuator"
+	"encoding/json"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-
-	"github.com/gofrs/uuid"
 )
 
 type io struct {
-	id       uuid.UUID
 	actuator actuator.Actuator
 	pins     map[int]bool
 }
 
-func NewIoHandler(uuid uuid.UUID) chik.Handler {
+func NewIoHandler() chik.Handler {
 	return &io{
-		uuid,
 		actuator.NewActuator(),
 		map[int]bool{},
 	}

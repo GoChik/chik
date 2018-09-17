@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
 	"chik"
+	"encoding/json"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -11,14 +11,12 @@ import (
 )
 
 type timers struct {
-	id          uuid.UUID
 	timers      []chik.TimedCommand
 	lastTimerID uint16
 }
 
-func NewTimers(id uuid.UUID) chik.Handler {
+func NewTimers() chik.Handler {
 	return &timers{
-		id,
 		make([]chik.TimedCommand, 0),
 		1,
 	}
@@ -44,7 +42,7 @@ func (h *timers) timeTicker(remote *chik.Remote) *time.Ticker {
 						logrus.Fatal("cannot marshal a digitalcommand: ", err)
 					}
 					remote.PubSub.Pub(
-						chik.NewMessage(chik.DigitalCommandType, h.id, h.id, command),
+						chik.NewMessage(chik.DigitalCommandType, uuid.Nil, uuid.Nil, command),
 						chik.DigitalCommandType.String())
 				}
 			}
