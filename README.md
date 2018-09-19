@@ -1,6 +1,6 @@
 # Chik
 
-_Internet of something_
+_Chik is the sound my child makes when he runs touching everything around the house_
 
 [![Build Status](https://travis-ci.org/GoChik/chik.svg?branch=master)](https://travis-ci.org/GoChik/chik)
 
