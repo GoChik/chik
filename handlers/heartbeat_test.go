@@ -11,7 +11,7 @@ func TestHeartbeat(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	heartbeat := NewHeartBeatHandler(client.id, 200*time.Millisecond)
+	heartbeat := NewHeartBeatHandler(200 * time.Millisecond)
 	sub := client.remote.PubSub.Sub("out")
 	go heartbeat.Run(client.remote)
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	uuid "github.com/gofrs/uuid"
+	"github.com/gofrs/uuid"
 )
 
 type TestClient struct {
@@ -29,7 +29,11 @@ func CreateServer(t *testing.T) net.Listener {
 			if err != nil {
 				t.Fatal(err)
 			}
-			srv := chik.NewRemote(conn, 10*time.Millisecond)
+			id, err := uuid.NewV1()
+			if err != nil {
+				t.Fatal(err)
+			}
+			srv := chik.NewRemote(id, conn, 10*time.Millisecond)
 			go NewForwardingHandler(&peers).Run(srv)
 		}
 	}()
@@ -42,6 +46,7 @@ func CreateClient() (client TestClient, err error) {
 		return
 	}
 
-	client = TestClient{chik.NewRemote(conn, 10*time.Millisecond), uuid.NewV1()}
+	id, _ := uuid.NewV1()
+	client = TestClient{chik.NewRemote(id, conn, 10*time.Millisecond), id}
 	return
 }

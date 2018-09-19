@@ -5,6 +5,8 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/gofrs/uuid"
 )
 
 var testSub chan interface{}
@@ -22,7 +24,11 @@ func testRoutine(t *testing.T, f func(c net.Conn, r *Remote)) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewRemote(s, 500*time.Millisecond)
+	id, err := uuid.NewV1()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := NewRemote(id, s, 500*time.Millisecond)
 	defer r.Terminate()
 	testSub = r.PubSub.Sub("test")
 	r.PubSub.Pub("echo", "test")
