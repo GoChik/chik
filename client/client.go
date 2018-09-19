@@ -25,14 +25,14 @@ func main() {
 	if err != nil {
 		if _, ok := err.(*config.FileNotFoundError); ok {
 			id, _ := uuid.NewV1()
-			config.Set("id", id)
+			config.Set("identity", id)
 			config.Set("server", "")
 			config.Sync()
 		}
 		logrus.Fatal("Config file not found: stub created")
 	}
 
-	identity, ok := config.Get("id").(string)
+	identity, ok := config.Get("identity").(uuid.UUID)
 	if !ok {
 		logrus.Fatal("Cannot get id from config")
 	}

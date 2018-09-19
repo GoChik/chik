@@ -26,13 +26,9 @@ type Remote struct {
 }
 
 // NewRemote creates a new Remote
-func NewRemote(id string, conn net.Conn, readTimeout time.Duration) *Remote {
-	uid, err := uuid.FromString(id)
-	if err != nil {
-		logrus.Fatal("Failed to parse node id")
-	}
+func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
 	remote := Remote{
-		id:     uid,
+		id:     id,
 		conn:   conn,
 		PubSub: pubsub.New(BufferSize),
 	}
