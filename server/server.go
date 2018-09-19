@@ -19,7 +19,7 @@ var peers = sync.Map{}
 func main() {
 	logrus.SetLevel(logrus.WarnLevel)
 	config.SetConfigFileName("server.conf")
-	config.AddSearchPath("/etc/iosomething")
+	config.AddSearchPath("/etc/chik")
 	config.AddSearchPath(".")
 
 	err := config.ParseConfig()

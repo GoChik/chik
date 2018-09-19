@@ -1,4 +1,4 @@
-# chik
+# Chik
 
 _Internet of something_
 
@@ -15,39 +15,28 @@ on two devices:
  - [RaspberryPI](https://www.raspberrypi.org)
  - [Carambola1](http://www.8devices.com/products/carambola)
 
-Client is configured using the `client.json` config file that can be stored either in the same folder
+Client is configured using the `client.conf` json config file that can be stored either in the same folder
 of the executable or inside `/etc/chik/`. 
-Configuration file contains two parameters:
- - Server: domain name or ip address and port of the PC where the server instance is running
- - Identity: uuid for the client (this field is randomly generated if empty)
+Configuration file contains two main parameters:
+ - server: domain name or ip address and port of the PC where the server instance is running
+ - identity: uuid for the client (this field is randomly generated if empty)
+ - Depending on the run configuration it may contain additionals sections for gpios and to store saved timers. 
 
-Following an example of a valid configuration file:
-```
-{
-  "Server": "mydomain.com:6767",
-  "Identity": "dc9c465c-c8cc-11c6-884c-6c40089ac3c6"
-}
-```
+When running the application for the first time the configuration gets automatically created and populated with default values.
 
 ## Server
 
 Clients are connecting to the server using a persistent TCP connection TLS encrypted.  
 One server can handle multiple clients.  
-Server is configured by `server.json` config file. It can be stored either aside the server executable
+Server is configured by `server.conf` config file. It can be stored either aside the server executable
 or inside `/etc/chik/` directory.  
 Server configuration contains following parameters:
- - Port: port to use to communicate
- - PubKeyPath: public key path with filename
- - PrivKeyPath: private key path with filename
+ - identity: uuid of the server
+ - connection.port: the port the server listens to
+ - connection.public_key_path: public key path including filename
+ - connection.private_key_path: private key path including filename
 
- Example:
- ```
- {
-    "port": 6767,
-    "PubKeyPath": "/etc/chik/cert.pem",
-    "PrivKeyPath": "/etc/chik/key.pem"
-}
- ```
+When running the application for the first time the configuration gets automatically created and populated with default values and a randomly generated uuid.
 
 ## Mobile application
 
