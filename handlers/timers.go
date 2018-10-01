@@ -32,8 +32,7 @@ func (h *timers) timeTicker(remote *chik.Remote) *time.Ticker {
 			}
 			lastMinute = tick.Minute()
 			for _, timer := range h.timers {
-				timerTime := time.Time(timer.Time)
-				if timerTime.Hour() == tick.Hour() && timerTime.Minute() == tick.Minute() {
+				if timer.Time.Hour() == tick.Hour() && timer.Time.Minute() == tick.Minute() {
 					command, err := json.Marshal(chik.DigitalCommand{
 						Command: timer.Command,
 						Pin:     timer.Pin,
@@ -74,7 +73,7 @@ func (h *timers) Run(remote *chik.Remote) {
 	ticker := h.timeTicker(remote)
 	defer ticker.Stop()
 
-	incoming := remote.PubSub.Sub(chik.TimedCommandType.String())
+	incoming := remote.PubSub.Sub(chik.TimerCommandType.String())
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)
 		command := chik.TimedCommand{}
@@ -84,9 +83,14 @@ func (h *timers) Run(remote *chik.Remote) {
 			continue
 		}
 
+		if len(command.Command) != 1 {
+			logrus.Error("Unexpected composed command")
+			continue
+		}
+
 		if command.TimerID == 0 {
 			h.addTimer(command)
-		} else if command.Command == chik.DELETE_TIMER {
+		} else if command.Command[0] == chik.RESET {
 			h.deleteTimer(command)
 		} else {
 			h.editTimer(command)

@@ -4,9 +4,9 @@ package chik
 
 import "strconv"
 
-const _MsgType_name = "SimpleCommandTypeDigitalCommandTypeTimedCommandTypeStatusIndicationTypeVersionIndicationTypeHeartbeatTypemessageBound"
+const _MsgType_name = "HeartbeatTypeDigitalCommandTypeTimerCommandTypeStatusRequestCommandTypeStatusReplyCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeSunsetCommandTypemessageBound"
 
-var _MsgType_index = [...]uint8{0, 17, 35, 51, 71, 92, 105, 117}
+var _MsgType_index = [...]uint8{0, 13, 31, 47, 71, 93, 118, 141, 158, 170}
 
 func (i MsgType) String() string {
 	if i >= MsgType(len(_MsgType_index)-1) {

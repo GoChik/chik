@@ -55,7 +55,7 @@ func (h *updater) handleRequestCommand(command *chik.SimpleCommand, sender uuid.
 	if err != nil {
 		return nil
 	}
-	return chik.NewMessage(chik.VersionIndicationType, uuid.Nil, sender, data)
+	return chik.NewMessage(chik.VersionReplyCommandType, uuid.Nil, sender, data)
 }
 
 func (h *updater) update() {
@@ -72,7 +72,7 @@ func (h *updater) update() {
 
 func (h *updater) Run(remote *chik.Remote) {
 	logrus.Debug("starting version handler")
-	in := remote.PubSub.Sub(chik.SimpleCommandType.String())
+	in := remote.PubSub.Sub(chik.VersionRequestCommandType.String())
 	for data := range in {
 		message := data.(*chik.Message)
 		command := chik.SimpleCommand{}
@@ -82,8 +82,13 @@ func (h *updater) Run(remote *chik.Remote) {
 			continue
 		}
 
-		switch command.Command {
-		case chik.GET_VERSION:
+		if len(command.Command) != 1 {
+			logrus.Error("Unexpected composed command")
+			continue
+		}
+
+		switch command.Command[0] {
+		case chik.GET:
 			sender, err := message.SenderUUID()
 			if err != nil {
 				logrus.Warn("Cannot get sender")
@@ -94,7 +99,7 @@ func (h *updater) Run(remote *chik.Remote) {
 				remote.PubSub.Pub(reply, "out")
 			}
 
-		case chik.DO_UPDATE:
+		case chik.SET:
 			h.update()
 		}
 	}

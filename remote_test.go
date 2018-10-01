@@ -56,7 +56,7 @@ func TestInvalidRead(t *testing.T) {
 	}{
 		{"Empty message", []byte{0}},
 		{"Invalid length", []byte{0, 0, 0, 0, 2, 0, 0}},
-		{"Type out of bound", []byte{byte(SimpleCommandType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"Type out of bound", []byte{byte(HeartbeatType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	} {
 		testRoutine(t, func(c net.Conn, r *Remote) {
 			c.Write(val.RawData)
@@ -82,12 +82,12 @@ func TestTerminateTwice(t *testing.T) {
 
 func TestRead(t *testing.T) {
 	for _, val := range [][]byte{
-		[]byte{byte(SimpleCommandType), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		[]byte{byte(SimpleCommandType), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		[]byte{byte(HeartbeatType), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		[]byte{byte(HeartbeatType), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	} {
 		testRoutine(t, func(c net.Conn, r *Remote) {
 			c.Write(val)
-			messageRaw := <-r.PubSub.Sub(SimpleCommandType.String())
+			messageRaw := <-r.PubSub.Sub(HeartbeatType.String())
 			message := messageRaw.(*Message)
 			if !bytes.Equal(val, message.Bytes()) {
 				t.Errorf("Unexpected message decoded: \nexpecting: %v\ngot:       %v", val, message.Bytes())

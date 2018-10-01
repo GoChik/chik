@@ -16,7 +16,7 @@ type TestData struct {
 var data = []TestData{
 	{
 		[]byte{0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		NewMessage(SimpleCommandType, uuid.Nil, uuid.Nil, []byte{}),
+		NewMessage(HeartbeatType, uuid.Nil, uuid.Nil, []byte{}),
 	},
 	{
 		[]byte{1, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -24,7 +24,7 @@ var data = []TestData{
 	},
 	{
 		[]byte{0, 0, 0, 0, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4},
-		NewMessage(SimpleCommandType, uuid.Nil, uuid.Nil, []byte{1, 2, 3, 4}),
+		NewMessage(HeartbeatType, uuid.Nil, uuid.Nil, []byte{1, 2, 3, 4}),
 	},
 }
 

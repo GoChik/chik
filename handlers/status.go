@@ -18,12 +18,12 @@ func NewStatusHandler(handlers []chik.Handler) chik.Handler {
 }
 
 func (h *handler) Run(remote *chik.Remote) {
-	incoming := remote.PubSub.Sub(chik.SimpleCommandType.String())
+	incoming := remote.PubSub.Sub(chik.StatusRequestCommandType.String())
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)
 		command := chik.SimpleCommand{}
 		err := json.Unmarshal(message.Data(), &command)
-		if err != nil || command.Command != chik.GET_STATUS {
+		if err != nil || len(command.Command) == 1 || command.Command[0] != chik.GET {
 			continue
 		}
 
@@ -44,7 +44,7 @@ func (h *handler) Run(remote *chik.Remote) {
 			continue
 		}
 
-		reply := chik.NewMessage(chik.StatusIndicationType, uuid.Nil, sender, replyData)
+		reply := chik.NewMessage(chik.StatusReplyCommandType, uuid.Nil, sender, replyData)
 		remote.PubSub.Pub(reply, "out")
 	}
 }

@@ -37,24 +37,29 @@ func (h *io) Run(remote *chik.Remote) {
 			continue
 		}
 
+		if len(command.Command) != 1 {
+			logrus.Error("Unexpected composed command")
+			continue
+		}
+
 		h.pins[command.Pin] = true
 
-		switch command.Command {
-		case chik.SWITCH_OFF:
+		switch command.Command[0] {
+		case chik.RESET:
 			logrus.Debug("Turning off pin ", command.Pin)
 			h.actuator.TurnOff(command.Pin)
 
-		case chik.SWITCH_ON:
+		case chik.SET:
 			logrus.Debug("Turning on pin ", command.Pin)
 			h.actuator.TurnOn(command.Pin)
 
-		case chik.PUSH_BUTTON:
+		case chik.PUSH:
 			logrus.Debug("Turning on and off pin ", command.Pin)
 			h.actuator.TurnOn(command.Pin)
 			time.Sleep(1 * time.Second)
 			h.actuator.TurnOff(command.Pin)
 
-		case chik.TOGGLE_ON_OFF:
+		case chik.TOGGLE:
 			logrus.Debug("Switching pin ", command.Pin)
 			if h.actuator.GetStatus(command.Pin) {
 				h.actuator.TurnOff(command.Pin)

@@ -35,7 +35,7 @@ func main() {
 		logrus.Fatal("Cannot parse config file: ", err)
 	}
 
-	identity := config.Get("identity").(uuid.UUID)
+	identity := uuid.FromStringOrNil(config.Get("identity").(string))
 	if identity == uuid.Nil {
 		logrus.Fatal("Cannot get identity from config file")
 	}

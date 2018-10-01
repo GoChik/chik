@@ -32,8 +32,8 @@ func main() {
 		logrus.Fatal("Config file not found: stub created")
 	}
 
-	identity, ok := config.Get("identity").(uuid.UUID)
-	if !ok {
+	identity := uuid.FromStringOrNil(config.Get("identity").(string))
+	if identity == uuid.Nil {
 		logrus.Fatal("Cannot get id from config")
 	}
 

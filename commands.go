@@ -12,29 +12,29 @@ type EnabledDays uint16
 // MsgType represent the type of the current message
 type MsgType uint8
 
-// Message types mapped 1-1 with underneath structs
+// Message types used in various plugins
 const (
-	SimpleCommandType MsgType = iota
+	HeartbeatType MsgType = iota
 	DigitalCommandType
-	TimedCommandType
-	StatusIndicationType
-	VersionIndicationType
-	HeartbeatType
+	TimerCommandType
+	StatusRequestCommandType
+	StatusReplyCommandType
+	VersionRequestCommandType
+	VersionReplyCommandType
+	SunsetCommandType
 
 	messageBound
 )
 
 // Available command types
 const (
-	PUSH_BUTTON   CommandType = iota // on followed by off command
-	SWITCH_ON                        // Turn on something
-	SWITCH_OFF                       // Turn off something
-	TOGGLE_ON_OFF                    // Toggle something
-	GET_STATUS                       // Get current status
-	GET_VERSION                      // Get version and available updates
-	DO_UPDATE                        // Instruct the client to update himself
-	DELETE_TIMER                     // remove a timer
-	HEARTBEAT                        // Empty heartbeat message
+	SET     CommandType = iota // Turn on/activate something
+	RESET                      // Turn off/deactivate something
+	TOGGLE                     // Toggle something from on/activated to off/deactivated
+	PUSH                       // Used to define actions shuch as the one of pushing a button
+	GET                        // Retrieve a value
+	SUNSET                     // Sunset related command
+	SUNRISE                    // Sunrise Related command
 )
 
 // Days of the week
@@ -51,14 +51,14 @@ const (
 
 // SimpleCommand is used to send a basic request regarding the whole system
 type SimpleCommand struct {
-	Command CommandType `json:",int"`
+	Command JSIntArr `json:",JSIntArr"`
 }
 
 // DigitalCommand used to instruct the appliance to execute
 // a Command on a gpio pin
 type DigitalCommand struct {
-	Command CommandType `json:",int"`
-	Pin     int         `json:",int,omitempty"`
+	Command JSIntArr `json:",JSIntArr"`
+	Pin     int      `json:",int,omitempty"`
 }
 
 // TimedCommand represent a command with an associated delay in minutes
