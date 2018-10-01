@@ -23,7 +23,7 @@ func (h *handler) Run(remote *chik.Remote) {
 		message := rawMessage.(*chik.Message)
 		command := chik.SimpleCommand{}
 		err := json.Unmarshal(message.Data(), &command)
-		if err != nil || len(command.Command) == 1 || command.Command[0] != chik.GET {
+		if err != nil || len(command.Command) != 1 || command.Command[0] != chik.GET {
 			continue
 		}
 

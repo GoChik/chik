@@ -28,6 +28,7 @@ func NewUpdater() chik.Handler {
 	value := config.Get("updater.url")
 	if value == nil {
 		config.Set("updater.url", updatesURL)
+		config.Sync()
 	} else {
 		updatesURL = value.(string)
 	}
