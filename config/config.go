@@ -123,6 +123,9 @@ func Get(key string) interface{} {
 	sector := conf.data
 	for i, slice := range slices {
 		v := sector[slice]
+		if v == nil {
+			return nil
+		}
 		vType := reflect.TypeOf(v)
 		if i == len(slices)-1 {
 			return v
