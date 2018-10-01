@@ -27,10 +27,17 @@ func main() {
 			id, _ := uuid.NewV1()
 			config.Set("identity", id)
 			config.Set("server", "")
+			config.Set("log_level", "warning")
 			config.Sync()
 		}
 		logrus.Fatal("Config file not found: stub created")
 	}
+
+	logLevel, err := logrus.ParseLevel(config.Get("log_level").(string))
+	if err != nil {
+		logrus.Fatal("Cannot set log level: ", err)
+	}
+	logrus.SetLevel(logLevel)
 
 	identity := uuid.FromStringOrNil(config.Get("identity").(string))
 	if identity == uuid.Nil {

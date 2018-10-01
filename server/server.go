@@ -27,13 +27,20 @@ func main() {
 		if _, ok := err.(*config.FileNotFoundError); ok {
 			id, _ := uuid.NewV1()
 			config.Set("identity", id)
-			config.Set("connection.port", 6767)
+			config.Set("connection.port", uint16(6767))
 			config.Set("connection.public_key_path", "")
 			config.Set("connection.private_key_path", "")
+			config.Set("log_level", "warning")
 			config.Sync()
 		}
 		logrus.Fatal("Cannot parse config file: ", err)
 	}
+
+	logLevel, err := logrus.ParseLevel(config.Get("log_level").(string))
+	if err != nil {
+		logrus.Fatal("Cannot set log level: ", err)
+	}
+	logrus.SetLevel(logLevel)
 
 	identity := uuid.FromStringOrNil(config.Get("identity").(string))
 	if identity == uuid.Nil {
@@ -50,7 +57,7 @@ func main() {
 		logrus.Fatal("Cannot get private key path from config file")
 	}
 
-	port := config.Get("connection.port").(uint16)
+	port := uint16(config.Get("connection.port").(float64))
 	if port == 0 {
 		logrus.Fatal("Cannot get port from config file")
 	}
