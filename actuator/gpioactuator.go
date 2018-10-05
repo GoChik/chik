@@ -4,6 +4,7 @@ package actuator
 
 import (
 	"chik/config"
+	"strconv"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -84,16 +85,20 @@ func (a *gpioActuator) GetStatus(pin int) bool {
 }
 
 func (a *gpioActuator) Initialize() {
-	pins, ok := config.Get("gpio_actuator.pin_layout").(map[int]bool)
+	pins, ok := config.Get("gpio_actuator.pin_layout").(map[string]interface{})
 	if !ok {
-		config.Set("gpoi_actuator.pin_layout", map[int]bool{0: false})
+		config.Set("gpio_actuator.pin_layout", map[int]bool{0: false})
 		config.Sync()
 		logrus.Error("Cannot find gpio_actuator.pin_layout in config file, stub created")
 		return
 	}
 
 	for k, v := range pins {
-		a.openPins[k] = createPin(k, v)
+		pinNumber, err := strconv.Atoi(k)
+		if err != nil {
+			logrus.Fatal("Failed to convert pin number to int: ", err)
+		}
+		a.openPins[pinNumber] = createPin(pinNumber, v.(bool))
 	}
 }
 
