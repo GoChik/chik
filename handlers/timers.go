@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"chik"
+	"chik/config"
 	"encoding/json"
 	"time"
 
@@ -10,16 +11,35 @@ import (
 	"github.com/thoas/go-funk"
 )
 
+const timerStoragePath = "storage.timers"
+
 type timers struct {
 	timers      []chik.TimedCommand
 	lastTimerID uint16
 }
 
 func NewTimers() chik.Handler {
-	return &timers{
-		make([]chik.TimedCommand, 0),
-		1,
+	var savedTimers []chik.TimedCommand
+	err := config.GetStruct(timerStoragePath, &savedTimers)
+	if err != nil {
+		savedTimers := make([]chik.TimedCommand, 0)
+		config.Set(timerStoragePath, savedTimers)
+		config.Sync()
+		logrus.Warning("storage.timers section was invalid. It has been reset: ", err)
 	}
+
+	lastID := uint16(1)
+	if len(savedTimers) > 0 {
+		lastID = savedTimers[len(savedTimers)-1].TimerID
+	}
+
+	logrus.Debug("Timers", savedTimers)
+
+	return &timers{
+		savedTimers,
+		lastID,
+	}
+
 }
 
 func (h *timers) timeTicker(remote *chik.Remote) *time.Ticker {
@@ -54,6 +74,8 @@ func (h *timers) addTimer(timer chik.TimedCommand) {
 	timer.TimerID = h.lastTimerID
 	h.lastTimerID++
 	h.timers = append(h.timers, timer)
+	config.Set(timerStoragePath, h.timers)
+	config.Sync()
 }
 
 func (h *timers) deleteTimer(timer chik.TimedCommand) {
@@ -63,6 +85,8 @@ func (h *timers) deleteTimer(timer chik.TimedCommand) {
 		}
 		return true
 	}).([]chik.TimedCommand)
+	config.Set(timerStoragePath, h.timers)
+	config.Sync()
 }
 
 func (h *timers) editTimer(timer chik.TimedCommand) {

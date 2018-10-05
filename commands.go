@@ -65,10 +65,10 @@ type DigitalCommand struct {
 // if TimerID is zero it means it is a new timer. otherwise it should edit the timer with
 // the corresponding id
 type TimedCommand struct {
-	DigitalCommand
-	TimerID uint16      `json:",int,omitempty"`
-	Time    JSONTime    `json:",string,omitempty"`
-	Repeat  EnabledDays `json:",int,omitempty"`
+	DigitalCommand `mapstructure:",squash"`
+	TimerID        uint16      `json:",int,omitempty"`
+	Time           JSONTime    `json:",string,omitempty"`
+	Repeat         EnabledDays `json:",int,omitempty"`
 }
 
 // Status is the response to a status request Command

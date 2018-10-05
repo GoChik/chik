@@ -3,6 +3,7 @@ package chik
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -35,6 +36,18 @@ func (t *JSIntArr) UnmarshalJSON(data []byte) error {
 	return err
 }
 
+func IntToJsIntArr(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {
+	if sourceType.Kind() != reflect.Float64 {
+		return sourceData, nil
+	}
+
+	if targetType != reflect.TypeOf(JSIntArr{}) {
+		return sourceData, nil
+	}
+
+	return JSIntArr{CommandType(sourceData.(float64))}, nil
+}
+
 // JSONTime a time specialization that allows a compact string rapresentation: hh:mm
 type JSONTime struct {
 	time.Time
@@ -58,4 +71,20 @@ func (j *JSONTime) UnmarshalJSON(data []byte) error {
 		*j = JSONTime{parsedTime}
 	}
 	return err
+}
+
+func StringToJsonTime(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {
+	if sourceType.Kind() != reflect.String {
+		return sourceData, nil
+	}
+
+	if targetType != reflect.TypeOf(JSONTime{}) {
+		return sourceData, nil
+	}
+
+	parsedTime, err := time.Parse("15:04", sourceData.(string))
+	if err == nil {
+		parsedTime = parsedTime.Add(24 * time.Hour)
+	}
+	return JSONTime{parsedTime}, err
 }
