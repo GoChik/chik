@@ -58,6 +58,14 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:53bc4cd4914cd7cd52139990d5170d6dc99067ae31c56530621b18b35fc30318"
+  name = "github.com/mitchellh/mapstructure"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "3536a929edddb9a5b34bd6861dc4a9647cb459fe"
+  version = "v1.1.2"
+
+[[projects]]
   branch = "master"
   digest = "1:ed323e201e1d82d0c9392b4f2ae8b4c74dc84159b9dec0e7f838a3bc60eb7e60"
   name = "github.com/rferrazz/go-selfupdate"
@@ -116,6 +124,7 @@
     "github.com/cskr/pubsub",
     "github.com/davecheney/gpio",
     "github.com/gofrs/uuid",
+    "github.com/mitchellh/mapstructure",
     "github.com/rferrazz/go-selfupdate/selfupdate",
     "github.com/stianeikeland/go-rpio",
     "github.com/thoas/go-funk",
