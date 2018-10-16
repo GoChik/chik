@@ -25,12 +25,12 @@ type Message struct {
 }
 
 // NewMessage creates a new message
-func NewMessage(msgtype MsgType, sender uuid.UUID, receiver uuid.UUID, data []byte) *Message {
+func NewMessage(msgtype MsgType, receiver uuid.UUID, data []byte) *Message {
 	messageLen := (16 * 2) + uint32(len(data))
 
 	return &Message{
 		header:   msgHeader{MsgType: msgtype, MsgLen: messageLen},
-		sender:   sender,
+		sender:   uuid.Nil,
 		receiver: receiver,
 		data:     data,
 	}
@@ -84,8 +84,8 @@ func (m *Message) Type() MsgType {
 }
 
 // SenderUUID returns the sender identity
-func (m *Message) SenderUUID() (uuid.UUID, error) {
-	return m.sender, nil
+func (m *Message) SenderUUID() uuid.UUID {
+	return m.sender
 }
 
 // ReceiverUUID returns the receiver identity

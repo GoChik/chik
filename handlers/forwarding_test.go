@@ -27,8 +27,8 @@ func TestForwarding(t *testing.T) {
 	logrus.Debug("Sender:", client1.id, "receiver:", client2.id)
 
 	forwarded := client1.remote.PubSub.Sub(chik.DigitalCommandType.String())
-	client1.remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, client1.id, uuid.Nil, []byte("")), "out")
-	client2.remote.PubSub.Pub(chik.NewMessage(chik.DigitalCommandType, client2.id, client1.id, []byte("Hello")), "out")
+	client1.remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, []byte("")), "out")
+	client2.remote.PubSub.Pub(chik.NewMessage(chik.DigitalCommandType, client1.id, []byte("Hello")), "out")
 
 	select {
 	case <-forwarded:

@@ -29,7 +29,7 @@ func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 func (h *heartbeat) Run(remote *chik.Remote) {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, uuid.Nil, []byte{}), "out")
+		remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, []byte{}), "out")
 	}
 
 	logrus.Debug("starting heartbeat handler")

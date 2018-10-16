@@ -19,7 +19,7 @@ var jsIntArrTestData = []testdata{testdata{[]CommandType{1}, "1"}, testdata{[]Co
 
 func TestMarshalTime(t *testing.T) {
 	expected := "\"10:02\""
-	time := JSONTime{time.Date(2018, 01, 01, 10, 02, 00, 0, time.UTC)}
+	time := JSONTime{time.Date(2018, 01, 01, 10, 02, 00, 0, time.Local)}
 	actual, err := json.Marshal(&time)
 	if err != nil {
 		t.Error(err)

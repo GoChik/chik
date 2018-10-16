@@ -35,6 +35,7 @@ const (
 	GET                        // Retrieve a value
 	SUNSET                     // Sunset related command
 	SUNRISE                    // Sunrise Related command
+	DELETE                     // Delete a value
 )
 
 // Days of the week

@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"fmt"
 	"chik"
+	"fmt"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -35,15 +35,9 @@ func (h *forwarding) Run(remote *chik.Remote) {
 	in := remote.PubSub.Sub("in")
 	for data := range in {
 		message := data.(*chik.Message)
-		sender, err := message.SenderUUID()
-		if err != nil {
-			logrus.Error("Unable to get sender UUID ", err)
-			break
-		}
-
+		sender := message.SenderUUID()
 		if sender == uuid.Nil {
-			logrus.Error("Empty UUID")
-			// TODO: maybe we can trigger an error here (to check if it is possible that we have messages from unknown peers)
+			logrus.Error("Unable to get sender UUID")
 			break
 		}
 
@@ -84,6 +78,7 @@ func (h *forwarding) Run(remote *chik.Remote) {
 			receiverRemote.(*chik.Remote).PubSub.Pub(message, "out")
 		}
 	}
+	h.peers.Delete(h.id)
 	logrus.Debug("shutting down forwarding handler")
 }
 

@@ -57,6 +57,7 @@ func main() {
 	handlerList := []chik.Handler{
 		handlers.NewIoHandler(),
 		handlers.NewTimers(),
+		handlers.NewSunset(),
 		handlers.NewHeartBeatHandler(2 * time.Minute),
 		handlers.NewUpdater(),
 	}

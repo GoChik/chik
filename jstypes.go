@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"time"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 // JSIntArr an int array that can be rapresented in javascript like an integer or like an array of integers
@@ -54,7 +56,7 @@ type JSONTime struct {
 }
 
 // MarshalJSON returns the js string that represent the current hours and minutes
-func (j *JSONTime) MarshalJSON() ([]byte, error) {
+func (j JSONTime) MarshalJSON() ([]byte, error) {
 	if j.IsZero() {
 		return []byte(""), nil
 	}
@@ -87,4 +89,17 @@ func StringToJsonTime(sourceType, targetType reflect.Type, sourceData interface{
 		parsedTime = parsedTime.Add(24 * time.Hour)
 	}
 	return JSONTime{parsedTime}, err
+}
+
+func Decode(input, output interface{}) error {
+	config := mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		DecodeHook:       mapstructure.ComposeDecodeHookFunc(IntToJsIntArr, StringToJsonTime),
+		Result:           output,
+	}
+	decoder, err := mapstructure.NewDecoder(&config)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(input)
 }

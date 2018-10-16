@@ -53,15 +53,19 @@ func (h *timers) timeTicker(remote *chik.Remote) *time.Ticker {
 			lastMinute = tick.Minute()
 			for _, timer := range h.timers {
 				if timer.Time.Hour() == tick.Hour() && timer.Time.Minute() == tick.Minute() {
-					command, err := json.Marshal(chik.DigitalCommand{
-						Command: timer.Command,
-						Pin:     timer.Pin,
-					})
+					timedCommand := chik.DigitalCommand{Pin: timer.Pin}
+					if funk.Contains(timer.Command, chik.SET) {
+						timedCommand.Command = []chik.CommandType{chik.SET}
+					} else {
+						timedCommand.Command = []chik.CommandType{chik.RESET}
+					}
+
+					command, err := json.Marshal(timedCommand)
 					if err != nil {
 						logrus.Fatal("cannot marshal a digitalcommand: ", err)
 					}
 					remote.PubSub.Pub(
-						chik.NewMessage(chik.DigitalCommandType, uuid.Nil, uuid.Nil, command),
+						chik.NewMessage(chik.DigitalCommandType, uuid.Nil, command),
 						chik.DigitalCommandType.String())
 				}
 			}
@@ -90,7 +94,13 @@ func (h *timers) deleteTimer(timer chik.TimedCommand) {
 }
 
 func (h *timers) editTimer(timer chik.TimedCommand) {
-	logrus.Warning("Editing not yet implemented")
+	h.timers = funk.Filter(h.timers, func(t chik.TimedCommand) bool {
+		if t.TimerID == timer.TimerID {
+			return false
+		}
+		return true
+	}).([]chik.TimedCommand)
+	h.addTimer(timer)
 }
 
 func (h *timers) Run(remote *chik.Remote) {
@@ -107,18 +117,25 @@ func (h *timers) Run(remote *chik.Remote) {
 			continue
 		}
 
-		if len(command.Command) != 1 {
-			logrus.Error("Unexpected composed command")
+		if funk.Contains(command.Command, chik.SET) || funk.Contains(command.Command, chik.RESET) {
+			if command.Time.IsZero() {
+				logrus.Warning("Cannot add/edit a timer with a null time")
+				continue
+			}
+			if command.TimerID == 0 {
+				h.addTimer(command)
+			} else {
+				h.editTimer(command)
+			}
 			continue
 		}
 
-		if command.TimerID == 0 {
-			h.addTimer(command)
-		} else if command.Command[0] == chik.RESET {
+		if funk.Contains(command.Command, chik.DELETE) {
 			h.deleteTimer(command)
-		} else {
-			h.editTimer(command)
+			continue
 		}
+
+		logrus.Warn("Unexpected timer command")
 	}
 }
 

@@ -9,8 +9,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-
-	"github.com/mitchellh/mapstructure"
 )
 
 var conf config
@@ -145,16 +143,7 @@ func Get(key string) interface{} {
 // GetStruct populates data of the given struct with config file content
 func GetStruct(key string, output interface{}) error {
 	data := Get(key)
-	config := mapstructure.DecoderConfig{
-		WeaklyTypedInput: true,
-		DecodeHook:       mapstructure.ComposeDecodeHookFunc(chik.IntToJsIntArr, chik.StringToJsonTime),
-		Result:           output,
-	}
-	decoder, err := mapstructure.NewDecoder(&config)
-	if err != nil {
-		return err
-	}
-	return decoder.Decode(data)
+	return chik.Decode(data, output)
 }
 
 // Set sets or modifies a value in the config file.

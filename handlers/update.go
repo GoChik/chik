@@ -48,17 +48,6 @@ func NewUpdater() chik.Handler {
 	}
 }
 
-func (h *updater) handleRequestCommand(command *chik.SimpleCommand, sender uuid.UUID) *chik.Message {
-	logrus.Debug("Getting update info from: ", h.updater.ApiURL)
-
-	h.updater.FetchInfo()
-	data, err := json.Marshal(chik.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version})
-	if err != nil {
-		return nil
-	}
-	return chik.NewMessage(chik.VersionReplyCommandType, uuid.Nil, sender, data)
-}
-
 func (h *updater) update() {
 	logrus.Debug("Updating to version: ", h.updater.Info.Version)
 	h.updater.BackgroundRun()
@@ -90,15 +79,15 @@ func (h *updater) Run(remote *chik.Remote) {
 
 		switch command.Command[0] {
 		case chik.GET:
-			sender, err := message.SenderUUID()
-			if err != nil {
+			sender := message.SenderUUID()
+			if sender == uuid.Nil {
 				logrus.Warn("Cannot get sender")
 				break
 			}
-			reply := h.handleRequestCommand(&command, sender)
-			if reply != nil {
-				remote.PubSub.Pub(reply, "out")
-			}
+			logrus.Debug("Getting update info from: ", h.updater.ApiURL)
+			h.updater.FetchInfo()
+			version := chik.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
+			remote.Reply(message, chik.VersionReplyCommandType, version)
 
 		case chik.SET:
 			h.update()

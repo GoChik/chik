@@ -3,10 +3,6 @@ package handlers
 import (
 	"chik"
 	"encoding/json"
-
-	"github.com/gofrs/uuid"
-
-	"github.com/Sirupsen/logrus"
 )
 
 type handler struct {
@@ -33,19 +29,7 @@ func (h *handler) Run(remote *chik.Remote) {
 			status[handler.String()] = handler.Status()
 		}
 
-		replyData, err := json.Marshal(status)
-		if err != nil {
-			logrus.Error("Cannot marshal status message")
-			continue
-		}
-		sender, err := message.SenderUUID()
-		if err != nil {
-			logrus.Error("Cannot determine status request sender")
-			continue
-		}
-
-		reply := chik.NewMessage(chik.StatusReplyCommandType, uuid.Nil, sender, replyData)
-		remote.PubSub.Pub(reply, "out")
+		remote.Reply(message, chik.StatusReplyCommandType, status)
 	}
 }
 

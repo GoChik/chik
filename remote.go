@@ -1,6 +1,7 @@
 package chik
 
 import (
+	"encoding/json"
 	"net"
 	"sync"
 	"time"
@@ -73,7 +74,7 @@ func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
 				remote.Terminate()
 				return
 			}
-			id, _ := message.SenderUUID()
+			id := message.SenderUUID()
 			logrus.Debug("Message received from:", id)
 			remote.PubSub.Pub(message, "in", message.Type().String())
 		}
@@ -88,4 +89,23 @@ func (r *Remote) Terminate() {
 		r.conn.Close()
 		r.PubSub.Shutdown()
 	})
+}
+
+// Reply sends back a reply message
+func (r *Remote) Reply(request *Message, replyType MsgType, replyContent interface{}) {
+	rawReply, err := json.Marshal(replyContent)
+	if err != nil {
+		logrus.Error("Cannot marshal status message")
+		return
+	}
+
+	sender := request.SenderUUID()
+	reply := NewMessage(replyType, sender, rawReply)
+
+	// If sender is null the message is internal, otherwise it needs to go out
+	destination := "out"
+	if sender == uuid.Nil {
+		destination = replyType.String()
+	}
+	r.PubSub.Pub(reply, destination)
 }
