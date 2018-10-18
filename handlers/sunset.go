@@ -65,11 +65,12 @@ func NewSunset() chik.Handler {
 }
 
 func requestTimerStatus(remote *chik.Remote) []chik.TimedCommand {
+	result := make([]chik.TimedCommand, 0)
 	sub := remote.PubSub.SubOnce(chik.StatusReplyCommandType.String())
 	statusCommand, err := json.Marshal(chik.SimpleCommand{Command: []chik.CommandType{chik.GET}})
 	if err != nil {
 		logrus.Error(err)
-		return nil
+		return result
 	}
 	statusRequest := chik.NewMessage(chik.StatusRequestCommandType, uuid.Nil, statusCommand)
 	remote.PubSub.Pub(statusRequest, chik.StatusRequestCommandType.String())
@@ -77,16 +78,14 @@ func requestTimerStatus(remote *chik.Remote) []chik.TimedCommand {
 	case statusRaw := <-sub:
 		var status map[string]interface{}
 		json.Unmarshal(statusRaw.(*chik.Message).Data(), &status)
-		var timers []chik.TimedCommand
-		err = chik.Decode(status["timers"], &timers)
+		err = chik.Decode(status["timers"], &result)
 		if err != nil {
 			logrus.Error(err)
-			return nil
 		}
-		return timers
+		return result
 	case <-time.After(500 * time.Millisecond):
 		logrus.Error("Cannot fetch timer status")
-		return nil
+		return result
 	}
 }
 
