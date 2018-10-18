@@ -45,7 +45,6 @@ func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
 				logrus.Warn("Trying to something that's not a message")
 				continue
 			}
-			// TODO: sender should be populated with the full chain of senders in order to allow routing
 			if message.sender == uuid.Nil {
 				message.sender = remote.id
 			}
