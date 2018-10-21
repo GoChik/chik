@@ -97,7 +97,7 @@ func (h *suntime) updateTimers(remote *chik.Remote) {
 	timers := requestTimerStatus(remote)
 	logrus.Debug("Timers: ", timers)
 
-	funk.ForEach(timers, func(t chik.TimedCommand) {
+	for _, t := range timers {
 		send := false
 
 		if funk.Contains(t.Command, chik.SUNRISE) {
@@ -120,7 +120,7 @@ func (h *suntime) updateTimers(remote *chik.Remote) {
 			timerChangeRequest := chik.NewMessage(chik.TimerCommandType, uuid.Nil, timerCommand)
 			remote.PubSub.Pub(timerChangeRequest, chik.TimerCommandType.String())
 		}
-	})
+	}
 }
 
 func (h *suntime) worker(remote *chik.Remote) *time.Ticker {
@@ -168,20 +168,34 @@ func (h *suntime) fetchSunTime() {
 		return
 	}
 	logrus.Debug("Sunrise/set api response: ", string(replyData))
-	reply := make(map[string]interface{}, 0)
+	var reply map[string]*json.RawMessage
 	err = json.Unmarshal(replyData, &reply)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
-	sunetRaw := reply["results"].(map[string]interface{})["sunset"].(string)
-	h.cache.sunset, err = time.Parse(time.RFC3339, sunetRaw)
+	var results map[string]*json.RawMessage
+	json.Unmarshal(*reply["results"], &results)
+
+	var sunsetRaw string
+	err = json.Unmarshal(*results["sunset"], &sunsetRaw)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
 
-	sunriseRaw := reply["results"].(map[string]interface{})["sunrise"].(string)
+	h.cache.sunset, err = time.Parse(time.RFC3339, sunsetRaw)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	var sunriseRaw string
+	err = json.Unmarshal(*results["sunrise"], &sunriseRaw)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
 	h.cache.sunrise, err = time.Parse(time.RFC3339, sunriseRaw)
 	if err != nil {
 		logrus.Error(err)
