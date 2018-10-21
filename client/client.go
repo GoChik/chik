@@ -14,6 +14,10 @@ import (
 )
 
 func main() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:    true,
+		DisableTimestamp: false,
+	})
 	logrus.SetLevel(logrus.WarnLevel)
 
 	// Config stuff

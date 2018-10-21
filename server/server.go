@@ -17,6 +17,10 @@ import (
 var peers = sync.Map{}
 
 func main() {
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:    true,
+		DisableTimestamp: false,
+	})
 	logrus.SetLevel(logrus.WarnLevel)
 	config.SetConfigFileName("server.conf")
 	config.AddSearchPath("/etc/chik")
