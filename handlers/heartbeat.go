@@ -27,10 +27,10 @@ func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 	}
 }
 
-func (h *heartbeat) sender(remote *chik.Remote) *time.Ticker {
+func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		remote.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, []byte{}), "out")
+		controller.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, []byte{}), "out")
 	}
 
 	ticker := time.NewTicker(h.interval)
@@ -41,7 +41,7 @@ func (h *heartbeat) sender(remote *chik.Remote) *time.Ticker {
 			atomic.AddUint32(&h.errors, 1)
 			if h.errors >= maxErrors {
 				logrus.Error("Heartbeat error threshold exceeded: shutting down remote connection")
-				remote.Terminate()
+				controller.Disconnect()
 				return
 			}
 		}
@@ -49,12 +49,12 @@ func (h *heartbeat) sender(remote *chik.Remote) *time.Ticker {
 	return ticker
 }
 
-func (h *heartbeat) Run(remote *chik.Remote) {
+func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("starting heartbeat handler")
-	sender := h.sender(remote)
+	sender := h.sender(controller)
 	defer sender.Stop()
 
-	in := remote.PubSub.Sub(chik.HeartbeatType.String())
+	in := controller.PubSub.Sub(chik.HeartbeatType.String())
 	for data := range in {
 		message := data.(*chik.Message)
 

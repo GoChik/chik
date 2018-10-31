@@ -1,18 +1,13 @@
 package chik
 
 import (
-	"encoding/json"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cskr/pubsub"
 	"github.com/gofrs/uuid"
 )
-
-// BufferSize is the size of channel buffers
-const BufferSize = 10
 
 // WriteTimeout defines the time after which a write operation is considered failed
 const WriteTimeout = 1 * time.Minute
@@ -20,25 +15,23 @@ const WriteTimeout = 1 * time.Minute
 // Remote represents a remote endpoint, data can be sent or received through
 // InBuffer and OutBuffer
 type Remote struct {
-	PubSub   *pubsub.PubSub
-	id       uuid.UUID
+	Closed   chan bool
 	conn     net.Conn
 	stopOnce sync.Once
 }
 
 // NewRemote creates a new Remote
-func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
+func NewRemote(controller *Controller, conn net.Conn, readTimeout time.Duration) *Remote {
 	remote := Remote{
-		id:     id,
+		Closed: make(chan bool, 1),
 		conn:   conn,
-		PubSub: pubsub.New(BufferSize),
 	}
 
 	// Send function
 	go func() {
 		logrus.Debug("Sender started")
 		// heartbeat outgoing messages have a special type in order to avoid being bounced back
-		out := remote.PubSub.Sub("out")
+		out := controller.PubSub.Sub("out")
 		for data := range out {
 			message, ok := data.(*Message)
 			if !ok {
@@ -46,7 +39,7 @@ func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
 				continue
 			}
 			if message.sender == uuid.Nil {
-				message.sender = remote.id
+				message.sender = controller.ID
 			}
 			logrus.Debug("Sending message", message)
 			conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
@@ -75,7 +68,7 @@ func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
 			}
 			id := message.SenderUUID()
 			logrus.Debug("Message received from:", id)
-			remote.PubSub.Pub(message, "in", message.Type().String())
+			controller.PubSub.Pub(message, "in", message.Type().String())
 		}
 	}()
 
@@ -86,25 +79,6 @@ func NewRemote(id uuid.UUID, conn net.Conn, readTimeout time.Duration) *Remote {
 func (r *Remote) Terminate() {
 	r.stopOnce.Do(func() {
 		r.conn.Close()
-		r.PubSub.Shutdown()
+		r.Closed <- true
 	})
-}
-
-// Reply sends back a reply message
-func (r *Remote) Reply(request *Message, replyType MsgType, replyContent interface{}) {
-	rawReply, err := json.Marshal(replyContent)
-	if err != nil {
-		logrus.Error("Cannot marshal status message")
-		return
-	}
-
-	sender := request.SenderUUID()
-	reply := NewMessage(replyType, sender, rawReply)
-
-	// If sender is null the message is internal, otherwise it needs to go out
-	destination := "out"
-	if sender == uuid.Nil {
-		destination = replyType.String()
-	}
-	r.PubSub.Pub(reply, destination)
 }

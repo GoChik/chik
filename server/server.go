@@ -86,9 +86,11 @@ func main() {
 			continue
 		}
 
-		// Creating the remote that is handling the newly connected client
-		remote := chik.NewRemote(identity, connection, 5*time.Minute)
-		go handlers.NewForwardingHandler(&peers).Run(remote)
-		go handlers.NewHeartBeatHandler(2 * time.Minute).Run(remote)
+		// Creating the controller that is handling the newly connected client
+		controller := chik.NewController(identity)
+		controller.Start(handlers.NewForwardingHandler(&peers))
+		controller.Start(handlers.NewHeartBeatHandler(2 * time.Minute))
+		<-controller.Connect(connection)
+		controller.Shutdown()
 	}
 }

@@ -42,7 +42,7 @@ func NewTimers() chik.Handler {
 
 }
 
-func (h *timers) timeTicker(remote *chik.Remote) *time.Ticker {
+func (h *timers) timeTicker(remote *chik.Controller) *time.Ticker {
 	ticker := time.NewTicker(30 * time.Second)
 	go func() {
 		lastMinute := 61
@@ -103,7 +103,7 @@ func (h *timers) editTimer(timer chik.TimedCommand) {
 	h.addTimer(timer)
 }
 
-func (h *timers) Run(remote *chik.Remote) {
+func (h *timers) Run(remote *chik.Controller) {
 	ticker := h.timeTicker(remote)
 	defer ticker.Stop()
 

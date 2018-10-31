@@ -21,7 +21,7 @@ func NewIoHandler() chik.Handler {
 	}
 }
 
-func (h *io) Run(remote *chik.Remote) {
+func (h *io) Run(remote *chik.Controller) {
 	logrus.Debug("starting io handler")
 	h.actuator.Initialize()
 	defer h.actuator.Deinitialize()

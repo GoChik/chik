@@ -60,7 +60,7 @@ func (h *updater) update() {
 	os.Exit(0)
 }
 
-func (h *updater) Run(remote *chik.Remote) {
+func (h *updater) Run(remote *chik.Controller) {
 	logrus.Debug("starting version handler")
 	in := remote.PubSub.Sub(chik.VersionRequestCommandType.String())
 	for data := range in {

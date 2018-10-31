@@ -13,7 +13,7 @@ func NewStatusHandler(handlers []chik.Handler) chik.Handler {
 	return &handler{handlers}
 }
 
-func (h *handler) Run(remote *chik.Remote) {
+func (h *handler) Run(remote *chik.Controller) {
 	incoming := remote.PubSub.Sub(chik.StatusRequestCommandType.String())
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)

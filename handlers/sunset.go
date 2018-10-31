@@ -64,7 +64,7 @@ func NewSunset() chik.Handler {
 	return &handler
 }
 
-func requestTimerStatus(remote *chik.Remote) []chik.TimedCommand {
+func requestTimerStatus(remote *chik.Controller) []chik.TimedCommand {
 	result := make([]chik.TimedCommand, 0)
 	sub := remote.PubSub.SubOnce(chik.StatusReplyCommandType.String())
 	statusCommand, err := json.Marshal(chik.SimpleCommand{Command: []chik.CommandType{chik.GET}})
@@ -89,7 +89,7 @@ func requestTimerStatus(remote *chik.Remote) []chik.TimedCommand {
 	}
 }
 
-func (h *suntime) updateTimers(remote *chik.Remote) {
+func (h *suntime) updateTimers(remote *chik.Controller) {
 	// fetch sun time
 	h.fetchSunTime()
 
@@ -123,7 +123,7 @@ func (h *suntime) updateTimers(remote *chik.Remote) {
 	}
 }
 
-func (h *suntime) worker(remote *chik.Remote) *time.Ticker {
+func (h *suntime) worker(remote *chik.Controller) *time.Ticker {
 	ticker := time.NewTicker(23 * time.Hour)
 	go func() {
 		lastDay := time.Now().Day()
@@ -205,7 +205,7 @@ func (h *suntime) fetchSunTime() {
 	logrus.Debug("Sunrise: ", h.cache.sunrise, " sunset: ", h.cache.sunset)
 }
 
-func (h *suntime) addSunTimer(remote *chik.Remote, timer chik.TimedCommand) {
+func (h *suntime) addSunTimer(remote *chik.Controller, timer chik.TimedCommand) {
 	if funk.Contains(timer.Command, chik.SUNRISE) {
 		timer.Time = chik.JSONTime{h.cache.sunrise.In(time.Local)}
 	} else if funk.Contains(timer.Command, chik.SUNSET) {
@@ -224,11 +224,11 @@ func (h *suntime) addSunTimer(remote *chik.Remote, timer chik.TimedCommand) {
 	remote.PubSub.Pub(message, chik.TimerCommandType.String())
 }
 
-func (h *suntime) editSunTimer(remote *chik.Remote, timer chik.TimedCommand) {
+func (h *suntime) editSunTimer(remote *chik.Controller, timer chik.TimedCommand) {
 	logrus.Error("Editing sun timers not supported")
 }
 
-func (h *suntime) removeSunTimer(remote *chik.Remote, timer chik.TimedCommand) {
+func (h *suntime) removeSunTimer(remote *chik.Controller, timer chik.TimedCommand) {
 	rawCommand, err := json.Marshal(timer)
 	if err != nil {
 		logrus.Error(err)
@@ -238,7 +238,7 @@ func (h *suntime) removeSunTimer(remote *chik.Remote, timer chik.TimedCommand) {
 	remote.PubSub.Pub(message, chik.TimerCommandType.String())
 }
 
-func (h *suntime) Run(remote *chik.Remote) {
+func (h *suntime) Run(remote *chik.Controller) {
 	worker := h.worker(remote)
 	defer worker.Stop()
 

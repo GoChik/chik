@@ -26,13 +26,12 @@ func (h *forwarding) terminate() {
 	h.peers.Delete(h.id)
 }
 
-func (h *forwarding) Run(remote *chik.Remote) {
+func (h *forwarding) Run(controller *chik.Controller) {
 	logrus.Debug("starting forwarding handler")
 
 	defer h.terminate()
-	defer remote.Terminate()
 
-	in := remote.PubSub.Sub("in")
+	in := controller.PubSub.Sub("in")
 	for data := range in {
 		message := data.(*chik.Message)
 		sender := message.SenderUUID()
@@ -44,10 +43,10 @@ func (h *forwarding) Run(remote *chik.Remote) {
 		if h.id == uuid.Nil {
 			logrus.Debug(fmt.Sprintf("Adding peer %v", sender))
 			h.id = sender
-			h.peers.Store(h.id, remote)
+			h.peers.Store(h.id, controller)
 		} else if h.id != sender {
 			logrus.Errorf("Unexpected sender, expecting: %v got: %v", h.id, sender)
-			remote.Terminate()
+			controller.Shutdown()
 			break
 		}
 
@@ -75,7 +74,7 @@ func (h *forwarding) Run(remote *chik.Remote) {
 				continue
 			}
 
-			receiverRemote.(*chik.Remote).PubSub.Pub(message, "out")
+			receiverRemote.(*chik.Controller).PubSub.Pub(message, "out")
 		}
 	}
 	h.peers.Delete(h.id)

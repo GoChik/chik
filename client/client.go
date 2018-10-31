@@ -6,7 +6,6 @@ import (
 	"chik/handlers"
 	"crypto/tls"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -53,9 +52,9 @@ func main() {
 		logrus.Fatal("Cannot get server from config")
 	}
 
-	tlsConf := tls.Config{
-		InsecureSkipVerify: true,
-	}
+	logrus.Debug("Identity: ", identity)
+	logrus.Debug("Server: ", server)
+	controller := chik.NewController(identity)
 
 	// Creating handlers
 	handlerList := []chik.Handler{
@@ -67,23 +66,21 @@ func main() {
 	}
 	handlerList = append(handlerList, handlers.NewStatusHandler(handlerList))
 
+	for _, h := range handlerList {
+		controller.Start(h)
+	}
+
+	// TODO: delete
+	tlsConf := tls.Config{
+		InsecureSkipVerify: true,
+	}
+
 	// Listening network
 	for {
-		logrus.Debug("Identity: ", identity)
-		logrus.Debug("Server: ", server)
 		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tlsConf)
 		if err == nil {
 			logrus.Debug("New connection")
-			remote := chik.NewRemote(identity, conn, 5*time.Minute)
-			wg := sync.WaitGroup{}
-			wg.Add(len(handlerList))
-			for _, h := range handlerList {
-				go func(h chik.Handler) {
-					h.Run(remote)
-					wg.Done()
-				}(h)
-			}
-			wg.Wait()
+			<-controller.Connect(conn)
 		}
 		time.Sleep(10 * time.Second)
 	}
