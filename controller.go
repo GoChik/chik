@@ -47,7 +47,7 @@ func (c *Controller) Connect(connection net.Conn) <-chan bool {
 	if c.remote != nil {
 		c.remote.Terminate()
 	}
-	c.remote = NewRemote(c, connection, MaxIdleTime)
+	c.remote = newRemote(c, connection, MaxIdleTime)
 	return c.remote.Closed
 }
 

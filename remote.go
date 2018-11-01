@@ -21,7 +21,7 @@ type Remote struct {
 }
 
 // NewRemote creates a new Remote
-func NewRemote(controller *Controller, conn net.Conn, readTimeout time.Duration) *Remote {
+func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration) *Remote {
 	remote := Remote{
 		Closed: make(chan bool, 1),
 		conn:   conn,

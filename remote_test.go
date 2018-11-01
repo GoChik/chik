@@ -1,7 +1,6 @@
 package chik
 
 import (
-	"bytes"
 	"net"
 	"testing"
 	"time"
@@ -9,9 +8,9 @@ import (
 	"github.com/gofrs/uuid"
 )
 
-var testSub chan interface{}
+var stopChannel <-chan bool
 
-func testRoutine(t *testing.T, f func(c net.Conn, r *Remote)) {
+func testRoutine(t *testing.T, f func(c net.Conn, controller *Controller)) {
 	srv, err := net.Listen("tcp", "127.0.0.1:")
 	if err != nil {
 		t.Fatal(err)
@@ -28,21 +27,19 @@ func testRoutine(t *testing.T, f func(c net.Conn, r *Remote)) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r := NewRemote(id, s, 500*time.Millisecond)
-	defer r.Terminate()
-	testSub = r.PubSub.Sub("test")
-	r.PubSub.Pub("echo", "test")
+	controller := NewController(id)
+	stopChannel = controller.Connect(s)
+	defer controller.Shutdown()
 
-	f(c, r)
+	f(c, controller)
 }
 
-func hasStopped(remote *Remote) bool {
+func hasStopped() bool {
 	for {
 		select {
-		case _, more := <-testSub:
-			if !more {
-				return true
-			}
+		case <-stopChannel:
+			return true
+
 		case <-time.After(1 * time.Second):
 			return false
 		}
@@ -54,13 +51,12 @@ func TestInvalidRead(t *testing.T) {
 		Name    string
 		RawData []byte
 	}{
-		{"Empty message", []byte{0}},
 		{"Invalid length", []byte{0, 0, 0, 0, 2, 0, 0}},
 		{"Type out of bound", []byte{byte(HeartbeatType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	} {
-		testRoutine(t, func(c net.Conn, r *Remote) {
+		testRoutine(t, func(c net.Conn, controller *Controller) {
 			c.Write(val.RawData)
-			if !hasStopped(r) {
+			if !hasStopped() {
 				t.Errorf("%s test failed", val.Name)
 			}
 		})
@@ -68,52 +64,14 @@ func TestInvalidRead(t *testing.T) {
 }
 
 func TestTerminateTwice(t *testing.T) {
-	testRoutine(t, func(c net.Conn, r *Remote) {
-		r.Terminate()
-		if !hasStopped(r) {
+	testRoutine(t, func(c net.Conn, cont *Controller) {
+		cont.Disconnect()
+		if !hasStopped() {
 			t.Error("Expecting a stop signal")
 		}
-		r.Terminate()
-		if !hasStopped(r) {
-			t.Error("Expecting a stop signal")
+		cont.Disconnect()
+		if hasStopped() {
+			t.Error("Not expecting a stop because it has been already sent")
 		}
 	})
 }
-
-func TestRead(t *testing.T) {
-	for _, val := range [][]byte{
-		[]byte{byte(HeartbeatType), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		[]byte{byte(HeartbeatType), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	} {
-		testRoutine(t, func(c net.Conn, r *Remote) {
-			c.Write(val)
-			messageRaw := <-r.PubSub.Sub(HeartbeatType.String())
-			message := messageRaw.(*Message)
-			if !bytes.Equal(val, message.Bytes()) {
-				t.Errorf("Unexpected message decoded: \nexpecting: %v\ngot:       %v", val, message.Bytes())
-			}
-		})
-	}
-}
-
-// TODO: fix this one
-// func TestWrite(t *testing.T) {
-// 	for _, val := range []*Message{
-// 		NewMessage(SimpleCommandType, uuid.Nil, uuid.Nil, []byte("{}")),
-// 		NewMessage(HeartbeatType, uuid.Nil, uuid.Nil, []byte("")),
-// 		NewMessage(SimpleCommandType, uuid.Nil, uuid.Nil, []byte("{\"hello_world\": true}")),
-// 	} {
-// 		testRoutine(t, func(c net.Conn, r *Remote) {
-// 			expected := val.Bytes()
-// 			r.PubSub.Pub(val, "out")
-// 			readed := make([]byte, len(expected))
-// 			err := binary.Read(c, binary.BigEndian, readed)
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
-// 			if !bytes.Equal(readed, expected) {
-// 				t.Errorf("Unexpected message decoded: \nexpecting: %v\ngot:       %v", expected, readed)
-// 			}
-// 		})
-// 	}
-// }
