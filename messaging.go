@@ -1,5 +1,3 @@
-//go:generate stringer -type=MsgType
-
 package chik
 
 import (

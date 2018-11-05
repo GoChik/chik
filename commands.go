@@ -8,14 +8,14 @@ import (
 	"github.com/Sirupsen/logrus"
 )
 
-// CommandType is an enum of all the possible commands
+// Action is an enum of all the possible commands
 type Action uint16
 
 // EnabledDays days on which a TimedCommand is enabled
 // used as binary flag
 type EnabledDays uint16
 
-// MsgType represent the type of the current message
+// CommandType represent the type of the current message
 type CommandType uint8
 
 // Message types used in various plugins
