@@ -31,7 +31,7 @@ func (h *io) Run(remote *chik.Controller) {
 		message := data.(*chik.Message)
 
 		command := chik.DigitalCommand{}
-		err := json.Unmarshal(message.Data(), &command)
+		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil {
 			logrus.Error("cannot decode digital command: ", err)
 			continue

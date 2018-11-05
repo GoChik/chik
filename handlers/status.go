@@ -18,7 +18,7 @@ func (h *handler) Run(remote *chik.Controller) {
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)
 		command := chik.SimpleCommand{}
-		err := json.Unmarshal(message.Data(), &command)
+		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil || len(command.Command) != 1 || command.Command[0] != chik.GET {
 			continue
 		}

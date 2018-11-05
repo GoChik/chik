@@ -68,7 +68,7 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 			}
 			id := message.SenderUUID()
 			logrus.Debug("Message received from:", id)
-			controller.PubSub.Pub(message, "in", message.Type().String())
+			controller.PubSub.Pub(message, "in", message.Command().Type.String())
 		}
 	}()
 

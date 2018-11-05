@@ -1,20 +1,26 @@
-//go:generate stringer -type=MsgType
+//go:generate stringer -type=CommandType
 
 package chik
 
+import (
+	"encoding/json"
+
+	"github.com/Sirupsen/logrus"
+)
+
 // CommandType is an enum of all the possible commands
-type CommandType uint16
+type Action uint16
 
 // EnabledDays days on which a TimedCommand is enabled
 // used as binary flag
 type EnabledDays uint16
 
 // MsgType represent the type of the current message
-type MsgType uint8
+type CommandType uint8
 
 // Message types used in various plugins
 const (
-	HeartbeatType MsgType = iota
+	HeartbeatType CommandType = iota
 	DigitalCommandType
 	TimerCommandType
 	StatusRequestCommandType
@@ -28,14 +34,14 @@ const (
 
 // Available command types
 const (
-	SET     CommandType = iota // Turn on/activate something
-	RESET                      // Turn off/deactivate something
-	TOGGLE                     // Toggle something from on/activated to off/deactivated
-	PUSH                       // Used to define actions shuch as the one of pushing a button
-	GET                        // Retrieve a value
-	SUNSET                     // Sunset related command
-	SUNRISE                    // Sunrise Related command
-	DELETE                     // Delete a value
+	SET     Action = iota // Turn on/activate something
+	RESET                 // Turn off/deactivate something
+	TOGGLE                // Toggle something from on/activated to off/deactivated
+	PUSH                  // Used to define actions shuch as the one of pushing a button
+	GET                   // Retrieve a value
+	SUNSET                // Sunset related command
+	SUNRISE               // Sunrise Related command
+	DELETE                // Delete a value
 )
 
 // Days of the week
@@ -49,6 +55,23 @@ const (
 	Friday    EnabledDays = 0x20
 	Saturday  EnabledDays = 0x40
 )
+
+// Command is the root object in every message
+type Command struct {
+	Type CommandType
+	Data json.RawMessage
+}
+
+// NewCommand creates a command given a type and his content
+func NewCommand(t CommandType, data interface{}) *Command {
+	body, err := json.Marshal(data)
+	if err != nil {
+		logrus.Error("Cannot compose command: ", err)
+		return nil
+	}
+
+	return &Command{t, json.RawMessage(body)}
+}
 
 // SimpleCommand is used to send a basic request regarding the whole system
 type SimpleCommand struct {
@@ -66,10 +89,11 @@ type DigitalCommand struct {
 // if TimerID is zero it means it is a new timer. otherwise it should edit the timer with
 // the corresponding id
 type TimedCommand struct {
-	DigitalCommand `mapstructure:",squash"`
-	TimerID        uint16      `json:",int,omitempty"`
-	Time           JSONTime    `json:",string,omitempty"`
-	Repeat         EnabledDays `json:",int,omitempty"`
+	Action  JSIntArr    `json:",JSIntArr"`
+	TimerID uint16      `json:",int,omitempty"`
+	Time    JSONTime    `json:",string,omitempty"`
+	Repeat  EnabledDays `json:",int,omitempty"`
+	Command *Command
 }
 
 // Status is the response to a status request Command
