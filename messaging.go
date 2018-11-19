@@ -1,35 +1,34 @@
-//go:generate stringer -type=MsgType
-
 package chik
 
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/gofrs/uuid"
 )
 
-type msgHeader struct {
-	MsgType MsgType
-	MsgLen  uint32
-}
-
 type Message struct {
-	header   msgHeader
+	length   uint32
 	sender   uuid.UUID
 	receiver uuid.UUID
 	data     []byte
 }
 
 // NewMessage creates a new message
-func NewMessage(msgtype MsgType, receiver uuid.UUID, data []byte) *Message {
+func NewMessage(receiver uuid.UUID, command *Command) *Message {
+	data, err := json.Marshal(command)
+	if err != nil {
+		logrus.Error("Failed to create a message, parsing data failed")
+		return nil
+	}
 	messageLen := (16 * 2) + uint32(len(data))
 
 	return &Message{
-		header:   msgHeader{MsgType: msgtype, MsgLen: messageLen},
+		length:   messageLen,
 		sender:   uuid.Nil,
 		receiver: receiver,
 		data:     data,
@@ -40,19 +39,13 @@ func NewMessage(msgtype MsgType, receiver uuid.UUID, data []byte) *Message {
 func ParseMessage(reader io.Reader) (*Message, error) {
 	message := Message{}
 
-	err := binary.Read(reader, binary.BigEndian, &message.header)
+	err := binary.Read(reader, binary.BigEndian, &message.length)
 	if err != nil {
 		return nil, err
 	}
 
-	datalength := message.header.MsgLen
-
-	if datalength < 16*2 {
-		return nil, fmt.Errorf("Message too short, must be at least 32 bytes, got: %d", datalength)
-	}
-
-	if message.header.MsgType >= messageBound {
-		return nil, fmt.Errorf("Message type out of bound %v", message.header.MsgType)
+	if message.length < 16*2 {
+		return nil, fmt.Errorf("Message too short, must be at least 32 bytes, got: %d", message.length)
 	}
 
 	err = binary.Read(reader, binary.BigEndian, &message.sender)
@@ -65,7 +58,7 @@ func ParseMessage(reader io.Reader) (*Message, error) {
 		return nil, err
 	}
 
-	datalength -= 16 * 2
+	datalength := message.length - 16*2
 
 	if datalength > 0 {
 		message.data = make([]byte, datalength)
@@ -78,11 +71,6 @@ func ParseMessage(reader io.Reader) (*Message, error) {
 	return &message, nil
 }
 
-// Type returns the message type
-func (m *Message) Type() MsgType {
-	return m.header.MsgType
-}
-
 // SenderUUID returns the sender identity
 func (m *Message) SenderUUID() uuid.UUID {
 	return m.sender
@@ -90,23 +78,24 @@ func (m *Message) SenderUUID() uuid.UUID {
 
 // ReceiverUUID returns the receiver identity
 func (m *Message) ReceiverUUID() (uuid.UUID, error) {
-	if m.header.MsgType == HeartbeatType {
-		return uuid.Nil, errors.New("HEARTBEAT message does not have a receiver")
-	}
-
 	return m.receiver, nil
 }
 
-// Data returns message content
-func (m *Message) Data() []byte {
-	return m.data
+// Command returns message content as a Command object
+func (m *Message) Command() *Command {
+	var command Command
+	err := json.Unmarshal(m.data, &command)
+	if err != nil {
+		return nil
+	}
+	return &command
 }
 
 // Bytes returns the binary rapresentation of the message
 func (m *Message) Bytes() []byte {
 	buffer := bytes.Buffer{}
 
-	binary.Write(&buffer, binary.BigEndian, m.header)
+	binary.Write(&buffer, binary.BigEndian, m.length)
 	binary.Write(&buffer, binary.BigEndian, m.sender)
 	binary.Write(&buffer, binary.BigEndian, m.receiver)
 	binary.Write(&buffer, binary.BigEndian, m.data)
@@ -116,7 +105,7 @@ func (m *Message) Bytes() []byte {
 
 // Equal compares two messages
 func Equal(v1, v2 *Message) bool {
-	if v1.header != v2.header {
+	if v1.length != v2.length {
 		return false
 	}
 

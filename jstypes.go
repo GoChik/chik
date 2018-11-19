@@ -10,7 +10,7 @@ import (
 )
 
 // JSIntArr an int array that can be rapresented in javascript like an integer or like an array of integers
-type JSIntArr []CommandType
+type JSIntArr []Action
 
 func (t JSIntArr) MarshalJSON() ([]byte, error) {
 	switch len(t) {
@@ -19,18 +19,18 @@ func (t JSIntArr) MarshalJSON() ([]byte, error) {
 	case 1:
 		return json.Marshal(t[0])
 	}
-	return json.Marshal([]CommandType(t))
+	return json.Marshal([]Action(t))
 }
 
 func (t *JSIntArr) UnmarshalJSON(data []byte) error {
 	var arrResult JSIntArr
-	err := json.Unmarshal(data, (*[]CommandType)(&arrResult))
+	err := json.Unmarshal(data, (*[]Action)(&arrResult))
 	if err == nil {
 		*t = arrResult
 		return nil
 	}
 
-	var intResult CommandType
+	var intResult Action
 	err = json.Unmarshal(data, &intResult)
 	if err == nil {
 		*t = JSIntArr{intResult}
@@ -47,7 +47,7 @@ func IntToJsIntArr(sourceType, targetType reflect.Type, sourceData interface{}) 
 		return sourceData, nil
 	}
 
-	return JSIntArr{CommandType(sourceData.(float64))}, nil
+	return JSIntArr{Action(sourceData.(float64))}, nil
 }
 
 // JSONTime a time specialization that allows a compact string rapresentation: hh:mm

@@ -1,12 +1,10 @@
 package chik
 
 import (
-	"encoding/json"
 	"net"
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/cskr/pubsub"
 	"github.com/gofrs/uuid"
 )
@@ -56,15 +54,9 @@ func (c *Controller) Disconnect() {
 }
 
 // Reply sends back a reply message
-func (c *Controller) Reply(request *Message, replyType MsgType, replyContent interface{}) {
-	rawReply, err := json.Marshal(replyContent)
-	if err != nil {
-		logrus.Error("Cannot marshal status message")
-		return
-	}
-
+func (c *Controller) Reply(request *Message, replyType CommandType, replyContent interface{}) {
 	sender := request.SenderUUID()
-	reply := NewMessage(replyType, sender, rawReply)
+	reply := NewMessage(sender, NewCommand(replyType, replyContent))
 
 	// If sender is null the message is internal, otherwise it needs to go out
 	destination := "out"

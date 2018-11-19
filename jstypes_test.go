@@ -15,7 +15,7 @@ type testdata struct {
 	bytes string
 }
 
-var jsIntArrTestData = []testdata{testdata{[]CommandType{1}, "1"}, testdata{[]CommandType{1, 2}, "[1,2]"}, testdata{[]CommandType{}, "null"}}
+var jsIntArrTestData = []testdata{testdata{[]Action{1}, "1"}, testdata{[]Action{1, 2}, "[1,2]"}, testdata{[]Action{}, "null"}}
 
 func TestMarshalTime(t *testing.T) {
 	expected := "\"10:02\""

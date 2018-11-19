@@ -65,8 +65,8 @@ func (h *updater) Run(remote *chik.Controller) {
 	in := remote.PubSub.Sub(chik.VersionRequestCommandType.String())
 	for data := range in {
 		message := data.(*chik.Message)
-		command := chik.SimpleCommand{}
-		err := json.Unmarshal(message.Data(), &command)
+		var command chik.SimpleCommand
+		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil {
 			logrus.Warn("Unexpected message")
 			continue

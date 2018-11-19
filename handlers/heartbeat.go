@@ -30,7 +30,7 @@ func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		controller.PubSub.Pub(chik.NewMessage(chik.HeartbeatType, uuid.Nil, []byte{}), "out")
+		controller.PubSub.Pub(chik.NewMessage(uuid.Nil, chik.NewCommand(chik.HeartbeatType, nil)), "out")
 	}
 
 	ticker := time.NewTicker(h.interval)
@@ -58,7 +58,7 @@ func (h *heartbeat) Run(controller *chik.Controller) {
 	for data := range in {
 		message := data.(*chik.Message)
 
-		if message.Type() == chik.HeartbeatType {
+		if message.Command().Type == chik.HeartbeatType {
 			atomic.StoreUint32(&h.errors, 0)
 		}
 	}

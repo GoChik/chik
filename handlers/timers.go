@@ -53,20 +53,7 @@ func (h *timers) timeTicker(remote *chik.Controller) *time.Ticker {
 			lastMinute = tick.Minute()
 			for _, timer := range h.timers {
 				if timer.Time.Hour() == tick.Hour() && timer.Time.Minute() == tick.Minute() {
-					timedCommand := chik.DigitalCommand{Pin: timer.Pin}
-					if funk.Contains(timer.Command, chik.SET) {
-						timedCommand.Command = []chik.CommandType{chik.SET}
-					} else {
-						timedCommand.Command = []chik.CommandType{chik.RESET}
-					}
-
-					command, err := json.Marshal(timedCommand)
-					if err != nil {
-						logrus.Fatal("cannot marshal a digitalcommand: ", err)
-					}
-					remote.PubSub.Pub(
-						chik.NewMessage(chik.DigitalCommandType, uuid.Nil, command),
-						chik.DigitalCommandType.String())
+					remote.PubSub.Pub(chik.NewMessage(uuid.Nil, timer.Command), timer.Command.Type.String())
 				}
 			}
 		}
@@ -111,13 +98,13 @@ func (h *timers) Run(remote *chik.Controller) {
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)
 		command := chik.TimedCommand{}
-		err := json.Unmarshal(message.Data(), &command)
+		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil {
 			logrus.Warn("Failed decoding timer: ", err)
 			continue
 		}
 
-		if funk.Contains(command.Command, chik.SET) || funk.Contains(command.Command, chik.RESET) {
+		if funk.Contains(command.Action, chik.SET) {
 			if command.Time.IsZero() {
 				logrus.Warning("Cannot add/edit a timer with a null time")
 				continue
@@ -130,7 +117,7 @@ func (h *timers) Run(remote *chik.Controller) {
 			continue
 		}
 
-		if funk.Contains(command.Command, chik.DELETE) {
+		if funk.Contains(command.Action, chik.DELETE) {
 			h.deleteTimer(command)
 			continue
 		}
