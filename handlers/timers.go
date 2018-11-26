@@ -16,6 +16,7 @@ const timerStoragePath = "storage.timers"
 type timers struct {
 	timers      []chik.TimedCommand
 	lastTimerID uint16
+	status      *chik.StatusHolder
 }
 
 func NewTimers() chik.Handler {
@@ -38,6 +39,7 @@ func NewTimers() chik.Handler {
 	return &timers{
 		savedTimers,
 		lastID,
+		chik.NewStatusHolder("timers"),
 	}
 
 }
@@ -94,6 +96,8 @@ func (h *timers) Run(remote *chik.Controller) {
 	ticker := h.timeTicker(remote)
 	defer ticker.Stop()
 
+	h.status.SetStatus(h.timers, remote)
+
 	incoming := remote.PubSub.Sub(chik.TimerCommandType.String())
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)
@@ -114,20 +118,12 @@ func (h *timers) Run(remote *chik.Controller) {
 			} else {
 				h.editTimer(command)
 			}
-			continue
-		}
-
-		if funk.Contains(command.Action, chik.DELETE) {
+		} else if funk.Contains(command.Action, chik.RESET) {
 			h.deleteTimer(command)
-			continue
 		}
 
-		logrus.Warn("Unexpected timer command")
+		h.status.SetStatus(h.timers, remote)
 	}
-}
-
-func (h *timers) Status() interface{} {
-	return h.timers
 }
 
 func (h *timers) String() string {

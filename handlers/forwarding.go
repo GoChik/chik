@@ -81,10 +81,6 @@ func (h *forwarding) Run(controller *chik.Controller) {
 	logrus.Debug("shutting down forwarding handler")
 }
 
-func (h *forwarding) Status() interface{} {
-	return nil
-}
-
 func (h *forwarding) String() string {
 	return "forward"
 }

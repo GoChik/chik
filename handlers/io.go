@@ -12,12 +12,14 @@ import (
 type io struct {
 	actuator actuator.Actuator
 	pins     map[int]bool
+	status   *chik.StatusHolder
 }
 
 func NewIoHandler() chik.Handler {
 	return &io{
 		actuator.NewActuator(),
 		map[int]bool{},
+		chik.NewStatusHolder("io"),
 	}
 }
 
@@ -25,6 +27,8 @@ func (h *io) Run(remote *chik.Controller) {
 	logrus.Debug("starting io handler")
 	h.actuator.Initialize()
 	defer h.actuator.Deinitialize()
+
+	h.status.SetStatus(h.Status(), remote)
 
 	in := remote.PubSub.Sub(chik.DigitalCommandType.String())
 	for data := range in {
@@ -67,6 +71,8 @@ func (h *io) Run(remote *chik.Controller) {
 				h.actuator.TurnOn(command.Pin)
 			}
 		}
+
+		h.status.SetStatus(h.Status(), remote)
 	}
 
 	logrus.Debug("shutting down io handler")

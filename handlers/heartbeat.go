@@ -51,6 +51,7 @@ func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 
 func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("starting heartbeat handler")
+	time.Sleep(1 * time.Second)
 	sender := h.sender(controller)
 	defer sender.Stop()
 
@@ -63,10 +64,6 @@ func (h *heartbeat) Run(controller *chik.Controller) {
 		}
 	}
 	logrus.Debug("Shutting down heartbeat")
-}
-
-func (h *heartbeat) Status() interface{} {
-	return nil
 }
 
 func (h *heartbeat) String() string {

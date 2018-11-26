@@ -58,13 +58,13 @@ func main() {
 
 	// Creating handlers
 	handlerList := []chik.Handler{
+		handlers.NewStatusHandler(),
 		handlers.NewIoHandler(),
 		handlers.NewTimers(),
 		handlers.NewSunset(),
 		handlers.NewHeartBeatHandler(2 * time.Minute),
 		handlers.NewUpdater(),
 	}
-	handlerList = append(handlerList, handlers.NewStatusHandler(handlerList))
 
 	for _, h := range handlerList {
 		controller.Start(h)
