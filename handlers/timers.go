@@ -4,6 +4,7 @@ import (
 	"chik"
 	"chik/config"
 	"encoding/json"
+	"math"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -64,8 +65,8 @@ func (h *timers) timeTicker(remote *chik.Controller) *time.Ticker {
 }
 
 func (h *timers) addTimer(timer chik.TimedCommand) {
+	h.lastTimerID = (h.lastTimerID + 1) % math.MaxUint16
 	timer.TimerID = h.lastTimerID
-	h.lastTimerID++
 	h.timers = append(h.timers, timer)
 	config.Set(timerStoragePath, h.timers)
 	config.Sync()
