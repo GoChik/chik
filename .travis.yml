@@ -26,6 +26,7 @@ jobs:
       - export TRAVIS_BUILD_DIR=$GOPATH/src/chik
       - cd ${TRAVIS_BUILD_DIR}
       - make dependencies
+      - curl -fL https://getcli.jfrog.io | sh
       - export GOOS=linux
       - export GOARCH=amd64
       - make deploy
