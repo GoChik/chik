@@ -55,12 +55,12 @@ func (c *Controller) Disconnect() {
 
 // Reply sends back a reply message
 func (c *Controller) Reply(request *Message, replyType CommandType, replyContent interface{}) {
-	sender := request.SenderUUID()
-	reply := NewMessage(sender, NewCommand(replyType, replyContent))
+	receiver := request.SenderUUID()
+	reply := NewMessage(receiver, NewCommand(replyType, replyContent))
 
 	// If sender is null the message is internal, otherwise it needs to go out
 	destination := "out"
-	if sender == uuid.Nil {
+	if receiver == uuid.Nil {
 		destination = replyType.String()
 	}
 	c.PubSub.Pub(reply, destination)

@@ -66,10 +66,10 @@ func NewSunset() chik.Handler {
 
 func requestTimerStatus(remote *chik.Controller) []chik.TimedCommand {
 	result := make([]chik.TimedCommand, 0)
-	sub := remote.PubSub.SubOnce(chik.StatusReplyCommandType.String())
-	statusCommand := chik.SimpleCommand{Command: []chik.Action{chik.GET}}
-	statusRequest := chik.NewMessage(uuid.Nil, chik.NewCommand(chik.StatusRequestCommandType, statusCommand))
-	remote.PubSub.Pub(statusRequest, chik.StatusRequestCommandType.String())
+	sub := remote.PubSub.SubOnce(chik.StatusNotificationCommandType.String())
+	statusCommand := chik.SimpleCommand{Command: []chik.Action{chik.SET}}
+	statusRequest := chik.NewMessage(uuid.Nil, chik.NewCommand(chik.StatusSubscriptionCommandType, statusCommand))
+	remote.PubSub.Pub(statusRequest, chik.StatusSubscriptionCommandType.String())
 	select {
 	case statusRaw := <-sub:
 		var status map[string]interface{}
@@ -249,7 +249,7 @@ func (h *suntime) Run(remote *chik.Controller) {
 			continue
 		}
 
-		if funk.Contains(command.Command, chik.DELETE) {
+		if funk.Contains(command.Command, chik.RESET) {
 			logrus.Debug("Removing sun timer: ", command)
 			h.removeSunTimer(remote, command)
 			continue
@@ -257,10 +257,6 @@ func (h *suntime) Run(remote *chik.Controller) {
 
 		logrus.Warning("Unexpected sun command received, skipping")
 	}
-}
-
-func (h *suntime) Status() interface{} {
-	return nil
 }
 
 func (h *suntime) String() string {

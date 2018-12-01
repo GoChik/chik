@@ -6,7 +6,6 @@ GOFLAGS = -ldflags="-X chik/handlers.Version=$(VERSION) -s -w"
 default: help
 
 dependencies:
-	go get -u github.com/jfrog/jfrog-cli-go/jfrog-cli/jfrog
 	go get -u github.com/rferrazz/go-selfupdate
 	go get -u golang.org/x/tools/cmd/stringer
 

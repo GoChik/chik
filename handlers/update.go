@@ -5,8 +5,8 @@ import (
 	"chik/config"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gofrs/uuid"
@@ -52,11 +52,9 @@ func (h *updater) update() {
 	logrus.Debug("Updating to version: ", h.updater.Info.Version)
 	h.updater.BackgroundRun()
 
-	// relaunch current executable
-	args := os.Args[:]
-	args[0] = h.updater.CmdName
-	syscall.Exec(h.updater.CmdName, args, os.Environ())
-	// and exit
+	// TODO: launch update script and exit
+	command := exec.Command("/sbin/reboot")
+	command.Run()
 	os.Exit(0)
 }
 

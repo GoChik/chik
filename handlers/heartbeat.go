@@ -65,10 +65,6 @@ func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("Shutting down heartbeat")
 }
 
-func (h *heartbeat) Status() interface{} {
-	return nil
-}
-
 func (h *heartbeat) String() string {
 	return "heartbeat"
 }
