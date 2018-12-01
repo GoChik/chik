@@ -27,6 +27,7 @@ jobs:
       - cd ${TRAVIS_BUILD_DIR}
       - make dependencies
       - curl -fL https://getcli.jfrog.io | sh
+      - export PATH=${TRAVIS_BUILD_DIR}:$PATH
       - export GOOS=linux
       - export GOARCH=amd64
       - make deploy
