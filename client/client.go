@@ -70,14 +70,9 @@ func main() {
 		controller.Start(h)
 	}
 
-	// TODO: delete
-	tlsConf := tls.Config{
-		InsecureSkipVerify: true,
-	}
-
 	// Listening network
 	for {
-		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tlsConf)
+		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tls.Config{})
 		if err == nil {
 			logrus.Debug("New connection")
 			<-controller.Connect(conn)
