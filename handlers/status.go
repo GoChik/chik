@@ -46,6 +46,7 @@ func (h *handler) Run(remote *chik.Controller) {
 			for id := range h.subscribers {
 				remote.PubSub.Pub(chik.NewMessage(id, chik.NewCommand(chik.StatusNotificationCommandType, h.currentStatus)), "out")
 			}
+			continue
 		}
 
 		logrus.Warning("Unexpected message in status handler")

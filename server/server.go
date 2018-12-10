@@ -88,10 +88,10 @@ func main() {
 
 		// Creating the controller that is handling the newly connected client
 		logrus.Debug("Creating a new controller")
-		controller := chik.NewController(identity)
-		controller.Start(handlers.NewForwardingHandler(&peers))
-		controller.Start(handlers.NewHeartBeatHandler(2 * time.Minute))
 		go func() {
+			controller := chik.NewController(identity)
+			controller.Start(handlers.NewForwardingHandler(&peers))
+			controller.Start(handlers.NewHeartBeatHandler(2 * time.Minute))
 			<-controller.Connect(connection)
 			controller.Shutdown()
 		}()
