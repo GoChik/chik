@@ -24,7 +24,7 @@ type updater struct {
 // If conf file is not there it creates a default one searching for updates on the local machine
 func NewUpdater() chik.Handler {
 	logrus.Debug("Version: ", Version)
-	updatesURL := "http://dl.bintray.com/rferrazz/IO-Something"
+	updatesURL := "http://dl.bintray.com/rferrazz/IO-Something/"
 	value := config.Get("updater.url")
 	if value == nil {
 		config.Set("updater.url", updatesURL)
@@ -83,7 +83,11 @@ func (h *updater) Run(remote *chik.Controller) {
 				break
 			}
 			logrus.Debug("Getting update info from: ", h.updater.ApiURL)
-			h.updater.FetchInfo()
+			err := h.updater.FetchInfo()
+			if err != nil {
+				logrus.Warning("Cannot fetch update info:", err)
+				continue
+			}
 			version := chik.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
 			remote.Reply(message, chik.VersionReplyCommandType, version)
 
