@@ -63,7 +63,7 @@ func (c *Controller) Reply(request *Message, replyType CommandType, replyContent
 	if receiver == uuid.Nil {
 		destination = replyType.String()
 	}
-	c.PubSub.Pub(reply, destination)
+	c.PubSub.TryPub(reply, destination)
 }
 
 func (c *Controller) Shutdown() {
