@@ -123,3 +123,7 @@ func Equal(v1, v2 *Message) bool {
 
 	return true
 }
+
+func (m Message) String() string {
+	return fmt.Sprintf("{%v, %v, %s}", m.sender, m.receiver, m.data)
+}
