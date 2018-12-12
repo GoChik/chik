@@ -42,7 +42,7 @@ func NewUpdater() chik.Handler {
 			ApiURL:         updatesURL,
 			BinURL:         updatesURL,
 			DiffURL:        updatesURL,
-			Dir:            "/tmp",
+			Dir:            "/tmp/",
 			CmdName:        exe,
 		},
 	}
