@@ -41,7 +41,7 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 			if message.sender == uuid.Nil {
 				message.sender = controller.ID
 			}
-			logrus.Debug("Sending message", message)
+			logrus.Debug("Sending message: ", message)
 			conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
 			_, err := remote.conn.Write(message.Bytes())
 			if err != nil {
