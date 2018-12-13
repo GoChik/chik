@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"chik"
 	"net"
 	"testing"
 
+	"github.com/gochik/chik"
 	"github.com/gofrs/uuid"
 )
 

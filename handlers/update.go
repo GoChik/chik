@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"chik"
-	"chik/config"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
+	"github.com/gochik/chik/config"
 	"github.com/gofrs/uuid"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
 )

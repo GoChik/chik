@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"chik"
 	"encoding/json"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
 	"github.com/gofrs/uuid"
 )
 

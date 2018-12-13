@@ -1,12 +1,14 @@
 package main
 
 import (
-	"chik"
-	"chik/config"
-	"chik/handlers"
 	"crypto/tls"
 	"net"
 	"time"
+
+	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/handlers"
+
+	"github.com/gochik/chik"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gofrs/uuid"

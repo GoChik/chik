@@ -1,7 +1,6 @@
 package config
 
 import (
-	"chik"
 	"encoding/json"
 	"errors"
 	"os"
@@ -9,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/gochik/chik"
 )
 
 var conf config
