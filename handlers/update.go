@@ -42,7 +42,6 @@ func NewUpdater() chik.Handler {
 			ApiURL:         updatesURL,
 			BinURL:         updatesURL,
 			DiffURL:        updatesURL,
-			Dir:            "/tmp/",
 			CmdName:        exe,
 		},
 	}
@@ -50,7 +49,7 @@ func NewUpdater() chik.Handler {
 
 func (h *updater) update() {
 	logrus.Debug("Updating to version: ", h.updater.Info.Version)
-	h.updater.BackgroundRun()
+	h.updater.Apply()
 
 	// TODO: launch update script and exit
 	command := exec.Command("/sbin/reboot")
