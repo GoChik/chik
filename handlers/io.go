@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"chik"
-	"chik/actuator"
 	"encoding/json"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
+	"github.com/gochik/chik/actuator"
 )
 
 type io struct {

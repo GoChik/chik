@@ -1,14 +1,14 @@
 package main
 
 import (
-	"chik"
-	"chik/config"
-	"chik/handlers"
 	"crypto/tls"
 	"net"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
+	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/handlers"
 	"github.com/gofrs/uuid"
 )
 
@@ -72,7 +72,7 @@ func main() {
 
 	// Listening network
 	for {
-		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tls.Config{})
+		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tls.Config{InsecureSkipVerify: true})
 		if err == nil {
 			logrus.Debug("New connection")
 			<-controller.Connect(conn)

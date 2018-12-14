@@ -11,7 +11,6 @@ dependencies:
 
 rpi_client:
 	cd ${PWD}/client && \
-	go generate && \
 	GOOS=linux GOARCH=arm GOARM=6 go build -tags raspberrypi $(GOFLAGS)
 	mkdir -p bin/client
 	mv client/client bin/client/linux-arm
@@ -20,7 +19,6 @@ gpio_client:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
 	cd ${PWD}/client && \
-	go generate && \
 	go build -tags gpio $(GOFLAGS)
 	mkdir -p bin/client
 	mv client/client bin/client/$(GOOS)-$(GOARCH)
@@ -29,7 +27,6 @@ fake_client:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
 	cd ${PWD}/client && \
-	go generate && \
 	go build -tags fake $(GOFLAGS)
 	mkdir -p bin/client
 	mv client/client bin/client/$(GOOS)-$(GOARCH)
@@ -38,13 +35,11 @@ server:
 	test -n "$(GOOS)" # GOOS
 	test -n "$(GOARCH)" # GOARCH
 	cd ${PWD}/server && \
-	go generate && \
 	go build $(GOFLAGS)
 	mkdir -p bin/server
 	mv server/server bin/server/$(GOOS)-$(GOARCH)
 
 test:
-	go generate
 	go test -cover ./...
 
 deploy:

@@ -3,10 +3,12 @@
 package actuator
 
 import (
-	"chik"
-	"chik/config"
 	"strconv"
 	"sync"
+
+	"github.com/gochik/chik/config"
+
+	"github.com/gochik/chik"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/davecheney/gpio"

@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"chik"
-	"chik/config"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +8,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
+	"github.com/gochik/chik/config"
 	"github.com/gofrs/uuid"
 	"github.com/thoas/go-funk"
 )

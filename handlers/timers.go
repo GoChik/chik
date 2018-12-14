@@ -1,12 +1,12 @@
 package handlers
 
 import (
-	"chik"
-	"chik/config"
 	"encoding/json"
 	"math"
 	"time"
 
+	"github.com/gochik/chik/config"
+	"github.com/gochik/chik"
 	"github.com/Sirupsen/logrus"
 	"github.com/gofrs/uuid"
 	"github.com/thoas/go-funk"

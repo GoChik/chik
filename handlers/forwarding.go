@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"chik"
 	"fmt"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
 	uuid "github.com/gofrs/uuid"
 )
 
