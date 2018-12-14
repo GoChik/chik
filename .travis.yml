@@ -1,7 +1,7 @@
 language: go
 
 go:
-    - 1.9
+    - 1.11
 
 install: skip
 script: skip
@@ -10,10 +10,7 @@ jobs:
     include:
     - stage: test
       script:
-      - mkdir -p $GOPATH/src/chik
-      - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/chik/
-      - export TRAVIS_BUILD_DIR=$GOPATH/src/chik
-      - cd ${TRAVIS_BUILD_DIR}
+      - export GO111MODULE=on
       - make dependencies
       - export GOOS=linux
       - export GOARCH=amd64
@@ -21,10 +18,7 @@ jobs:
     - stage: deploy
       if: tag IS present
       script:
-      - mkdir -p $GOPATH/src/chik
-      - rsync -az ${TRAVIS_BUILD_DIR}/ $GOPATH/src/chik/
-      - export TRAVIS_BUILD_DIR=$GOPATH/src/chik
-      - cd ${TRAVIS_BUILD_DIR}
+      - export GO111MODULE=on
       - make dependencies
       - curl -fL https://getcli.jfrog.io | sh
       - export PATH=${TRAVIS_BUILD_DIR}:$PATH
