@@ -7,12 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/handlers"
-
-	"github.com/gochik/chik"
-
-	"github.com/Sirupsen/logrus"
 	"github.com/gofrs/uuid"
 )
 
