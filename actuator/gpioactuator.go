@@ -6,12 +6,10 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/gochik/chik/config"
-
-	"github.com/gochik/chik"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/davecheney/gpio"
+	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/types"
 )
 
 type pin struct {
@@ -96,7 +94,7 @@ func (a *gpioActuator) Initialize() {
 		return
 	}
 	var pins map[string]bool
-	err := chik.Decode(data, &pins)
+	err := types.Decode(data, &pins)
 	if err != nil {
 		logrus.Error(err)
 		return

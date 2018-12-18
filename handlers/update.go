@@ -9,6 +9,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
 )
@@ -59,10 +60,10 @@ func (h *updater) update() {
 
 func (h *updater) Run(remote *chik.Controller) {
 	logrus.Debug("starting version handler")
-	in := remote.PubSub.Sub(chik.VersionRequestCommandType.String())
+	in := remote.Sub(types.VersionRequestCommandType.String())
 	for data := range in {
 		message := data.(*chik.Message)
-		var command chik.SimpleCommand
+		var command types.SimpleCommand
 		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil {
 			logrus.Warn("Unexpected message")
@@ -75,7 +76,7 @@ func (h *updater) Run(remote *chik.Controller) {
 		}
 
 		switch command.Command[0] {
-		case chik.GET:
+		case types.GET:
 			sender := message.SenderUUID()
 			if sender == uuid.Nil {
 				logrus.Warn("Cannot get sender")
@@ -87,10 +88,10 @@ func (h *updater) Run(remote *chik.Controller) {
 				logrus.Warning("Cannot fetch update info:", err)
 				continue
 			}
-			version := chik.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
-			remote.Reply(message, chik.VersionReplyCommandType, version)
+			version := types.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
+			remote.Reply(message, types.VersionReplyCommandType, version)
 
-		case chik.SET:
+		case types.SET:
 			h.update()
 		}
 	}

@@ -1,6 +1,6 @@
 //go:generate stringer -type=CommandType
 
-package chik
+package types
 
 import (
 	"encoding/json"

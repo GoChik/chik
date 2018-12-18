@@ -10,7 +10,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
-	"github.com/gofrs/uuid"
+	"github.com/gochik/chik/types"
 	"github.com/thoas/go-funk"
 )
 
@@ -64,17 +64,16 @@ func NewSunset() chik.Handler {
 	return &handler
 }
 
-func requestTimerStatus(remote *chik.Controller) []chik.TimedCommand {
-	result := make([]chik.TimedCommand, 0)
-	sub := remote.PubSub.SubOnce(chik.StatusNotificationCommandType.String())
-	statusCommand := chik.SimpleCommand{Command: []chik.Action{chik.SET}}
-	statusRequest := chik.NewMessage(uuid.Nil, chik.NewCommand(chik.StatusSubscriptionCommandType, statusCommand))
-	remote.PubSub.Pub(statusRequest, chik.StatusSubscriptionCommandType.String())
+func requestTimerStatus(controller *chik.Controller) []types.TimedCommand {
+	result := make([]types.TimedCommand, 0)
+	sub := controller.SubOnce(types.StatusNotificationCommandType.String())
+	statusCommand := types.SimpleCommand{Command: []types.Action{types.SET}}
+	controller.Pub(types.NewCommand(types.StatusSubscriptionCommandType, statusCommand), chik.LoopbackID)
 	select {
 	case statusRaw := <-sub:
 		var status map[string]interface{}
 		json.Unmarshal(statusRaw.(*chik.Message).Command().Data, &status)
-		err := chik.Decode(status["timers"], &result)
+		err := types.Decode(status["timers"], &result)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -85,46 +84,45 @@ func requestTimerStatus(remote *chik.Controller) []chik.TimedCommand {
 	}
 }
 
-func (h *suntime) updateTimers(remote *chik.Controller) {
+func (h *suntime) updateTimers(controller *chik.Controller) {
 	// fetch sun time
 	h.fetchSunTime()
 
 	// fetch timers from a status request
-	timers := requestTimerStatus(remote)
+	timers := requestTimerStatus(controller)
 	logrus.Debug("Timers: ", timers)
 
 	for _, timer := range timers {
 		send := false
 
-		if funk.Contains(timer.Action, chik.SUNRISE) {
-			timer.Time = chik.JSONTime{h.cache.sunrise.In(time.Local)}
+		if funk.Contains(timer.Action, types.SUNRISE) {
+			timer.Time = types.JSONTime{h.cache.sunrise.In(time.Local)}
 			send = true
 		}
 
-		if funk.Contains(timer.Action, chik.SUNSET) {
-			timer.Time = chik.JSONTime{h.cache.sunset.In(time.Local)}
+		if funk.Contains(timer.Action, types.SUNSET) {
+			timer.Time = types.JSONTime{h.cache.sunset.In(time.Local)}
 			send = true
 		}
 
 		if send {
 			logrus.Debug("Updating timer according to sun time")
-			timerChangeRequest := chik.NewMessage(uuid.Nil, chik.NewCommand(chik.TimerCommandType, timer))
-			remote.PubSub.Pub(timerChangeRequest, chik.TimerCommandType.String())
+			controller.Pub(types.NewCommand(types.TimerCommandType, timer), chik.LoopbackID)
 		}
 	}
 }
 
-func (h *suntime) worker(remote *chik.Controller) *time.Ticker {
+func (h *suntime) worker(controller *chik.Controller) *time.Ticker {
 	ticker := time.NewTicker(23 * time.Hour)
 	go func() {
 		lastDay := time.Now().Day()
-		h.updateTimers(remote)
+		h.updateTimers(controller)
 		for tick := range ticker.C {
 			if lastDay == tick.Day() {
 				continue
 			}
 			lastDay = tick.Day()
-			h.updateTimers(remote)
+			h.updateTimers(controller)
 		}
 	}()
 	return ticker
@@ -196,37 +194,35 @@ func (h *suntime) fetchSunTime() {
 	logrus.Debug("Sunrise: ", h.cache.sunrise, " sunset: ", h.cache.sunset)
 }
 
-func (h *suntime) addSunTimer(remote *chik.Controller, timer chik.TimedCommand) {
-	if funk.Contains(timer.Action, chik.SUNRISE) {
-		timer.Time = chik.JSONTime{h.cache.sunrise.In(time.Local)}
-	} else if funk.Contains(timer.Action, chik.SUNSET) {
-		timer.Time = chik.JSONTime{h.cache.sunset.In(time.Local)}
+func (h *suntime) addSunTimer(controller *chik.Controller, timer types.TimedCommand) {
+	if funk.Contains(timer.Action, types.SUNRISE) {
+		timer.Time = types.JSONTime{h.cache.sunrise.In(time.Local)}
+	} else if funk.Contains(timer.Action, types.SUNSET) {
+		timer.Time = types.JSONTime{h.cache.sunset.In(time.Local)}
 	} else {
 		logrus.Error("Command does not contain sunrise or sunset")
 		return
 	}
 
-	message := chik.NewMessage(uuid.Nil, chik.NewCommand(chik.TimerCommandType, timer))
-	remote.PubSub.Pub(message, chik.TimerCommandType.String())
+	controller.Pub(types.NewCommand(types.TimerCommandType, timer), chik.LoopbackID)
 }
 
-func (h *suntime) editSunTimer(remote *chik.Controller, timer chik.TimedCommand) {
+func (h *suntime) editSunTimer(controller *chik.Controller, timer types.TimedCommand) {
 	logrus.Error("Editing sun timers not supported")
 }
 
-func (h *suntime) removeSunTimer(remote *chik.Controller, timer chik.TimedCommand) {
-	message := chik.NewMessage(uuid.Nil, chik.NewCommand(chik.TimerCommandType, timer))
-	remote.PubSub.Pub(message, chik.TimerCommandType.String())
+func (h *suntime) removeSunTimer(controller *chik.Controller, timer types.TimedCommand) {
+	controller.Pub(types.NewCommand(types.TimerCommandType, timer), chik.LoopbackID)
 }
 
-func (h *suntime) Run(remote *chik.Controller) {
-	worker := h.worker(remote)
+func (h *suntime) Run(controller *chik.Controller) {
+	worker := h.worker(controller)
 	defer worker.Stop()
 
-	sub := remote.PubSub.Sub(chik.SunsetCommandType.String())
+	sub := controller.Sub(types.SunsetCommandType.String())
 	for rawMessage := range sub {
 		message := rawMessage.(*chik.Message)
-		var command chik.TimedCommand
+		var command types.TimedCommand
 		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil {
 			logrus.Error("Command parsing failed")
@@ -238,20 +234,20 @@ func (h *suntime) Run(remote *chik.Controller) {
 			continue
 		}
 
-		if funk.Contains(command.Action, chik.SET) {
+		if funk.Contains(command.Action, types.SET) {
 			if command.TimerID == 0 {
 				logrus.Debug("Adding a new sun timer: ", command)
-				h.addSunTimer(remote, command)
+				h.addSunTimer(controller, command)
 			} else {
 				logrus.Debug("Editing sun timer: ", command)
-				h.editSunTimer(remote, command)
+				h.editSunTimer(controller, command)
 			}
 			continue
 		}
 
-		if funk.Contains(command.Command, chik.RESET) {
+		if funk.Contains(command.Command, types.RESET) {
 			logrus.Debug("Removing sun timer: ", command)
-			h.removeSunTimer(remote, command)
+			h.removeSunTimer(controller, command)
 			continue
 		}
 

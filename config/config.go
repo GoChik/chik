@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gochik/chik"
+	"github.com/gochik/chik/types"
 )
 
 var conf config
@@ -144,7 +144,7 @@ func Get(key string) interface{} {
 // GetStruct populates data of the given struct with config file content
 func GetStruct(key string, output interface{}) error {
 	data := Get(key)
-	return chik.Decode(data, output)
+	return types.Decode(data, output)
 }
 
 // Set sets or modifies a value in the config file.

@@ -1,4 +1,4 @@
-package chik
+package types
 
 import (
 	"encoding/json"

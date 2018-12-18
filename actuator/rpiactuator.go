@@ -6,11 +6,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/gochik/chik/config"
-
-	"github.com/gochik/chik"
-
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/types"
 	rpio "github.com/stianeikeland/go-rpio"
 )
 
@@ -57,7 +55,7 @@ func (a *rpiActuator) Initialize() {
 		return
 	}
 	var pins map[string]bool
-	err := chik.Decode(data, &pins)
+	err := types.Decode(data, &pins)
 	if err != nil {
 		logrus.Error(err)
 		return

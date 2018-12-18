@@ -6,7 +6,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gochik/chik"
-	uuid "github.com/gofrs/uuid"
+	"github.com/gochik/chik/types"
+	"github.com/gofrs/uuid"
 )
 
 const maxErrors uint32 = 3
@@ -27,10 +28,10 @@ func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 	}
 }
 
-func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
+func (h *heartbeat) sender(controller *chik.Controller, receiverID uuid.UUID) *time.Ticker {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		controller.PubSub.Pub(chik.NewMessage(uuid.Nil, chik.NewCommand(chik.HeartbeatType, nil)), "out")
+		controller.Pub(types.NewCommand(types.HeartbeatType, nil), receiverID)
 	}
 
 	ticker := time.NewTicker(h.interval)
@@ -51,16 +52,21 @@ func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 
 func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("starting heartbeat handler")
-	sender := h.sender(controller)
-	defer sender.Stop()
+	var senderRoutine *time.Ticker
 
-	in := controller.PubSub.Sub(chik.HeartbeatType.String())
+	in := controller.Sub(types.HeartbeatType.String())
 	for data := range in {
 		message := data.(*chik.Message)
+		if senderRoutine == nil {
+			senderRoutine = h.sender(controller, message.SenderUUID())
+		}
 
-		if message.Command().Type == chik.HeartbeatType {
+		if message.Command().Type == types.HeartbeatType {
 			atomic.StoreUint32(&h.errors, 0)
 		}
+	}
+	if senderRoutine != nil {
+		senderRoutine.Stop()
 	}
 	logrus.Debug("Shutting down heartbeat")
 }

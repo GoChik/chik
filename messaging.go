@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 )
 
@@ -19,7 +20,7 @@ type Message struct {
 }
 
 // NewMessage creates a new message
-func NewMessage(receiver uuid.UUID, command *Command) *Message {
+func NewMessage(receiver uuid.UUID, command *types.Command) *Message {
 	data, err := json.Marshal(command)
 	if err != nil {
 		logrus.Error("Failed to create a message, parsing data failed")
@@ -82,8 +83,8 @@ func (m *Message) ReceiverUUID() (uuid.UUID, error) {
 }
 
 // Command returns message content as a Command object
-func (m *Message) Command() *Command {
-	var command Command
+func (m *Message) Command() *types.Command {
+	var command types.Command
 	err := json.Unmarshal(m.data, &command)
 	if err != nil {
 		return nil
