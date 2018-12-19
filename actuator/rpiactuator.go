@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	rpio "github.com/stianeikeland/go-rpio"

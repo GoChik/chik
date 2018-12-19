@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"

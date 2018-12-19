@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/actuator"
 	"github.com/gochik/chik/types"

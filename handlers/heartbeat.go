@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"

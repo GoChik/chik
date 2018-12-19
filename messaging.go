@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 )
