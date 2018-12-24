@@ -4,10 +4,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 const maxErrors uint32 = 3
@@ -53,6 +53,8 @@ func (h *heartbeat) sender(controller *chik.Controller, receiverID uuid.UUID) *t
 func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("starting heartbeat handler")
 	var senderRoutine *time.Ticker
+
+	controller.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
 
 	in := controller.Sub(types.HeartbeatType.String())
 	for data := range in {

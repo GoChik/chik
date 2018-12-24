@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // WriteTimeout defines the time after which a write operation is considered failed
@@ -72,8 +72,7 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 				remote.Terminate()
 				return
 			}
-			id := message.SenderUUID()
-			logrus.Debug("Message received from:", id)
+			logrus.Debug("Message received: ", message)
 			controller.PubMessage(message, IncomingMessage, message.Command().Type.String())
 		}
 	}()
@@ -86,5 +85,6 @@ func (r *Remote) Terminate() {
 	r.stopOnce.Do(func() {
 		r.conn.Close()
 		r.Closed <- true
+		close(r.Closed)
 	})
 }

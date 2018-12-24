@@ -1,10 +1,16 @@
 package handlers
 
 import (
+	"errors"
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/config"
 	"github.com/gofrs/uuid"
 )
 
@@ -14,6 +20,18 @@ type TestClient struct {
 }
 
 var address net.Addr
+
+func createController() *chik.Controller {
+	f, err := ioutil.TempFile("", "tst")
+	if err != nil {
+		return nil
+	}
+	defer os.Remove(f.Name())
+
+	config.AddSearchPath(os.TempDir())
+	config.SetConfigFileName(filepath.Base(f.Name()))
+	return chik.NewController()
+}
 
 func CreateServer(t *testing.T) net.Listener {
 	listener, err := net.Listen("tcp", "127.0.0.1:")
@@ -28,13 +46,16 @@ func CreateServer(t *testing.T) net.Listener {
 			if err != nil {
 				t.Fatal(err)
 			}
-			id, err := uuid.NewV1()
-			if err != nil {
-				t.Fatal(err)
+			srv := createController()
+			if srv == nil {
+				t.Fatal("Cannot create controller")
 			}
-			srv := chik.NewController(id)
-			srv.Connect(conn)
-			go NewForwardingHandler(&peers).Run(srv)
+			go func() {
+				srv.Start(NewForwardingHandler(&peers))
+				srv.Start(NewHeartBeatHandler(1 * time.Second))
+				<-srv.Connect(conn)
+				srv.Shutdown()
+			}()
 		}
 	}()
 	return listener
@@ -45,10 +66,12 @@ func CreateClient() (client TestClient, err error) {
 	if err != nil {
 		return
 	}
-
-	id, _ := uuid.NewV1()
-	controller := chik.NewController(id)
+	controller := createController()
+	if controller == nil {
+		err = errors.New("failed to create a controller")
+		return
+	}
 	controller.Connect(conn)
-	client = TestClient{controller, id}
+	client = TestClient{controller, controller.ID}
 	return
 }

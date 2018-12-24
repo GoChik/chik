@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/cskr/pubsub"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // BufferSize is the size of channel buffers
@@ -35,7 +35,9 @@ func NewController() *Controller {
 		DisableTimestamp: false,
 	})
 
-	logLevel, err := logrus.ParseLevel(config.Get("log_level").(string))
+	var levelString string
+	config.GetStruct("log_level", &levelString)
+	logLevel, err := logrus.ParseLevel(levelString)
 	if err != nil {
 		logrus.Warn("Cannot parse log level, setting it to warning by default: ", err)
 		config.Set("log_level", "warning")
@@ -44,13 +46,16 @@ func NewController() *Controller {
 	}
 	logrus.SetLevel(logLevel)
 
-	identity := uuid.FromStringOrNil(config.Get("identity").(string))
+	var idString string
+	config.GetStruct("identity", &idString)
+	identity := uuid.FromStringOrNil(idString)
 	if identity == uuid.Nil {
-		id, _ := uuid.NewV1()
-		config.Set("identity", id)
+		identity, _ = uuid.NewV1()
+		config.Set("identity", identity)
 		config.Sync()
 		logrus.Warn("Cannot get identity from config file, one has been auto generated")
 	}
+	logrus.Warn(identity)
 
 	return &Controller{
 		active: true,
@@ -92,9 +97,9 @@ func (c *Controller) PubMessage(message *Message, topics ...string) {
 
 // Pub publishes a Message composed by the given Command
 func (c *Controller) Pub(command *types.Command, receiverID uuid.UUID) {
-	messageKind := command.Type.String()
+	messageKind := OutgoingMessage
 	if receiverID == LoopbackID {
-		messageKind = OutgoingMessage
+		messageKind = command.Type.String()
 	}
 
 	c.PubMessage(NewMessage(receiverID, command), messageKind)
@@ -113,14 +118,10 @@ func (c *Controller) SubOnce(topics ...string) chan interface{} {
 // Reply sends back a reply message
 func (c *Controller) Reply(request *Message, replyType types.CommandType, replyContent interface{}) {
 	receiver := request.SenderUUID()
-	reply := NewMessage(receiver, types.NewCommand(replyType, replyContent))
+	command := types.NewCommand(replyType, replyContent)
 
 	// If sender is null the message is internal, otherwise it needs to go out
-	destination := OutgoingMessage
-	if receiver == uuid.Nil {
-		destination = replyType.String()
-	}
-	c.PubMessage(reply, destination)
+	c.Pub(command, receiver)
 }
 
 // Shutdown disconnects and turns off every handler

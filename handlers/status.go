@@ -3,10 +3,10 @@ package handlers
 import (
 	"encoding/json"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type set struct{}
@@ -27,6 +27,7 @@ func (h *handler) Run(remote *chik.Controller) {
 	incoming := remote.Sub(types.StatusSubscriptionCommandType.String(), types.StatusUpdateCommandType.String())
 	for rawMessage := range incoming {
 		message := rawMessage.(*chik.Message)
+		logrus.Debug("status: received: ", message)
 
 		if message.Command().Type == types.StatusSubscriptionCommandType {
 			h.subscribers[message.SenderUUID()] = set{}
@@ -50,7 +51,7 @@ func (h *handler) Run(remote *chik.Controller) {
 			continue
 		}
 
-		logrus.Warning("Unexpected message in status handler")
+		logrus.Warning("Unexpected message in status handler ", message)
 	}
 }
 

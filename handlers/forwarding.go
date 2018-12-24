@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	uuid "github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type forwarding struct {
@@ -62,7 +62,8 @@ func (h *forwarding) Run(controller *chik.Controller) {
 			continue
 
 		case h.id:
-			logrus.Warning("Not forwarding message to self")
+		case controller.ID:
+			logrus.Warning("Ignoring message to self")
 			continue
 
 		default:
