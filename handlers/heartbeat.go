@@ -4,9 +4,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gochik/chik"
-	uuid "github.com/gofrs/uuid"
+	"github.com/gochik/chik/types"
+	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 const maxErrors uint32 = 3
@@ -14,6 +15,7 @@ const maxErrors uint32 = 3
 type heartbeat struct {
 	interval time.Duration
 	errors   uint32
+	remoteID uuid.UUID
 }
 
 // NewHeartBeatHandler creates a new heartbeat handler
@@ -30,7 +32,7 @@ func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		controller.PubSub.Pub(chik.NewMessage(uuid.Nil, chik.NewCommand(chik.HeartbeatType, nil)), "out")
+		controller.PubMessage(chik.NewMessage(h.remoteID, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
 	}
 
 	ticker := time.NewTicker(h.interval)
@@ -51,17 +53,19 @@ func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 
 func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("starting heartbeat handler")
-	sender := h.sender(controller)
-	defer sender.Stop()
-
-	in := controller.PubSub.Sub(chik.HeartbeatType.String())
+	senderRoutine := h.sender(controller)
+	in := controller.Sub(types.HeartbeatType.String())
 	for data := range in {
 		message := data.(*chik.Message)
+		if h.remoteID == uuid.Nil {
+			h.remoteID = message.SenderUUID()
+		}
 
-		if message.Command().Type == chik.HeartbeatType {
+		if message.Command().Type == types.HeartbeatType {
 			atomic.StoreUint32(&h.errors, 0)
 		}
 	}
+	senderRoutine.Stop()
 	logrus.Debug("Shutting down heartbeat")
 }
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gochik/chik"
 	uuid "github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type forwarding struct {
@@ -31,7 +31,7 @@ func (h *forwarding) Run(controller *chik.Controller) {
 
 	defer h.terminate()
 
-	in := controller.PubSub.Sub("in")
+	in := controller.Sub(chik.IncomingMessage)
 	for data := range in {
 		message := data.(*chik.Message)
 		sender := message.SenderUUID()
@@ -62,7 +62,8 @@ func (h *forwarding) Run(controller *chik.Controller) {
 			continue
 
 		case h.id:
-			logrus.Warning("Not forwarding message to self")
+		case controller.ID:
+			logrus.Warning("Ignoring message to self")
 			continue
 
 		default:
@@ -74,7 +75,7 @@ func (h *forwarding) Run(controller *chik.Controller) {
 				continue
 			}
 
-			receiverRemote.(*chik.Controller).PubSub.Pub(message, "out")
+			receiverRemote.(*chik.Controller).PubMessage(message, chik.OutgoingMessage)
 		}
 	}
 	h.peers.Delete(h.id)

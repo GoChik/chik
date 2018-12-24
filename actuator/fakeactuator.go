@@ -2,7 +2,7 @@
 
 package actuator
 
-import "github.com/Sirupsen/logrus"
+import "github.com/sirupsen/logrus"
 
 type fakeActuator struct {
 	initCalled bool

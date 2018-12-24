@@ -5,56 +5,30 @@ import (
 	"net"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/handlers"
-	"github.com/gofrs/uuid"
 )
 
 func main() {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:    true,
-		DisableTimestamp: false,
-	})
-	logrus.SetLevel(logrus.WarnLevel)
-
-	// Config stuff
 	config.SetConfigFileName("client.conf")
 	config.AddSearchPath("/etc/chik")
 	config.AddSearchPath(".")
 	err := config.ParseConfig()
-
 	if err != nil {
-		if _, ok := err.(*config.FileNotFoundError); ok {
-			id, _ := uuid.NewV1()
-			config.Set("identity", id)
-			config.Set("server", "")
-			config.Set("log_level", "warning")
-			config.Sync()
-		}
-		logrus.Fatal("Config file not found: stub created")
-	}
-
-	logLevel, err := logrus.ParseLevel(config.Get("log_level").(string))
-	if err != nil {
-		logrus.Fatal("Cannot set log level: ", err)
-	}
-	logrus.SetLevel(logLevel)
-
-	identity := uuid.FromStringOrNil(config.Get("identity").(string))
-	if identity == uuid.Nil {
-		logrus.Fatal("Cannot get id from config")
+		logrus.Warn("Failed parsing config file: ", err)
 	}
 
 	server := config.Get("server").(string)
 	if server == "" {
+		config.Set("server", "127.0.0.1:6767")
+		config.Sync()
 		logrus.Fatal("Cannot get server from config")
 	}
 
-	logrus.Debug("Identity: ", identity)
 	logrus.Debug("Server: ", server)
-	controller := chik.NewController(identity)
+	controller := chik.NewController()
 
 	// Creating handlers
 	handlerList := []chik.Handler{

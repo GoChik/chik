@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/actuator"
+	"github.com/gochik/chik/types"
 )
 
 type io struct {
@@ -30,11 +31,11 @@ func (h *io) Run(remote *chik.Controller) {
 
 	h.status.SetStatus(h.Status(), remote)
 
-	in := remote.PubSub.Sub(chik.DigitalCommandType.String())
+	in := remote.Sub(types.DigitalCommandType.String())
 	for data := range in {
 		message := data.(*chik.Message)
 
-		command := chik.DigitalCommand{}
+		command := types.DigitalCommand{}
 		err := json.Unmarshal(message.Command().Data, &command)
 		if err != nil {
 			logrus.Error("cannot decode digital command: ", err)
@@ -48,22 +49,22 @@ func (h *io) Run(remote *chik.Controller) {
 
 		h.pins[command.Pin] = true
 
-		switch command.Command[0] {
-		case chik.RESET:
+		switch types.Action(command.Command[0]) {
+		case types.RESET:
 			logrus.Debug("Turning off pin ", command.Pin)
 			h.actuator.TurnOff(command.Pin)
 
-		case chik.SET:
+		case types.SET:
 			logrus.Debug("Turning on pin ", command.Pin)
 			h.actuator.TurnOn(command.Pin)
 
-		case chik.PUSH:
+		case types.PUSH:
 			logrus.Debug("Turning on and off pin ", command.Pin)
 			h.actuator.TurnOn(command.Pin)
 			time.Sleep(1 * time.Second)
 			h.actuator.TurnOff(command.Pin)
 
-		case chik.TOGGLE:
+		case types.TOGGLE:
 			logrus.Debug("Switching pin ", command.Pin)
 			if h.actuator.GetStatus(command.Pin) {
 				h.actuator.TurnOff(command.Pin)

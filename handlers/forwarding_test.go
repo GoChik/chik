@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 var peers = sync.Map{}
@@ -24,19 +25,20 @@ func TestForwarding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	logrus.SetLevel(logrus.DebugLevel)
 	logrus.Debug("Sender:", client1.id, "receiver:", client2.id)
 
-	forwarded := client1.remote.PubSub.Sub(chik.DigitalCommandType.String())
-	time.Sleep(100 * time.Millisecond) // TODO: fix the handshake
-	client1.remote.PubSub.Pub(chik.NewMessage(uuid.Nil, chik.NewCommand(chik.HeartbeatType, nil)), "out")
-	time.Sleep(100 * time.Millisecond) // TODO: fix the handshake
-	client2.remote.PubSub.Pub(chik.NewMessage(client1.id, chik.NewCommand(chik.DigitalCommandType, nil)), "out")
+	forwarded := client1.remote.Sub(types.DigitalCommandType.String())
+	client1.remote.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
+	client2.remote.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
+	time.Sleep(500 * time.Millisecond) // TODO: fix the handshake
+	client2.remote.Pub(types.NewCommand(types.DigitalCommandType, types.SimpleCommand{}), client1.id)
 
 	select {
 	case <-forwarded:
 		logrus.Debug("forwarding done")
 
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(1000 * time.Millisecond):
 		t.Fail()
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gofrs/uuid"
+	"github.com/gochik/chik/types"
 )
 
 var stopChannel <-chan bool
@@ -23,11 +23,7 @@ func testRoutine(t *testing.T, f func(c net.Conn, controller *Controller)) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, err := uuid.NewV1()
-	if err != nil {
-		t.Fatal(err)
-	}
-	controller := NewController(id)
+	controller := NewController()
 	stopChannel = controller.Connect(s)
 	defer controller.Shutdown()
 
@@ -52,7 +48,7 @@ func TestInvalidRead(t *testing.T) {
 		RawData []byte
 	}{
 		{"Invalid length", []byte{0, 0, 0, 0, 2, 0, 0}},
-		{"Type out of bound", []byte{byte(HeartbeatType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
+		{"Type out of bound", []byte{byte(types.HeartbeatType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	} {
 		testRoutine(t, func(c net.Conn, controller *Controller) {
 			c.Write(val.RawData)
@@ -61,17 +57,4 @@ func TestInvalidRead(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestTerminateTwice(t *testing.T) {
-	testRoutine(t, func(c net.Conn, cont *Controller) {
-		cont.Disconnect()
-		if !hasStopped() {
-			t.Error("Expecting a stop signal")
-		}
-		cont.Disconnect()
-		if hasStopped() {
-			t.Error("Not expecting a stop because it has been already sent")
-		}
-	})
 }

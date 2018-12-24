@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gofrs/uuid"
+	"github.com/gochik/chik/types"
 )
 
 // Handler is the interface that handles network messages
@@ -29,9 +29,9 @@ func NewStatusHolder(moduleName string) *StatusHolder {
 }
 
 func (s *StatusHolder) emitStatusChanged(c *Controller) {
-	status := Status{}
+	status := types.Status{}
 	status[s.moduleName] = s.status
-	c.PubSub.Pub(NewMessage(uuid.Nil, NewCommand(StatusUpdateCommandType, status)), StatusUpdateCommandType.String())
+	c.Pub(types.NewCommand(types.StatusUpdateCommandType, status), LoopbackID)
 }
 
 // SetStatus stores the status and emits it if it is changed

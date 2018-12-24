@@ -1,11 +1,11 @@
 //go:generate stringer -type=CommandType
 
-package chik
+package types
 
 import (
 	"encoding/json"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // Action is an enum of all the possible commands
