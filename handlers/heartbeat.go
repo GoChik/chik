@@ -15,6 +15,7 @@ const maxErrors uint32 = 3
 type heartbeat struct {
 	interval time.Duration
 	errors   uint32
+	remoteID uuid.UUID
 }
 
 // NewHeartBeatHandler creates a new heartbeat handler
@@ -28,10 +29,10 @@ func NewHeartBeatHandler(interval time.Duration) chik.Handler {
 	}
 }
 
-func (h *heartbeat) sender(controller *chik.Controller, receiverID uuid.UUID) *time.Ticker {
+func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 	sendHeartBeat := func() {
 		logrus.Debug("Sending heartbeat")
-		controller.Pub(types.NewCommand(types.HeartbeatType, nil), receiverID)
+		controller.PubMessage(chik.NewMessage(h.remoteID, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
 	}
 
 	ticker := time.NewTicker(h.interval)
@@ -52,24 +53,19 @@ func (h *heartbeat) sender(controller *chik.Controller, receiverID uuid.UUID) *t
 
 func (h *heartbeat) Run(controller *chik.Controller) {
 	logrus.Debug("starting heartbeat handler")
-	var senderRoutine *time.Ticker
-
-	controller.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
-
+	senderRoutine := h.sender(controller)
 	in := controller.Sub(types.HeartbeatType.String())
 	for data := range in {
 		message := data.(*chik.Message)
-		if senderRoutine == nil {
-			senderRoutine = h.sender(controller, message.SenderUUID())
+		if h.remoteID == uuid.Nil {
+			h.remoteID = message.SenderUUID()
 		}
 
 		if message.Command().Type == types.HeartbeatType {
 			atomic.StoreUint32(&h.errors, 0)
 		}
 	}
-	if senderRoutine != nil {
-		senderRoutine.Stop()
-	}
+	senderRoutine.Stop()
 	logrus.Debug("Shutting down heartbeat")
 }
 
