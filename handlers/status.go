@@ -30,7 +30,10 @@ func (h *handler) Run(remote *chik.Controller) {
 		logrus.Debug("status: received: ", message)
 
 		if message.Command().Type == types.StatusSubscriptionCommandType {
-			h.subscribers[message.SenderUUID()] = set{}
+			if message.SenderUUID() != chik.LoopbackID ||
+				message.SenderUUID() != remote.ID {
+				h.subscribers[message.SenderUUID()] = set{}
+			}
 			remote.Reply(message, types.StatusNotificationCommandType, h.currentStatus)
 			continue
 		}
