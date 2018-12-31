@@ -5,10 +5,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/handlers"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -46,7 +46,7 @@ func main() {
 
 	// Listening network
 	for {
-		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tls.Config{InsecureSkipVerify: true})
+		conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 1 * time.Minute}, "tcp", server, &tls.Config{})
 		if err == nil {
 			logrus.Debug("New connection")
 			<-controller.Connect(conn)
