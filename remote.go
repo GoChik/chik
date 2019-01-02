@@ -36,7 +36,6 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 	// Send function
 	go func() {
 		logrus.Debug("Sender started")
-		// heartbeat outgoing messages have a special type in order to avoid being bounced back
 		out := controller.Sub(OutgoingMessage)
 		for data := range out {
 			message, ok := data.(*Message)

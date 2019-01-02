@@ -20,12 +20,13 @@ const MaxIdleTime = 5 * time.Minute
 var LoopbackID = uuid.Nil
 
 type Controller struct {
-	ID       uuid.UUID
-	pubSub   *pubsub.PubSub
-	remote   *Remote
-	shutdown sync.Once
-	handlers sync.WaitGroup
-	active   bool
+	ID         uuid.UUID
+	pubSub     *pubsub.PubSub
+	remote     *Remote
+	shutdown   sync.Once
+	disconnect sync.Mutex
+	handlers   sync.WaitGroup
+	active     bool
 }
 
 // NewController creates a new controller
@@ -78,16 +79,19 @@ func (c *Controller) Start(h Handler) {
 // Connect tries to brign up the remoe connection
 // it returns a channel that gets closed when the connection goes down
 func (c *Controller) Connect(connection net.Conn) <-chan bool {
-	if c.remote != nil {
-		c.remote.Terminate()
-	}
+	c.Disconnect()
 	c.remote = newRemote(c, connection, MaxIdleTime)
 	return c.remote.Closed
 }
 
 // Disconnect disconnects the remote connection (if any)
 func (c *Controller) Disconnect() {
-	c.remote.Terminate()
+	c.disconnect.Lock()
+	if c.remote != nil {
+		c.remote.Terminate()
+		c.remote = nil
+	}
+	c.disconnect.Unlock()
 }
 
 // PubMessage publishes a Message
