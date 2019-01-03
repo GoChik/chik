@@ -6,16 +6,13 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/rferrazz/go-selfupdate/selfupdate"
+	"github.com/sirupsen/logrus"
 )
-
-// Current software version
-var Version = "dev"
 
 type updater struct {
 	updater *selfupdate.Updater
@@ -23,8 +20,8 @@ type updater struct {
 
 // NewUpdater creates an updater from conf stored in config file.
 // If conf file is not there it creates a default one searching for updates on the local machine
-func NewUpdater() chik.Handler {
-	logrus.Debug("Version: ", Version)
+func NewUpdater(currentVersion string) chik.Handler {
+	logrus.Debug("Version: ", currentVersion)
 	updatesURL := "http://dl.bintray.com/rferrazz/IO-Something/"
 	value := config.Get("updater.url")
 	if value == nil {
@@ -39,7 +36,7 @@ func NewUpdater() chik.Handler {
 
 	return &updater{
 		updater: &selfupdate.Updater{
-			CurrentVersion: Version,
+			CurrentVersion: currentVersion,
 			ApiURL:         updatesURL,
 			BinURL:         updatesURL,
 			DiffURL:        updatesURL,
