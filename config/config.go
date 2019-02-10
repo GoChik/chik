@@ -144,6 +144,9 @@ func Get(key string) interface{} {
 // GetStruct populates data of the given struct with config file content
 func GetStruct(key string, output interface{}) error {
 	data := Get(key)
+	if data == nil {
+		return errors.New("Null data")
+	}
 	return types.Decode(data, output)
 }
 
