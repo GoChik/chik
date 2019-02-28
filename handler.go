@@ -34,11 +34,21 @@ func (s *StatusHolder) emitStatusChanged(c *Controller) {
 	c.Pub(types.NewCommand(types.StatusUpdateCommandType, status), LoopbackID)
 }
 
-// SetStatus stores the status and emits it if it is changed
-func (s *StatusHolder) SetStatus(status interface{}, controller *Controller) {
+// Set stores the status and emits it if it is changed
+func (s *StatusHolder) Set(status interface{}, controller *Controller) {
 	if reflect.DeepEqual(s.status, status) {
 		return
 	}
 	s.status = status
+	s.emitStatusChanged(controller)
+}
+
+// Edit the current status via editFunction
+func (s *StatusHolder) Edit(controller *Controller, editFunction func(interface{}) interface{}) {
+	newStatus := editFunction(s.status)
+	if reflect.DeepEqual(newStatus, s.status) {
+		return
+	}
+	s.status = newStatus
 	s.emitStatusChanged(controller)
 }

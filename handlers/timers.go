@@ -5,10 +5,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 )
 
@@ -97,7 +97,7 @@ func (h *timers) Run(remote *chik.Controller) {
 	ticker := h.timeTicker(remote)
 	defer ticker.Stop()
 
-	h.status.SetStatus(h.timers, remote)
+	h.status.Set(h.timers, remote)
 
 	incoming := remote.Sub(types.TimerCommandType.String())
 	for rawMessage := range incoming {
@@ -123,7 +123,7 @@ func (h *timers) Run(remote *chik.Controller) {
 			h.deleteTimer(command)
 		}
 
-		h.status.SetStatus(h.timers, remote)
+		h.status.Set(h.timers, remote)
 	}
 }
 
