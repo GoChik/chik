@@ -1,117 +1,111 @@
-// +build gpio
+// +build gpio-actuator
 
 package actuator
 
 import (
-	"strconv"
 	"sync"
 
-	"github.com/sirupsen/logrus"
 	"github.com/davecheney/gpio"
-	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
+	funk "github.com/thoas/go-funk"
 )
 
-type pin struct {
+var mutex = sync.Mutex{}
+
+type device struct {
+	Id       string
+	Number   int
+	Inverted bool
 	pin      gpio.Pin
-	inverted bool
 }
 
 type gpioActuator struct {
-	mutex    sync.Mutex
-	openPins map[int]*pin
+	devices map[string]*device
 }
 
 func init() {
-	NewActuator = newActuator
+	actuators = append(actuators, newGpioActuator)
 }
 
-func newActuator() Actuator {
-	return &gpioActuator{
-		sync.Mutex{},
-		map[int]*pin{},
-	}
+func newGpioActuator() Actuator {
+	return &gpioActuator{make(map[string]*device)}
 }
 
-func createPin(number int, inverted bool) *pin {
-	logrus.Debug("Opening pin ", number, " with inverted logic: ", inverted)
-	gpiopin, err := gpio.OpenPin(number, gpio.ModeOutput)
+func (d *device) init() {
+	logrus.Debug("Opening pin ", d.Number, " with inverted logic: ", d.Inverted)
+	pin, err := gpio.OpenPin(d.Number, gpio.ModeOutput)
 	if err != nil {
 		logrus.Error("GPIO error:", err)
-		return nil
-	}
-
-	if inverted {
-		gpiopin.Set()
-	}
-
-	return &pin{
-		gpiopin,
-		inverted,
-	}
-}
-
-func (a *gpioActuator) setPin(pin *pin, value bool) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	if value != pin.inverted {
-		pin.pin.Set()
-	} else {
-		pin.pin.Clear()
-	}
-}
-
-func (a *gpioActuator) getPin(number int) *pin {
-	gpiopin := a.openPins[number]
-	if gpiopin == nil {
-		gpiopin = createPin(number, false)
-		a.openPins[number] = gpiopin
-	}
-
-	return gpiopin
-}
-
-func (a *gpioActuator) TurnOn(pin int) {
-	a.setPin(a.getPin(pin), true)
-}
-
-func (a *gpioActuator) TurnOff(pin int) {
-	a.setPin(a.getPin(pin), false)
-}
-
-func (a *gpioActuator) GetStatus(pin int) bool {
-	gpiopin := a.getPin(pin)
-	return gpiopin.pin.Get() != gpiopin.inverted
-}
-
-func (a *gpioActuator) Initialize() {
-	data := config.Get("gpio_actuator.pin_layout")
-	if data == nil {
-		config.Set("gpio_actuator.pin_layout", map[int]bool{0: false})
-		config.Sync()
-		logrus.Error("Cannot find gpio_actuator.pin_layout in config file, stub created")
 		return
 	}
-	var pins map[string]bool
-	err := types.Decode(data, &pins)
+	d.pin = pin
+
+	if d.Inverted {
+		d.pin.Set()
+	}
+}
+
+func (d *device) set(value bool) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if value != d.Inverted {
+		d.pin.Set()
+	} else {
+		d.pin.Clear()
+	}
+}
+
+func (d *device) ID() string {
+	return d.Id
+}
+
+func (d *device) TurnOn() {
+	d.set(true)
+}
+
+func (d *device) TurnOff() {
+	d.set(false)
+}
+
+func (d *device) Toggle() {
+	d.set(!d.GetStatus())
+}
+
+func (d *device) GetStatus() bool {
+	return d.pin.Get() != d.Inverted
+}
+
+func (a *gpioActuator) Initialize(conf interface{}) {
+	var devices []*device
+	err := types.Decode(conf, &devices)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
-
-	for k, v := range pins {
-		pinNumber, err := strconv.Atoi(k)
-		if err != nil {
-			logrus.Fatal("Failed to convert pin number to int: ", err)
-		}
-		a.openPins[pinNumber] = createPin(pinNumber, v)
+	for _, device := range devices {
+		device.init()
 	}
+	a.devices = funk.ToMap(devices, "Id").(map[string]*device)
 }
 
 func (a *gpioActuator) Deinitialize() {
-	for _, v := range a.openPins {
-		v.pin.Close()
+	for _, device := range a.devices {
+		device.pin.Close()
 	}
-	a.openPins = map[int]*pin{}
+}
+
+func (a *gpioActuator) Device(id string) DigitalDevice {
+	return a.devices[id]
+}
+
+func (a *gpioActuator) DeviceIds() []string {
+	return funk.Map(a.devices, func(k string, v *device) string {
+		return k
+	}).([]string)
+}
+
+func (a *gpioActuator) String() string {
+	return "gpio"
 }

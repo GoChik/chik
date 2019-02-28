@@ -1,45 +1,77 @@
-// +build fake
+// +build fake-actuator
 
 package actuator
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
+	funk "github.com/thoas/go-funk"
+)
+
+type fakeDevice struct {
+	Id     string
+	status bool
+}
 
 type fakeActuator struct {
-	initCalled bool
-	pins       map[int]bool
+	devices map[string]*fakeDevice
 }
 
 func init() {
-	NewActuator = NewFakeActuator
+	actuators = append(actuators, newFakeActuator)
 }
 
-func NewFakeActuator() Actuator {
-	return &fakeActuator{
-		false,
-		make(map[int]bool),
-	}
+func (d *fakeDevice) ID() string {
+	return d.Id
 }
 
-func (a *fakeActuator) Initialize() {
+func (d *fakeDevice) TurnOn() {
+	logrus.Debug("Turning on ", d.Id)
+	d.Status = true
+}
+
+func (d *fakeDevice) TurnOff() {
+	logrus.Debug("Turning off ", d.Id)
+	d.Status = false
+}
+
+func (d *fakeDevice) Toggle() {
+	logrus.Debug("Toggling on ", d.Id)
+	d.Status = !d.Status
+}
+
+func (d *fakeDevice) GetStatus() bool {
+	logrus.Debug("Get Status of ", d.Id)
+	return d.Status
+}
+
+func newFakeActuator() Actuator {
+	return &fakeActuator{make(map[string]*fakeDevice)}
+}
+
+func (a *fakeActuator) Initialize(config interface{}) {
 	logrus.Debug("Initialize called")
-	a.initCalled = true
+	var devices []*fakeDevice
+	types.Decode(config, &devices)
+	a.devices = funk.ToMap(devices, "Id").(map[string]*fakeDevice)
 }
 
 func (a *fakeActuator) Deinitialize() {
 	logrus.Debug("Deinitialize called")
-	a.initCalled = false
 }
 
-func (a *fakeActuator) TurnOn(pin int) {
-	logrus.Debug("FakeActuator: turn on pin: ", pin)
-	a.pins[pin] = true
+func (a *fakeActuator) Device(Id string) DigitalDevice {
+	return a.devices[Id]
 }
 
-func (a *fakeActuator) TurnOff(pin int) {
-	logrus.Debug("FakeActuator: turn off pin: ", pin)
-	a.pins[pin] = false
+func (a *fakeActuator) DeviceIds() []string {
+	result := make([]string, len(a.devices))
+	for k := range a.devices {
+		result = append(result, k)
+	}
+	return result
 }
 
-func (a *fakeActuator) GetStatus(pin int) bool {
-	return a.pins[pin]
+func (a *fakeActuator) String() string {
+	return "fake"
 }

@@ -2,34 +2,84 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/actuator"
+	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 )
 
 type io struct {
-	actuator actuator.Actuator
-	pins     map[int]bool
-	status   *chik.StatusHolder
+	actuators map[string]actuator.Actuator
+	status    *chik.StatusHolder
 }
 
 func NewIoHandler() chik.Handler {
 	return &io{
-		actuator.NewActuator(),
-		map[int]bool{},
+		actuator.CreateActuators(),
 		chik.NewStatusHolder("io"),
+	}
+}
+
+func (h *io) setStatus(controller *chik.Controller, deviceID string) {
+	h.status.Edit(controller, func(rawStatus interface{}) interface{} {
+		var status map[string]bool
+		types.Decode(rawStatus, &status)
+		if status == nil {
+			status = make(map[string]bool)
+		}
+		res := funk.Map(status, func(k string, v bool) (string, bool) {
+			if k == deviceID {
+				for _, actuator := range h.actuators {
+					if device := actuator.Device(deviceID); device != nil {
+						v = device.GetStatus()
+					}
+				}
+			}
+			return k, v
+		})
+		return res
+	})
+}
+
+func execute(command types.Action, device actuator.DigitalDevice, remote *chik.Controller) {
+	switch types.Action(command) {
+	case types.RESET:
+		logrus.Debug("Turning off device ", device.ID())
+		device.TurnOff()
+
+	case types.SET:
+		logrus.Debug("Turning on device ", device.ID())
+		device.TurnOn()
+
+	case types.PUSH:
+		logrus.Debug("Pushing device ", device.ID())
+		device.TurnOn()
+		time.Sleep(500 * time.Millisecond)
+		device.TurnOff()
+
+	case types.TOGGLE:
+		logrus.Debug("Toggling device ", device.ID())
+		device.Toggle()
 	}
 }
 
 func (h *io) Run(remote *chik.Controller) {
 	logrus.Debug("starting io handler")
-	h.actuator.Initialize()
-	defer h.actuator.Deinitialize()
-
-	h.status.SetStatus(h.Status(), remote)
+	{
+		initialStatus := make(map[string]bool)
+		for k, v := range h.actuators {
+			v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
+			for _, id := range v.DeviceIds() {
+				initialStatus[id] = v.Device(id).GetStatus()
+			}
+		}
+		h.status.Set(initialStatus, remote)
+	}
 
 	in := remote.Sub(types.DigitalCommandType.String())
 	for data := range in {
@@ -43,48 +93,21 @@ func (h *io) Run(remote *chik.Controller) {
 		}
 
 		if len(command.Command) != 1 {
-			logrus.Error("Unexpected composed command")
+			logrus.Error("Unexpected command length: ", len(command.Command))
 			continue
 		}
 
-		h.pins[command.Pin] = true
-
-		switch types.Action(command.Command[0]) {
-		case types.RESET:
-			logrus.Debug("Turning off pin ", command.Pin)
-			h.actuator.TurnOff(command.Pin)
-
-		case types.SET:
-			logrus.Debug("Turning on pin ", command.Pin)
-			h.actuator.TurnOn(command.Pin)
-
-		case types.PUSH:
-			logrus.Debug("Turning on and off pin ", command.Pin)
-			h.actuator.TurnOn(command.Pin)
-			time.Sleep(1 * time.Second)
-			h.actuator.TurnOff(command.Pin)
-
-		case types.TOGGLE:
-			logrus.Debug("Switching pin ", command.Pin)
-			if h.actuator.GetStatus(command.Pin) {
-				h.actuator.TurnOff(command.Pin)
-			} else {
-				h.actuator.TurnOn(command.Pin)
+		for _, actuator := range h.actuators {
+			if device := actuator.Device(command.DeviceID); device != nil {
+				execute(command.Command[0], device, remote)
+				h.setStatus(remote, command.DeviceID)
 			}
 		}
-
-		h.status.SetStatus(h.Status(), remote)
 	}
 
-	logrus.Debug("shutting down io handler")
-}
-
-func (h *io) Status() interface{} {
-	status := map[int]bool{}
-	for pin := range h.pins {
-		status[pin] = h.actuator.GetStatus(pin)
+	for _, v := range h.actuators {
+		v.Deinitialize()
 	}
-	return status
 }
 
 func (h *io) String() string {

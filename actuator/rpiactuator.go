@@ -1,111 +1,108 @@
-// +build raspberrypi
+// +build raspberrypi-actuator
 
 package actuator
 
 import (
-	"strconv"
 	"sync"
 
-	"github.com/sirupsen/logrus"
-	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
 	rpio "github.com/stianeikeland/go-rpio"
+	funk "github.com/thoas/go-funk"
 )
 
-type pin struct {
-	rpio.Pin
-	inverted bool
-}
+var mutex = sync.Mutex{}
 
-func (p pin) On() {
-	if p.inverted {
-		p.Low()
-	} else {
-		p.High()
-	}
-}
-
-func (p pin) Off() {
-	if p.inverted {
-		p.High()
-	} else {
-		p.Low()
-	}
+type device struct {
+	Id       string
+	Pin      rpio.Pin
+	Inverted bool
 }
 
 type rpiActuator struct {
-	mutex    sync.Mutex
-	openPins map[int]*pin
+	devices map[string]*device
 }
 
 func init() {
-	NewActuator = newActuator
+	actuators = append(actuators, newRpiActuator)
 }
 
-func newActuator() Actuator {
-	return &rpiActuator{sync.Mutex{}, map[int]*pin{}}
+func (d *device) ID() string {
+	return d.Id
 }
 
-func (a *rpiActuator) Initialize() {
-	data := config.Get("gpio_actuator.pin_layout")
-	if data == nil {
-		config.Set("gpio_actuator.pin_layout", map[int]bool{0: false})
-		config.Sync()
-		logrus.Error("Cannot find gpio_actuator.pin_layout in config file, stub created")
-		return
+func (d *device) TurnOn() {
+	mutex.Lock()
+	if d.Inverted {
+		d.Pin.Low()
+	} else {
+		d.Pin.High()
 	}
-	var pins map[string]bool
-	err := types.Decode(data, &pins)
+	mutex.Unlock()
+}
+
+func (d *device) TurnOff() {
+	mutex.Lock()
+	if d.Inverted {
+		d.Pin.High()
+	} else {
+		d.Pin.Low()
+	}
+	mutex.Unlock()
+}
+
+func (d *device) Toggle() {
+	mutex.Lock()
+	d.Pin.Toggle()
+	mutex.Unlock()
+}
+
+func (d *device) GetStatus() bool {
+	mutex.Lock()
+	value := d.Pin.Read()
+	mutex.Unlock()
+
+	if d.Inverted {
+		return value == rpio.Low
+	}
+	return value == rpio.High
+}
+
+func newRpiActuator() Actuator {
+	return &rpiActuator{make(map[string]*device)}
+}
+
+func (a *rpiActuator) Initialize(conf interface{}) {
+	var devices []*device
+	err := types.Decode(conf, &devices)
 	if err != nil {
 		logrus.Error(err)
 		return
 	}
 
 	rpio.Open()
-	for k, v := range pins {
-		pinNumber, err := strconv.Atoi(k)
-		if err != nil {
-			logrus.Fatal("Failed to convert pin number to int: ", err)
-		}
-		a.openPins[pinNumber] = a.openPin(pinNumber, v)
+	for _, v := range devices {
+		v.Pin.Output()
+		v.TurnOff()
 	}
+
+	a.devices = funk.ToMap(devices, "Id").(map[string]*device)
 }
 
 func (a *rpiActuator) Deinitialize() {
 	rpio.Close()
 }
 
-func (a *rpiActuator) openPin(value int, inverted bool) *pin {
-	if a.openPins[value] == nil {
-		p := rpio.Pin(value)
-		p.Output()
-		a.openPins[value] = &pin{p, inverted}
-	}
-	return a.openPins[value]
+func (a *rpiActuator) Device(id string) DigitalDevice {
+	return a.devices[id]
 }
 
-func (a *rpiActuator) TurnOn(pin int) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	a.openPins[pin].On()
+func (a *rpiActuator) DeviceIds() []string {
+	return funk.Map(a.devices, func(k string, v *device) string {
+		return k
+	}).([]string)
 }
 
-func (a *rpiActuator) TurnOff(pin int) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	a.openPins[pin].Off()
-}
-
-func (a *rpiActuator) GetStatus(pin int) bool {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	rpiPin := a.openPins[pin]
-	if rpiPin.inverted {
-		return rpiPin.Read() == rpio.Low
-	}
-
-	return rpiPin.Read() == rpio.High
+func (a *rpiActuator) String() string {
+	return "raspberrypi"
 }
