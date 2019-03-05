@@ -1,4 +1,4 @@
-package handlers
+package status
 
 import (
 	"encoding/json"
@@ -16,7 +16,7 @@ type handler struct {
 	currentStatus types.Status
 }
 
-func NewStatusHandler() chik.Handler {
+func New() chik.Handler {
 	return &handler{
 		subscribers:   make(map[uuid.UUID]set, 0),
 		currentStatus: types.Status{},

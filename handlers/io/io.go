@@ -1,4 +1,4 @@
-package handlers
+package io
 
 import (
 	"encoding/json"
@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gochik/chik"
-	"github.com/gochik/chik/actuator"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/handlers/io/actuator"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
@@ -18,7 +18,7 @@ type io struct {
 	status    *chik.StatusHolder
 }
 
-func NewIoHandler() chik.Handler {
+func New() chik.Handler {
 	return &io{
 		actuator.CreateActuators(),
 		chik.NewStatusHolder("io"),

@@ -1,4 +1,4 @@
-package handlers
+package timer
 
 import (
 	"encoding/json"
@@ -20,7 +20,7 @@ type timers struct {
 	status      *chik.StatusHolder
 }
 
-func NewTimers() chik.Handler {
+func New() chik.Handler {
 	var savedTimers []types.TimedCommand
 	err := config.GetStruct(timerStoragePath, &savedTimers)
 	if err != nil {

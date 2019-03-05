@@ -1,4 +1,4 @@
-package handlers
+package sunphase
 
 import (
 	"encoding/json"
@@ -38,7 +38,7 @@ type confError struct {
 	Message string
 }
 
-func NewSunset() chik.Handler {
+func New() chik.Handler {
 	var confError string
 	var latitude float64
 	var longitude float64

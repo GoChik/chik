@@ -1,7 +1,6 @@
-package handlers
+package test
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -10,8 +9,6 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
 )
-
-var peers = sync.Map{}
 
 func TestForwarding(t *testing.T) {
 	CreateServer(t)

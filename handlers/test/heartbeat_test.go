@@ -1,10 +1,11 @@
-package handlers
+package test
 
 import (
 	"testing"
 	"time"
 
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/handlers/heartbeat"
 )
 
 func TestHeartbeat(t *testing.T) {
@@ -12,7 +13,7 @@ func TestHeartbeat(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	heartbeat := NewHeartBeatHandler(200 * time.Millisecond)
+	heartbeat := heartbeat.New(200 * time.Millisecond)
 	sub := client.remote.Sub(chik.OutgoingMessage)
 	go heartbeat.Run(client.remote)
 

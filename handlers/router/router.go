@@ -1,4 +1,4 @@
-package handlers
+package router
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type forwarding struct {
 	peers *sync.Map
 }
 
-func NewForwardingHandler(peers *sync.Map) chik.Handler {
+func New(peers *sync.Map) chik.Handler {
 	return &forwarding{
 		id:    uuid.Nil,
 		peers: peers,
