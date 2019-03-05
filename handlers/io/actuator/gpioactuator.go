@@ -15,16 +15,16 @@ import (
 var mutex = sync.Mutex{}
 
 type device struct {
-	Id            string
-	Number        uint
-	Inverted      bool
-	pin           gpio.Pin
-	watcher       gpio.Watcher
-	notifications []chan<- bool
+	Id       string
+	Number   uint
+	Inverted bool
+	pin      gpio.Pin
 }
 
 type gpioActuator struct {
-	devices map[string]*device
+	devices      map[string]*device
+	devicesByPin map[uint]*device
+	watcher      *gpio.Watcher
 }
 
 func init() {
@@ -32,7 +32,11 @@ func init() {
 }
 
 func newGpioActuator() Actuator {
-	return &gpioActuator{make(map[string]*device)}
+	return &gpioActuator{
+		devices:      make(map[string]*device),
+		devicesByPin: make(map[uint]*device),
+		watcher:      gpio.NewWatcher(),
+	}
 }
 
 func (d *device) init() {
@@ -80,17 +84,6 @@ func (d *device) GetStatus() bool {
 	return (val > 0) != d.Inverted
 }
 
-func (d *device) StatusListener() chan bool {
-	c := make(chan bool, 0)
-	go func() {
-		for data := range d.watcher.Notification {
-			c <- (data.Value > 0)
-		}
-	}()
-	d.notifications = append(d.notifications, c)
-	return c
-}
-
 func (a *gpioActuator) Initialize(conf interface{}) {
 	var devices []*device
 	err := types.Decode(conf, &devices)
@@ -101,19 +94,17 @@ func (a *gpioActuator) Initialize(conf interface{}) {
 	for _, device := range devices {
 		logrus.Debug("New device for GPIO actuator: ", device)
 		device.init()
-		device.watcher.AddPin(device.Number)
+		a.watcher.AddPin(device.Number)
 	}
 	a.devices = funk.ToMap(devices, "Id").(map[string]*device)
+	a.devicesByPin = funk.ToMap(devices, "Number").(map[uint]*device)
 }
 
 func (a *gpioActuator) Deinitialize() {
 	for _, device := range a.devices {
 		device.pin.Close()
-		device.watcher.Close()
-		for _, v := range device.notifications {
-			close(v)
-		}
 	}
+	a.watcher.Close()
 }
 
 func (a *gpioActuator) Device(id string) (DigitalDevice, error) {
@@ -128,6 +119,18 @@ func (a *gpioActuator) DeviceIds() []string {
 	return funk.Map(a.devices, func(k string, v *device) string {
 		return k
 	}).([]string)
+}
+
+func (a *gpioActuator) DeviceChanges() <-chan string {
+	c := make(chan string, 0)
+	go func() {
+		for data := range a.watcher.Notification {
+			device := a.devicesByPin[data.Pin]
+			c <- device.ID()
+		}
+		close(c)
+	}()
+	return c
 }
 
 func (a *gpioActuator) String() string {

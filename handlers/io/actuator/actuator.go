@@ -13,7 +13,6 @@ type DigitalDevice interface {
 	TurnOff()
 	Toggle()
 	GetStatus() bool
-	StatusListener() chan bool
 }
 
 // CreateActuators creates the set of available actuators
@@ -37,4 +36,5 @@ type Actuator interface {
 
 	Device(id string) (DigitalDevice, error)
 	DeviceIds() []string
+	DeviceChanges() <-chan string
 }

@@ -47,12 +47,6 @@ func (d *fakeDevice) GetStatus() bool {
 	return d.Status
 }
 
-func (d *fakeDevice) StatusListener() chan bool {
-	c := make(chan bool, 0)
-	close(c)
-	return c
-}
-
 func newFakeActuator() Actuator {
 	return &fakeActuator{make(map[string]*fakeDevice)}
 }

@@ -3,6 +3,7 @@ package io
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/gochik/chik"
@@ -14,15 +15,29 @@ import (
 )
 
 type io struct {
-	actuators map[string]actuator.Actuator
-	status    *chik.StatusHolder
+	actuators     map[string]actuator.Actuator
+	status        *chik.StatusHolder
+	wg            sync.WaitGroup
+	deviceChanges chan string
 }
 
 func New() chik.Handler {
 	return &io{
 		actuator.CreateActuators(),
 		chik.NewStatusHolder("io"),
+		sync.WaitGroup{},
+		make(chan string, 0),
 	}
+}
+
+func (h *io) listenForDeviceChanges(controller *chik.Controller, channel <-chan string) {
+	h.wg.Add(1)
+	go func() {
+		for device := range channel {
+			h.deviceChanges <- device
+		}
+		h.wg.Done()
+	}()
 }
 
 func (h *io) setStatus(controller *chik.Controller, deviceID string) {
@@ -68,12 +83,43 @@ func execute(command types.Action, device actuator.DigitalDevice, remote *chik.C
 	}
 }
 
+func (h *io) parseMessage(remote *chik.Controller, message *chik.Message) {
+	command := types.DigitalCommand{}
+	err := json.Unmarshal(message.Command().Data, &command)
+	if err != nil {
+		logrus.Error("cannot decode digital command: ", err)
+		return
+	}
+
+	if len(command.Command) != 1 {
+		logrus.Error("Unexpected command length: ", len(command.Command))
+		return
+	}
+
+	for _, actuator := range h.actuators {
+		device, err := actuator.Device(command.DeviceID)
+		if err == nil {
+			execute(command.Command[0], device, remote)
+			h.setStatus(remote, command.DeviceID)
+		}
+	}
+}
+
+func (h *io) tearDown() {
+	for _, v := range h.actuators {
+		v.Deinitialize()
+	}
+	h.wg.Wait()
+	close(h.deviceChanges)
+}
+
 func (h *io) Run(remote *chik.Controller) {
 	logrus.Debug("starting io handler")
 	{
 		initialStatus := make(map[string]bool)
 		for k, v := range h.actuators {
 			v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
+			h.listenForDeviceChanges(remote, v.DeviceChanges())
 			for _, id := range v.DeviceIds() {
 				// ignoring errors because we trust device apis
 				device, _ := v.Device(id)
@@ -83,33 +129,20 @@ func (h *io) Run(remote *chik.Controller) {
 		h.status.Set(initialStatus, remote)
 	}
 
+	defer h.tearDown()
+
 	in := remote.Sub(types.DigitalCommandType.String())
-	for data := range in {
-		message := data.(*chik.Message)
-
-		command := types.DigitalCommand{}
-		err := json.Unmarshal(message.Command().Data, &command)
-		if err != nil {
-			logrus.Error("cannot decode digital command: ", err)
-			continue
-		}
-
-		if len(command.Command) != 1 {
-			logrus.Error("Unexpected command length: ", len(command.Command))
-			continue
-		}
-
-		for _, actuator := range h.actuators {
-			device, err := actuator.Device(command.DeviceID)
-			if err == nil {
-				execute(command.Command[0], device, remote)
-				h.setStatus(remote, command.DeviceID)
+	for {
+		select {
+		case data, ok := <-in:
+			if !ok {
+				return
 			}
-		}
-	}
+			h.parseMessage(remote, data.(*chik.Message))
 
-	for _, v := range h.actuators {
-		v.Deinitialize()
+		case deviceID := <-h.deviceChanges:
+			h.setStatus(remote, deviceID)
+		}
 	}
 }
 
