@@ -9,6 +9,8 @@ import (
 )
 
 func TestHeartbeat(t *testing.T) {
+	CreateServer(t)
+
 	client, err := CreateClient()
 	if err != nil {
 		t.Error(err)
