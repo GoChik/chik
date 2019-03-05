@@ -35,7 +35,7 @@ func (h *io) setStatus(controller *chik.Controller, deviceID string) {
 		res := funk.Map(status, func(k string, v bool) (string, bool) {
 			if k == deviceID {
 				for _, actuator := range h.actuators {
-					if device := actuator.Device(deviceID); device != nil {
+					if device, err := actuator.Device(deviceID); err == nil {
 						v = device.GetStatus()
 					}
 				}
@@ -75,7 +75,9 @@ func (h *io) Run(remote *chik.Controller) {
 		for k, v := range h.actuators {
 			v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
 			for _, id := range v.DeviceIds() {
-				initialStatus[id] = v.Device(id).GetStatus()
+				// ignoring errors because we trust device apis
+				device, _ := v.Device(id)
+				initialStatus[id] = device.GetStatus()
 			}
 		}
 		h.status.Set(initialStatus, remote)
@@ -98,7 +100,8 @@ func (h *io) Run(remote *chik.Controller) {
 		}
 
 		for _, actuator := range h.actuators {
-			if device := actuator.Device(command.DeviceID); device != nil {
+			device, err := actuator.Device(command.DeviceID)
+			if err == nil {
 				execute(command.Command[0], device, remote)
 				h.setStatus(remote, command.DeviceID)
 			}

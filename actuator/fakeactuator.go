@@ -3,6 +3,8 @@
 package actuator
 
 import (
+	"fmt"
+
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 	funk "github.com/thoas/go-funk"
@@ -45,6 +47,12 @@ func (d *fakeDevice) GetStatus() bool {
 	return d.Status
 }
 
+func (d *fakeDevice) StatusListener() chan bool {
+	c := make(chan bool, 0)
+	close(c)
+	return c
+}
+
 func newFakeActuator() Actuator {
 	return &fakeActuator{make(map[string]*fakeDevice)}
 }
@@ -60,8 +68,12 @@ func (a *fakeActuator) Deinitialize() {
 	logrus.Debug("Deinitialize called")
 }
 
-func (a *fakeActuator) Device(Id string) DigitalDevice {
-	return a.devices[Id]
+func (a *fakeActuator) Device(id string) (DigitalDevice, error) {
+	device := a.devices[id]
+	if device == nil {
+		return nil, fmt.Errorf("No FAKE device with ID: %s found", id)
+	}
+	return device, nil
 }
 
 func (a *fakeActuator) DeviceIds() []string {

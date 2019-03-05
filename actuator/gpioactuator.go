@@ -3,10 +3,11 @@
 package actuator
 
 import (
+	"fmt"
 	"sync"
 
-	"github.com/davecheney/gpio"
 	"github.com/gochik/chik/types"
+	"github.com/gochik/gpio"
 	"github.com/sirupsen/logrus"
 	funk "github.com/thoas/go-funk"
 )
@@ -14,10 +15,12 @@ import (
 var mutex = sync.Mutex{}
 
 type device struct {
-	Id       string
-	Number   int
-	Inverted bool
-	pin      gpio.Pin
+	Id            string
+	Number        uint
+	Inverted      bool
+	pin           gpio.Pin
+	watcher       gpio.Watcher
+	notifications []chan<- bool
 }
 
 type gpioActuator struct {
@@ -34,15 +37,11 @@ func newGpioActuator() Actuator {
 
 func (d *device) init() {
 	logrus.Debug("Opening pin ", d.Number, " with inverted logic: ", d.Inverted)
-	pin, err := gpio.OpenPin(d.Number, gpio.ModeOutput)
-	if err != nil {
-		logrus.Error("GPIO error:", err)
-		return
-	}
+	pin := gpio.NewOutput(d.Number, false)
 	d.pin = pin
 
 	if d.Inverted {
-		d.pin.Set()
+		d.pin.High()
 	}
 }
 
@@ -51,9 +50,9 @@ func (d *device) set(value bool) {
 	defer mutex.Unlock()
 
 	if value != d.Inverted {
-		d.pin.Set()
+		d.pin.High()
 	} else {
-		d.pin.Clear()
+		d.pin.Low()
 	}
 }
 
@@ -74,7 +73,22 @@ func (d *device) Toggle() {
 }
 
 func (d *device) GetStatus() bool {
-	return d.pin.Get() != d.Inverted
+	val, err := d.pin.Read()
+	if err != nil {
+		return false
+	}
+	return (val > 0) != d.Inverted
+}
+
+func (d *device) StatusListener() chan bool {
+	c := make(chan bool, 0)
+	go func() {
+		for data := range d.watcher.Notification {
+			c <- (data.Value > 0)
+		}
+	}()
+	d.notifications = append(d.notifications, c)
+	return c
 }
 
 func (a *gpioActuator) Initialize(conf interface{}) {
@@ -85,7 +99,9 @@ func (a *gpioActuator) Initialize(conf interface{}) {
 		return
 	}
 	for _, device := range devices {
+		logrus.Debug("New device for GPIO actuator: ", device)
 		device.init()
+		device.watcher.AddPin(device.Number)
 	}
 	a.devices = funk.ToMap(devices, "Id").(map[string]*device)
 }
@@ -93,11 +109,19 @@ func (a *gpioActuator) Initialize(conf interface{}) {
 func (a *gpioActuator) Deinitialize() {
 	for _, device := range a.devices {
 		device.pin.Close()
+		device.watcher.Close()
+		for _, v := range device.notifications {
+			close(v)
+		}
 	}
 }
 
-func (a *gpioActuator) Device(id string) DigitalDevice {
-	return a.devices[id]
+func (a *gpioActuator) Device(id string) (DigitalDevice, error) {
+	device := a.devices[id]
+	if device == nil {
+		return nil, fmt.Errorf("No GPIO device with ID: %s found", id)
+	}
+	return device, nil
 }
 
 func (a *gpioActuator) DeviceIds() []string {

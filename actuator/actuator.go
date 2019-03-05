@@ -13,6 +13,7 @@ type DigitalDevice interface {
 	TurnOff()
 	Toggle()
 	GetStatus() bool
+	StatusListener() chan bool
 }
 
 // CreateActuators creates the set of available actuators
@@ -34,6 +35,6 @@ type Actuator interface {
 	// Deinitialize is used when actuator is going off
 	Deinitialize()
 
-	Device(id string) DigitalDevice
+	Device(id string) (DigitalDevice, error)
 	DeviceIds() []string
 }
