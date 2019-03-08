@@ -1,4 +1,4 @@
-// +build fake-actuator
+// +build fakeActuator
 
 package actuator
 
@@ -29,22 +29,22 @@ func (d *fakeDevice) ID() string {
 
 func (d *fakeDevice) TurnOn() {
 	logrus.Debug("Turning on ", d.Id)
-	d.Status = true
+	d.status = true
 }
 
 func (d *fakeDevice) TurnOff() {
 	logrus.Debug("Turning off ", d.Id)
-	d.Status = false
+	d.status = false
 }
 
 func (d *fakeDevice) Toggle() {
 	logrus.Debug("Toggling on ", d.Id)
-	d.Status = !d.Status
+	d.status = !d.status
 }
 
 func (d *fakeDevice) GetStatus() bool {
 	logrus.Debug("Get Status of ", d.Id)
-	return d.Status
+	return d.status
 }
 
 func newFakeActuator() Actuator {
@@ -55,6 +55,7 @@ func (a *fakeActuator) Initialize(config interface{}) {
 	logrus.Debug("Initialize called")
 	var devices []*fakeDevice
 	types.Decode(config, &devices)
+	logrus.Debug("Devices found: ", len(devices))
 	a.devices = funk.ToMap(devices, "Id").(map[string]*fakeDevice)
 }
 
@@ -63,19 +64,28 @@ func (a *fakeActuator) Deinitialize() {
 }
 
 func (a *fakeActuator) Device(id string) (DigitalDevice, error) {
+	logrus.Debug(id)
 	device := a.devices[id]
 	if device == nil {
+		logrus.Debug("device not found")
 		return nil, fmt.Errorf("No FAKE device with ID: %s found", id)
 	}
 	return device, nil
 }
 
 func (a *fakeActuator) DeviceIds() []string {
-	result := make([]string, len(a.devices))
+	result := make([]string, 0, len(a.devices))
 	for k := range a.devices {
+		logrus.Debug(k)
 		result = append(result, k)
 	}
 	return result
+}
+
+func (a *fakeActuator) DeviceChanges() <-chan string {
+	c := make(chan string, 0)
+	close(c)
+	return c
 }
 
 func (a *fakeActuator) String() string {

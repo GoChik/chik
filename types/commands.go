@@ -82,7 +82,7 @@ type SimpleCommand struct {
 // a Command on a gpio pin
 type DigitalCommand struct {
 	Command  JSIntArr `json:",JSIntArr"`
-	DeviceID string   `json:",string,omitempty"`
+	DeviceID string
 }
 
 // TimedCommand represent a command with an associated delay in minutes
