@@ -26,9 +26,10 @@ func TestForwarding(t *testing.T) {
 	logrus.Debug("Sender:", client1.id, "receiver:", client2.id)
 
 	forwarded := client1.remote.Sub(types.DigitalCommandType.String())
-	time.Sleep(1 * time.Second) // TODO: fix the handshake
+	time.Sleep(500 * time.Millisecond) // TODO: fix the handshake
 	client1.remote.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
 	client2.remote.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), chik.OutgoingMessage)
+	time.Sleep(500 * time.Millisecond) // TODO: fix the handshake
 	client2.remote.Pub(types.NewCommand(types.DigitalCommandType, types.SimpleCommand{}), client1.id)
 
 	select {
