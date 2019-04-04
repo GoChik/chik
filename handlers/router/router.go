@@ -27,8 +27,6 @@ func (h *forwarding) terminate() {
 }
 
 func (h *forwarding) Run(controller *chik.Controller) {
-	logrus.Debug("starting forwarding handler")
-
 	defer h.terminate()
 
 	in := controller.Sub(chik.IncomingMessage)
@@ -83,5 +81,5 @@ func (h *forwarding) Run(controller *chik.Controller) {
 }
 
 func (h *forwarding) String() string {
-	return "forward"
+	return "router"
 }

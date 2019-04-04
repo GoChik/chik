@@ -52,7 +52,6 @@ func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 }
 
 func (h *heartbeat) Run(controller *chik.Controller) {
-	logrus.Debug("starting heartbeat handler")
 	senderRoutine := h.sender(controller)
 	in := controller.Sub(types.HeartbeatType.String())
 	for data := range in {

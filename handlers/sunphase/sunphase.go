@@ -258,5 +258,5 @@ func (h *suntime) Run(controller *chik.Controller) {
 }
 
 func (h *suntime) String() string {
-	return "sunset"
+	return "sunphase"
 }

@@ -56,7 +56,6 @@ func (h *updater) update() {
 }
 
 func (h *updater) Run(remote *chik.Controller) {
-	logrus.Debug("starting version handler")
 	in := remote.Sub(types.VersionRequestCommandType.String())
 	for data := range in {
 		message := data.(*chik.Message)

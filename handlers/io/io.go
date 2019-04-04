@@ -114,7 +114,6 @@ func (h *io) tearDown() {
 }
 
 func (h *io) Run(remote *chik.Controller) {
-	logrus.Debug("starting io handler")
 	{
 		initialStatus := make(map[string]bool)
 		for k, v := range h.actuators {

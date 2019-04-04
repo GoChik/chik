@@ -70,6 +70,7 @@ func (c *Controller) Start(h Handler) {
 	c.handlers.Add(1)
 	go func() {
 		for c.active {
+			logrus.Debugf("Starting %s handler", h.String())
 			h.Run(c)
 		}
 		c.handlers.Done()
