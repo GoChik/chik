@@ -165,6 +165,14 @@ func (h *suntime) fetchSunTime() {
 		logrus.Error(err)
 		return
 	}
+	var status string
+	json.Unmarshal(*reply["status"], &status)
+
+	if status != "OK" {
+		logrus.Error("Error fetching sunphase data: ", status)
+		return
+	}
+
 	var results map[string]*json.RawMessage
 	json.Unmarshal(*reply["results"], &results)
 
