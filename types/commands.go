@@ -4,6 +4,7 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 )
@@ -62,6 +63,10 @@ type Command struct {
 	Data json.RawMessage
 }
 
+func (c *Command) String() string {
+	return fmt.Sprintf("{Type: %v, Data: %s}", c.Type, string(c.Data))
+}
+
 // NewCommand creates a command given a type and his content
 func NewCommand(t CommandType, data interface{}) *Command {
 	body, err := json.Marshal(data)
@@ -97,8 +102,8 @@ type TimedCommand struct {
 }
 
 // Status is the response to a status request Command
-// Pin indicates the pin which status refers to
-// Status is the current value
+// the key is the handler name
+// value can be anything
 type Status map[string]interface{}
 
 // VersionIndication returns info about the current version and the optional update available
