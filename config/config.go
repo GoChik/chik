@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gochik/chik/types"
+	"github.com/mitchellh/mapstructure"
 )
 
 var conf config
@@ -142,12 +143,12 @@ func Get(key string) interface{} {
 }
 
 // GetStruct populates data of the given struct with config file content
-func GetStruct(key string, output interface{}) error {
+func GetStruct(key string, output interface{}, hooks ...mapstructure.DecodeHookFunc) error {
 	data := Get(key)
 	if data == nil {
 		return errors.New("Null data")
 	}
-	return types.Decode(data, output)
+	return types.Decode(data, output, hooks...)
 }
 
 // Set sets or modifies a value in the config file.
