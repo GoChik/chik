@@ -1,4 +1,4 @@
-// +build gpioActuator
+/// +build gpioActuator
 
 package actuator
 
@@ -21,7 +21,7 @@ type device struct {
 	pin      gpio.Pin
 }
 
-type gpioActuator struct {
+type gpioBus struct {
 	devices      map[string]*device
 	devicesByPin map[uint]*device
 	watcher      *gpio.Watcher
@@ -31,8 +31,8 @@ func init() {
 	actuators = append(actuators, newGpioActuator)
 }
 
-func newGpioActuator() Actuator {
-	return &gpioActuator{
+func newGpioActuator() Bus {
+	return &gpioBus{
 		devices:      make(map[string]*device),
 		devicesByPin: make(map[uint]*device),
 		watcher:      gpio.NewWatcher(),
@@ -64,6 +64,10 @@ func (d *device) ID() string {
 	return d.Id
 }
 
+func (d *device) Kind() DeviceKind {
+	return DigitalOutputDevice
+}
+
 func (d *device) TurnOn() {
 	d.set(true)
 }
@@ -84,7 +88,7 @@ func (d *device) GetStatus() bool {
 	return (val > 0) != d.Inverted
 }
 
-func (a *gpioActuator) Initialize(conf interface{}) {
+func (a *gpioBus) Initialize(conf interface{}) {
 	var devices []*device
 	err := types.Decode(conf, &devices)
 	if err != nil {
@@ -100,14 +104,14 @@ func (a *gpioActuator) Initialize(conf interface{}) {
 	a.devicesByPin = funk.ToMap(devices, "Number").(map[uint]*device)
 }
 
-func (a *gpioActuator) Deinitialize() {
+func (a *gpioBus) Deinitialize() {
 	for _, device := range a.devices {
 		device.pin.Close()
 	}
 	a.watcher.Close()
 }
 
-func (a *gpioActuator) Device(id string) (DigitalDevice, error) {
+func (a *gpioBus) Device(id string) (Device, error) {
 	device := a.devices[id]
 	if device == nil {
 		return nil, fmt.Errorf("No GPIO device with ID: %s found", id)
@@ -115,13 +119,13 @@ func (a *gpioActuator) Device(id string) (DigitalDevice, error) {
 	return device, nil
 }
 
-func (a *gpioActuator) DeviceIds() []string {
+func (a *gpioBus) DeviceIds() []string {
 	return funk.Map(a.devices, func(k string, v *device) string {
 		return k
 	}).([]string)
 }
 
-func (a *gpioActuator) DeviceChanges() <-chan string {
+func (a *gpioBus) DeviceChanges() <-chan string {
 	c := make(chan string, 0)
 	go func() {
 		for data := range a.watcher.Notification {
@@ -133,6 +137,6 @@ func (a *gpioActuator) DeviceChanges() <-chan string {
 	return c
 }
 
-func (a *gpioActuator) String() string {
+func (a *gpioBus) String() string {
 	return "gpio"
 }

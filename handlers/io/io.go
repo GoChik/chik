@@ -11,11 +11,11 @@ import (
 	"github.com/gochik/chik/handlers/io/actuator"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
-	"github.com/thoas/go-funk"
+	funk "github.com/thoas/go-funk"
 )
 
 type io struct {
-	actuators     map[string]actuator.Actuator
+	actuators     map[string]actuator.Bus
 	status        *chik.StatusHolder
 	wg            sync.WaitGroup
 	deviceChanges chan string
@@ -23,14 +23,14 @@ type io struct {
 
 func New() chik.Handler {
 	return &io{
-		actuator.CreateActuators(),
+		actuator.CreateBuses(),
 		chik.NewStatusHolder("io"),
 		sync.WaitGroup{},
 		make(chan string, 0),
 	}
 }
 
-func (h *io) listenForDeviceChanges(controller *chik.Controller, channel <-chan string) {
+func (h *io) listenForDeviceChanges(channel <-chan string) {
 	h.wg.Add(1)
 	go func() {
 		for device := range channel {
@@ -42,16 +42,16 @@ func (h *io) listenForDeviceChanges(controller *chik.Controller, channel <-chan 
 
 func (h *io) setStatus(controller *chik.Controller, deviceID string) {
 	h.status.Edit(controller, func(rawStatus interface{}) interface{} {
-		var status map[string]bool
+		var status map[string]interface{}
 		types.Decode(rawStatus, &status)
 		if status == nil {
-			status = make(map[string]bool)
+			status = make(map[string]interface{})
 		}
-		res := funk.Map(status, func(k string, v bool) (string, bool) {
+		res := funk.Map(status, func(k string, v interface{}) (string, interface{}) {
 			if k == deviceID {
-				for _, actuator := range h.actuators {
-					if device, err := actuator.Device(deviceID); err == nil {
-						v = device.GetStatus()
+				for _, a := range h.actuators {
+					if device, err := a.Device(deviceID); err == nil {
+						v = actuator.GetStatus(device)
 					}
 				}
 			}
@@ -61,7 +61,7 @@ func (h *io) setStatus(controller *chik.Controller, deviceID string) {
 	})
 }
 
-func execute(command types.Action, device actuator.DigitalDevice, remote *chik.Controller) {
+func executeDigitalCommand(command types.Action, device actuator.DigitalDevice, remote *chik.Controller) {
 	switch types.Action(command) {
 	case types.RESET:
 		logrus.Debug("Turning off device ", device.ID())
@@ -96,13 +96,34 @@ func (h *io) parseMessage(remote *chik.Controller, message *chik.Message) {
 		return
 	}
 
-	for _, actuator := range h.actuators {
-		device, err := actuator.Device(command.DeviceID)
+	for _, a := range h.actuators {
+		device, err := a.Device(command.DeviceID)
 		if err == nil {
-			execute(command.Command[0], device, remote)
+			switch device.Kind() {
+			case actuator.DigitalInputDevice:
+			case actuator.DigitalOutputDevice:
+				executeDigitalCommand(command.Command[0], device.(actuator.DigitalDevice), remote)
+
+			case actuator.AnalogInputDevice:
+				logrus.Warn("Analog commands are not yet implemented")
+			}
 			h.setStatus(remote, command.DeviceID)
 		}
 	}
+}
+
+func (h *io) setup(remote *chik.Controller) {
+	initialStatus := make(map[string]interface{})
+	for k, v := range h.actuators {
+		v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
+		h.listenForDeviceChanges(v.DeviceChanges())
+		for _, id := range v.DeviceIds() {
+			// ignoring errors because we trust device apis
+			device, _ := v.Device(id)
+			initialStatus[id] = actuator.GetStatus(device)
+		}
+	}
+	h.status.Set(initialStatus, remote)
 }
 
 func (h *io) tearDown() {
@@ -114,20 +135,7 @@ func (h *io) tearDown() {
 }
 
 func (h *io) Run(remote *chik.Controller) {
-	{
-		initialStatus := make(map[string]bool)
-		for k, v := range h.actuators {
-			v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
-			h.listenForDeviceChanges(remote, v.DeviceChanges())
-			for _, id := range v.DeviceIds() {
-				// ignoring errors because we trust device apis
-				device, _ := v.Device(id)
-				initialStatus[id] = device.GetStatus()
-			}
-		}
-		h.status.Set(initialStatus, remote)
-	}
-
+	h.setup(remote)
 	defer h.tearDown()
 
 	in := remote.Sub(types.DigitalCommandType.String())

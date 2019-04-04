@@ -1,4 +1,4 @@
-// +build fakeActuator
+/// +build fakeActuator
 
 package actuator
 
@@ -15,16 +15,20 @@ type fakeDevice struct {
 	status bool
 }
 
-type fakeActuator struct {
+type fakeBus struct {
 	devices map[string]*fakeDevice
 }
 
 func init() {
-	actuators = append(actuators, newFakeActuator)
+	actuators = append(actuators, newFakeBus)
 }
 
 func (d *fakeDevice) ID() string {
 	return d.Id
+}
+
+func (d *fakeDevice) Kind() DeviceKind {
+	return DigitalOutputDevice
 }
 
 func (d *fakeDevice) TurnOn() {
@@ -47,11 +51,11 @@ func (d *fakeDevice) GetStatus() bool {
 	return d.status
 }
 
-func newFakeActuator() Actuator {
-	return &fakeActuator{make(map[string]*fakeDevice)}
+func newFakeBus() Bus {
+	return &fakeBus{make(map[string]*fakeDevice)}
 }
 
-func (a *fakeActuator) Initialize(config interface{}) {
+func (a *fakeBus) Initialize(config interface{}) {
 	logrus.Debug("Initialize called")
 	var devices []*fakeDevice
 	types.Decode(config, &devices)
@@ -59,11 +63,11 @@ func (a *fakeActuator) Initialize(config interface{}) {
 	a.devices = funk.ToMap(devices, "Id").(map[string]*fakeDevice)
 }
 
-func (a *fakeActuator) Deinitialize() {
+func (a *fakeBus) Deinitialize() {
 	logrus.Debug("Deinitialize called")
 }
 
-func (a *fakeActuator) Device(id string) (DigitalDevice, error) {
+func (a *fakeBus) Device(id string) (Device, error) {
 	logrus.Debug(id)
 	device := a.devices[id]
 	if device == nil {
@@ -73,7 +77,7 @@ func (a *fakeActuator) Device(id string) (DigitalDevice, error) {
 	return device, nil
 }
 
-func (a *fakeActuator) DeviceIds() []string {
+func (a *fakeBus) DeviceIds() []string {
 	result := make([]string, 0, len(a.devices))
 	for k := range a.devices {
 		logrus.Debug(k)
@@ -82,12 +86,12 @@ func (a *fakeActuator) DeviceIds() []string {
 	return result
 }
 
-func (a *fakeActuator) DeviceChanges() <-chan string {
+func (a *fakeBus) DeviceChanges() <-chan string {
 	c := make(chan string, 0)
 	close(c)
 	return c
 }
 
-func (a *fakeActuator) String() string {
+func (a *fakeBus) String() string {
 	return "fake"
 }
