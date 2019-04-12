@@ -41,7 +41,10 @@ func newGpioActuator() Bus {
 
 func (d *device) init() {
 	logrus.Debug("Opening pin ", d.Number, " with inverted logic: ", d.Inverted)
-	pin := gpio.NewOutput(d.Number, false)
+	pin, err := gpio.NewOutput(d.Number, false)
+	if err != nil {
+		logrus.Fatalf("Cannot open pin %d: %v", d.Number, err)
+	}
 	d.pin = pin
 
 	if d.Inverted {
