@@ -1,4 +1,4 @@
-/// +build gpioActuator
+// +build gpioActuator
 
 package actuator
 
