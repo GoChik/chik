@@ -11,7 +11,6 @@ import (
 	"github.com/gochik/chik/handlers/io/actuator"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
-	funk "github.com/thoas/go-funk"
 )
 
 type io struct {
@@ -47,17 +46,12 @@ func (h *io) setStatus(controller *chik.Controller, deviceID string) {
 		if status == nil {
 			status = make(map[string]interface{})
 		}
-		res := funk.Map(status, func(k string, v interface{}) (string, interface{}) {
-			if k == deviceID {
-				for _, a := range h.actuators {
-					if device, err := a.Device(deviceID); err == nil {
-						v = actuator.GetStatus(device)
-					}
-				}
+		for _, a := range h.actuators {
+			if device, err := a.Device(deviceID); err == nil {
+				status[deviceID] = actuator.GetStatus(device)
 			}
-			return k, v
-		})
-		return res
+		}
+		return status
 	})
 }
 
