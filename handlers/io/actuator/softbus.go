@@ -1,5 +1,3 @@
-/// +build fakeActuator
-
 package actuator
 
 import (
@@ -10,74 +8,75 @@ import (
 	funk "github.com/thoas/go-funk"
 )
 
-type fakeDevice struct {
+type softDevice struct {
 	Id     string
 	status bool
 }
 
-type fakeBus struct {
-	devices map[string]*fakeDevice
+type softBus struct {
+	devices map[string]*softDevice
+	updates chan string
 }
 
 func init() {
 	actuators = append(actuators, newFakeBus)
 }
 
-func (d *fakeDevice) ID() string {
+func (d *softDevice) ID() string {
 	return d.Id
 }
 
-func (d *fakeDevice) Kind() DeviceKind {
+func (d *softDevice) Kind() DeviceKind {
 	return DigitalOutputDevice
 }
 
-func (d *fakeDevice) TurnOn() {
+func (d *softDevice) TurnOn() {
 	logrus.Debug("Turning on ", d.Id)
 	d.status = true
 }
 
-func (d *fakeDevice) TurnOff() {
+func (d *softDevice) TurnOff() {
 	logrus.Debug("Turning off ", d.Id)
 	d.status = false
 }
 
-func (d *fakeDevice) Toggle() {
+func (d *softDevice) Toggle() {
 	logrus.Debug("Toggling on ", d.Id)
 	d.status = !d.status
 }
 
-func (d *fakeDevice) GetStatus() bool {
+func (d *softDevice) GetStatus() bool {
 	logrus.Debug("Get Status of ", d.Id)
 	return d.status
 }
 
 func newFakeBus() Bus {
-	return &fakeBus{make(map[string]*fakeDevice)}
+	return &softBus{make(map[string]*softDevice), make(chan string, 0)}
 }
 
-func (a *fakeBus) Initialize(config interface{}) {
+func (a *softBus) Initialize(config interface{}) {
 	logrus.Debug("Initialize called")
-	var devices []*fakeDevice
+	var devices []*softDevice
 	types.Decode(config, &devices)
 	logrus.Debug("Devices found: ", len(devices))
-	a.devices = funk.ToMap(devices, "Id").(map[string]*fakeDevice)
+	a.devices = funk.ToMap(devices, "Id").(map[string]*softDevice)
 }
 
-func (a *fakeBus) Deinitialize() {
+func (a *softBus) Deinitialize() {
 	logrus.Debug("Deinitialize called")
+	close(a.updates)
 }
 
-func (a *fakeBus) Device(id string) (Device, error) {
+func (a *softBus) Device(id string) (Device, error) {
 	logrus.Debug(id)
 	device := a.devices[id]
 	if device == nil {
-		logrus.Debug("device not found")
-		return nil, fmt.Errorf("No FAKE device with ID: %s found", id)
+		return nil, fmt.Errorf("No soft device with ID: %s found", id)
 	}
 	return device, nil
 }
 
-func (a *fakeBus) DeviceIds() []string {
+func (a *softBus) DeviceIds() []string {
 	result := make([]string, 0, len(a.devices))
 	for k := range a.devices {
 		logrus.Debug(k)
@@ -86,12 +85,10 @@ func (a *fakeBus) DeviceIds() []string {
 	return result
 }
 
-func (a *fakeBus) DeviceChanges() <-chan string {
-	c := make(chan string, 0)
-	close(c)
-	return c
+func (a *softBus) DeviceChanges() <-chan string {
+	return a.updates
 }
 
-func (a *fakeBus) String() string {
-	return "fake"
+func (a *softBus) String() string {
+	return "soft"
 }
