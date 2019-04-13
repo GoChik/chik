@@ -1,4 +1,4 @@
-package handlers
+package router
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type forwarding struct {
 	peers *sync.Map
 }
 
-func NewForwardingHandler(peers *sync.Map) chik.Handler {
+func New(peers *sync.Map) chik.Handler {
 	return &forwarding{
 		id:    uuid.Nil,
 		peers: peers,
@@ -27,8 +27,6 @@ func (h *forwarding) terminate() {
 }
 
 func (h *forwarding) Run(controller *chik.Controller) {
-	logrus.Debug("starting forwarding handler")
-
 	defer h.terminate()
 
 	in := controller.Sub(chik.IncomingMessage)
@@ -83,5 +81,5 @@ func (h *forwarding) Run(controller *chik.Controller) {
 }
 
 func (h *forwarding) String() string {
-	return "forward"
+	return "router"
 }

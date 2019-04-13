@@ -1,4 +1,4 @@
-package handlers
+package sunphase
 
 import (
 	"encoding/json"
@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 )
 
@@ -38,14 +38,16 @@ type confError struct {
 	Message string
 }
 
-func NewSunset() chik.Handler {
+func New() chik.Handler {
 	var confError string
-	latitude, ok := config.Get("sunset.latitude").(float64)
-	if !ok {
+	var latitude float64
+	var longitude float64
+	err := config.GetStruct("sunset.latitude", &latitude)
+	if err != nil {
 		confError = "Cannot read sunset.latitude"
 	}
-	longitude, ok := config.Get("sunset.longitude").(float64)
-	if !ok {
+	err = config.GetStruct("sunset.longitude", &longitude)
+	if err != nil {
 		if confError == "" {
 			confError = "Cannot read sunset.longitude"
 		} else {
@@ -57,7 +59,7 @@ func NewSunset() chik.Handler {
 		config.Set("sunset.latitude", 0)
 		config.Set("sunset.longitude", 0)
 		config.Sync()
-		logrus.Fatal(confError)
+		logrus.Warn(confError)
 	}
 
 	handler := suntime{latitude, longitude, cache{}}
@@ -163,6 +165,14 @@ func (h *suntime) fetchSunTime() {
 		logrus.Error(err)
 		return
 	}
+	var status string
+	json.Unmarshal(*reply["status"], &status)
+
+	if status != "OK" {
+		logrus.Error("Error fetching sunphase data: ", status)
+		return
+	}
+
 	var results map[string]*json.RawMessage
 	json.Unmarshal(*reply["results"], &results)
 
@@ -256,5 +266,5 @@ func (h *suntime) Run(controller *chik.Controller) {
 }
 
 func (h *suntime) String() string {
-	return "sunset"
+	return "sunphase"
 }

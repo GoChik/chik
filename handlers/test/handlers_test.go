@@ -1,4 +1,4 @@
-package handlers
+package test
 
 import (
 	"errors"
@@ -6,11 +6,14 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/handlers/heartbeat"
+	"github.com/gochik/chik/handlers/router"
 	"github.com/gofrs/uuid"
 )
 
@@ -20,6 +23,7 @@ type TestClient struct {
 }
 
 var address net.Addr
+var peers = sync.Map{}
 
 func createController() *chik.Controller {
 	f, err := ioutil.TempFile("", "tst")
@@ -51,8 +55,8 @@ func CreateServer(t *testing.T) net.Listener {
 				t.Fatal("Cannot create controller")
 			}
 			go func() {
-				srv.Start(NewForwardingHandler(&peers))
-				srv.Start(NewHeartBeatHandler(1 * time.Second))
+				srv.Start(router.New(&peers))
+				srv.Start(heartbeat.New(1 * time.Second))
 				<-srv.Connect(conn)
 				srv.Shutdown()
 			}()

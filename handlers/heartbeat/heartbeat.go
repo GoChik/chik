@@ -1,4 +1,4 @@
-package handlers
+package heartbeat
 
 import (
 	"sync/atomic"
@@ -18,8 +18,8 @@ type heartbeat struct {
 	remoteID uuid.UUID
 }
 
-// NewHeartBeatHandler creates a new heartbeat handler
-func NewHeartBeatHandler(interval time.Duration) chik.Handler {
+// New creates a new heartbeat handler
+func New(interval time.Duration) chik.Handler {
 	if interval <= 100*time.Millisecond {
 		logrus.Error("Interval value too low: ", interval)
 		return nil
@@ -52,7 +52,6 @@ func (h *heartbeat) sender(controller *chik.Controller) *time.Ticker {
 }
 
 func (h *heartbeat) Run(controller *chik.Controller) {
-	logrus.Debug("starting heartbeat handler")
 	senderRoutine := h.sender(controller)
 	in := controller.Sub(types.HeartbeatType.String())
 	for data := range in {

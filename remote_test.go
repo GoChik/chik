@@ -4,8 +4,6 @@ import (
 	"net"
 	"testing"
 	"time"
-
-	"github.com/gochik/chik/types"
 )
 
 var stopChannel <-chan bool
@@ -48,7 +46,6 @@ func TestInvalidRead(t *testing.T) {
 		RawData []byte
 	}{
 		{"Invalid length", []byte{0, 0, 0, 0, 2, 0, 0}},
-		{"Type out of bound", []byte{byte(types.HeartbeatType + 100), 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}},
 	} {
 		testRoutine(t, func(c net.Conn, controller *Controller) {
 			c.Write(val.RawData)

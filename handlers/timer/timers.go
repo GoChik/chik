@@ -1,26 +1,27 @@
-package handlers
+package timer
 
 import (
 	"encoding/json"
 	"math"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
+	"github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
 )
 
 const timerStoragePath = "storage.timers"
 
 type timers struct {
-	timers      []types.TimedCommand
-	lastTimerID uint16
-	status      *chik.StatusHolder
+	timers           []types.TimedCommand
+	lastTimerID      uint16
+	lastTickedMinute int
+	status           *chik.StatusHolder
 }
 
-func NewTimers() chik.Handler {
+func New() chik.Handler {
 	var savedTimers []types.TimedCommand
 	err := config.GetStruct(timerStoragePath, &savedTimers)
 	if err != nil {
@@ -40,28 +41,10 @@ func NewTimers() chik.Handler {
 	return &timers{
 		savedTimers,
 		lastID,
+		-1,
 		chik.NewStatusHolder("timers"),
 	}
 
-}
-
-func (h *timers) timeTicker(remote *chik.Controller) *time.Ticker {
-	ticker := time.NewTicker(30 * time.Second)
-	go func() {
-		lastMinute := 61
-		for tick := range ticker.C {
-			if tick.Minute() == lastMinute {
-				continue
-			}
-			lastMinute = tick.Minute()
-			for _, timer := range h.timers {
-				if timer.Time.Hour() == tick.Hour() && timer.Time.Minute() == tick.Minute() {
-					remote.Pub(timer.Command, chik.LoopbackID)
-				}
-			}
-		}
-	}()
-	return ticker
 }
 
 func (h *timers) addTimer(timer types.TimedCommand) {
@@ -93,37 +76,62 @@ func (h *timers) editTimer(timer types.TimedCommand) {
 	h.addTimer(timer)
 }
 
+func (h *timers) parseMessage(message *chik.Message, controller *chik.Controller) {
+	var command types.TimedCommand
+	err := json.Unmarshal(message.Command().Data, &command)
+	if err != nil {
+		logrus.Warn("Failed decoding timer: ", err)
+		return
+	}
+
+	if funk.Contains(command.Action, types.SET) {
+		if command.Time.IsZero() {
+			logrus.Warning("Cannot add/edit a timer with a null time")
+			return
+		}
+		if command.TimerID == 0 {
+			h.addTimer(command)
+		} else {
+			h.editTimer(command)
+		}
+	} else if funk.Contains(command.Action, types.RESET) {
+		h.deleteTimer(command)
+	}
+
+	h.status.Set(h.timers, controller)
+}
+
+func (h *timers) verifyTimers(tick time.Time, remote *chik.Controller) {
+	if tick.Minute() == h.lastTickedMinute {
+		return
+	}
+	h.lastTickedMinute = tick.Minute()
+	for _, timer := range h.timers {
+		if timer.Time.Hour() == tick.Hour() && timer.Time.Minute() == tick.Minute() {
+			remote.Pub(timer.Command, chik.LoopbackID)
+		}
+	}
+}
+
 func (h *timers) Run(remote *chik.Controller) {
-	ticker := h.timeTicker(remote)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
-	h.status.SetStatus(h.timers, remote)
+	h.status.Set(h.timers, remote)
 
 	incoming := remote.Sub(types.TimerCommandType.String())
-	for rawMessage := range incoming {
-		message := rawMessage.(*chik.Message)
-		var command types.TimedCommand
-		err := json.Unmarshal(message.Command().Data, &command)
-		if err != nil {
-			logrus.Warn("Failed decoding timer: ", err)
-			continue
-		}
 
-		if funk.Contains(command.Action, types.SET) {
-			if command.Time.IsZero() {
-				logrus.Warning("Cannot add/edit a timer with a null time")
-				continue
+	for {
+		select {
+		case rawMessage, ok := <-incoming:
+			if !ok {
+				return
 			}
-			if command.TimerID == 0 {
-				h.addTimer(command)
-			} else {
-				h.editTimer(command)
-			}
-		} else if funk.Contains(command.Action, types.RESET) {
-			h.deleteTimer(command)
-		}
+			h.parseMessage(rawMessage.(*chik.Message), remote)
 
-		h.status.SetStatus(h.timers, remote)
+		case tick := <-ticker.C:
+			h.verifyTimers(tick, remote)
+		}
 	}
 }
 

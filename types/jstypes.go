@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/cloudflare/cfssl/log"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -104,10 +105,12 @@ func StringInterfaceToJsonRawMessage(sourceType, targetType reflect.Type, source
 	return json.RawMessage(data), err
 }
 
-func Decode(input, output interface{}) error {
+func Decode(input, output interface{}, hooks ...mapstructure.DecodeHookFunc) error {
+	hooks = append(hooks, IntToJsIntArr, StringToJsonTime, StringInterfaceToJsonRawMessage)
+	log.Debug("HOOKS", len(hooks))
 	config := mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
-		DecodeHook:       mapstructure.ComposeDecodeHookFunc(IntToJsIntArr, StringToJsonTime, StringInterfaceToJsonRawMessage),
+		DecodeHook:       mapstructure.ComposeDecodeHookFunc(hooks...),
 		Result:           output,
 	}
 	decoder, err := mapstructure.NewDecoder(&config)
