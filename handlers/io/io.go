@@ -8,7 +8,7 @@ import (
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
-	"github.com/gochik/chik/handlers/io/actuator"
+	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 )
