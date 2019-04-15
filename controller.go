@@ -14,6 +14,8 @@ import (
 
 // BufferSize is the size of channel buffers
 const BufferSize = 10
+
+// MaxIdleTime is the maximum time to wait before closing a connection for inactivity
 const MaxIdleTime = 5 * time.Minute
 
 // LoopbackID is the id internal only messages are sent to
