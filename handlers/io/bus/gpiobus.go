@@ -1,6 +1,6 @@
 // +build gpioActuator
 
-package actuator
+package bus
 
 import (
 	"fmt"

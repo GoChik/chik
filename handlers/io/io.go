@@ -14,7 +14,7 @@ import (
 )
 
 type io struct {
-	actuators     map[string]actuator.Bus
+	actuators     map[string]bus.Bus
 	status        *chik.StatusHolder
 	wg            sync.WaitGroup
 	deviceChanges chan string
@@ -22,7 +22,7 @@ type io struct {
 
 func New() chik.Handler {
 	return &io{
-		actuator.CreateBuses(),
+		bus.CreateBuses(),
 		chik.NewStatusHolder("io"),
 		sync.WaitGroup{},
 		make(chan string, 0),
@@ -48,14 +48,14 @@ func (h *io) setStatus(controller *chik.Controller, deviceID string) {
 		}
 		for _, a := range h.actuators {
 			if device, err := a.Device(deviceID); err == nil {
-				status[deviceID] = actuator.GetStatus(device)
+				status[deviceID] = bus.GetStatus(device)
 			}
 		}
 		return status
 	})
 }
 
-func executeDigitalCommand(command types.Action, device actuator.DigitalDevice, remote *chik.Controller) {
+func executeDigitalCommand(command types.Action, device bus.DigitalDevice, remote *chik.Controller) {
 	switch types.Action(command) {
 	case types.RESET:
 		logrus.Debug("Turning off device ", device.ID())
@@ -94,11 +94,11 @@ func (h *io) parseMessage(remote *chik.Controller, message *chik.Message) {
 		device, err := a.Device(command.DeviceID)
 		if err == nil {
 			switch device.Kind() {
-			case actuator.DigitalInputDevice:
-			case actuator.DigitalOutputDevice:
-				executeDigitalCommand(command.Command[0], device.(actuator.DigitalDevice), remote)
+			case bus.DigitalInputDevice:
+			case bus.DigitalOutputDevice:
+				executeDigitalCommand(command.Command[0], device.(bus.DigitalDevice), remote)
 
-			case actuator.AnalogInputDevice:
+			case bus.AnalogInputDevice:
 				logrus.Warn("Analog commands are not yet implemented")
 			}
 			h.setStatus(remote, command.DeviceID)
@@ -114,7 +114,7 @@ func (h *io) setup(remote *chik.Controller) {
 		for _, id := range v.DeviceIds() {
 			// ignoring errors because we trust device apis
 			device, _ := v.Device(id)
-			initialStatus[id] = actuator.GetStatus(device)
+			initialStatus[id] = bus.GetStatus(device)
 		}
 	}
 	h.status.Set(initialStatus, remote)

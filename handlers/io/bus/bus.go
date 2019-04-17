@@ -1,4 +1,4 @@
-package actuator
+package bus
 
 import (
 	"fmt"
