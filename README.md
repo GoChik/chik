@@ -2,7 +2,9 @@
 
 _Chik is the sound my child makes when he runs touching everything around the house_
 
+[![Tag](https://img.shields.io/github/tag/gochik/chik.svg)](https://github.com/gochik/chik/tags)
 [![Build Status](https://travis-ci.org/GoChik/chik.svg?branch=master)](https://travis-ci.org/GoChik/chik)
+[![Documentation](https://godoc.org/github.com/gochik/chik?status.svg)](https://godoc.org/github.com/gochik/chik)
 
 Framework that allows to create a simple network of remotely connected IOT devices.
 
