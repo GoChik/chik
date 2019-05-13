@@ -48,7 +48,10 @@ func (d *device) init() {
 	d.pin = pin
 
 	if d.Inverted {
-		d.pin.High()
+		err := d.pin.High()
+		if err != nil {
+			logrus.Error(err)
+		}
 	}
 }
 
@@ -57,9 +60,15 @@ func (d *device) set(value bool) {
 	defer mutex.Unlock()
 
 	if value != d.Inverted {
-		d.pin.High()
+		err := d.pin.High()
+		if err != nil {
+			logrus.Error(err)
+		}
 	} else {
-		d.pin.Low()
+		err := d.pin.Low()
+		if err != nil {
+			logrus.Error(err)
+		}
 	}
 }
 

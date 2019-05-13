@@ -22,7 +22,7 @@ func New(peers *sync.Map) chik.Handler {
 }
 
 func (h *forwarding) terminate() {
-	logrus.Debug(fmt.Sprintf("Disconnecting peer %v", h.id))
+	logrus.Debugf("Disconnecting peer %v", h.id)
 	h.peers.Delete(h.id)
 }
 
@@ -31,6 +31,7 @@ func (h *forwarding) Run(controller *chik.Controller) {
 
 	in := controller.Sub(chik.IncomingMessage)
 	for data := range in {
+		logrus.Debug("Received a message to route")
 		message := data.(*chik.Message)
 		sender := message.SenderUUID()
 		if sender == uuid.Nil {
@@ -39,7 +40,7 @@ func (h *forwarding) Run(controller *chik.Controller) {
 		}
 
 		if h.id == uuid.Nil {
-			logrus.Debug(fmt.Sprintf("Adding peer %v", sender))
+			logrus.Debugf("Adding peer %v", sender)
 			h.id = sender
 			h.peers.Store(h.id, controller)
 		} else if h.id != sender {
