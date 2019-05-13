@@ -101,7 +101,7 @@ func (a *gpioBus) Initialize(conf interface{}) {
 	for _, device := range devices {
 		logrus.Debug("New device for GPIO actuator: ", device)
 		device.init()
-		a.watcher.AddPin(device.Number)
+		a.watcher.AddPin(device.pin)
 	}
 	a.devices = funk.ToMap(devices, "Id").(map[string]*device)
 	a.devicesByPin = funk.ToMap(devices, "Number").(map[uint]*device)
