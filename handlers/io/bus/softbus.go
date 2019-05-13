@@ -69,8 +69,8 @@ func (a *softBus) Deinitialize() {
 
 func (a *softBus) Device(id string) (Device, error) {
 	logrus.Debug(id)
-	device := a.devices[id]
-	if device == nil {
+	device, ok := a.devices[id]
+	if !ok {
 		return nil, fmt.Errorf("No soft device with ID: %s found", id)
 	}
 	return device, nil
