@@ -13,6 +13,8 @@ import (
 // TODO: Perform may also contain an uuid in order to send a remote notification to an app
 // TODO: There might be an operation to add an action to the actor from a mobile application
 
+const configKey = "storage.actions"
+
 // Action is composed of a list of Queries and a Command to perform in case the AND composition of queries returns true
 type Action struct {
 	Query   []StateQuery
@@ -27,10 +29,10 @@ type actor struct {
 // New creates a new actor handler
 func New() chik.Handler {
 	actions := make([]Action, 0)
-	err := config.GetStruct("actions", &actions, StringInterfaceToStateQuery)
+	err := config.GetStruct(configKey, &actions, StringInterfaceToStateQuery)
 	if err != nil {
 		logrus.Warn("Cannot get actions form config file: ", err)
-		config.Set("actions", actions)
+		config.Set(configKey, actions)
 	}
 	return &actor{actions, nil}
 }
