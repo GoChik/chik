@@ -15,6 +15,12 @@ const (
 	AnalogInputDevice
 )
 
+type DeviceDescription struct {
+	ID    string
+	Kind  DeviceKind
+	State interface{}
+}
+
 // Device is the interface every kind of device should implement
 type Device interface {
 	// Unique id for the device
@@ -22,6 +28,9 @@ type Device interface {
 
 	// Device type
 	Kind() DeviceKind
+
+	// Description rapresents the device state plus his type and id at the ime it has been requested
+	Description() DeviceDescription
 }
 
 // DigitalDevice is the interface that a binary input/output device should implement
@@ -37,20 +46,6 @@ type DigitalDevice interface {
 type AnalogDevice interface {
 	Device
 	GetValue() float32
-}
-
-// GetStatus returns the status of a device given his type
-func GetStatus(device Device) interface{} {
-	var status interface{}
-	switch device.Kind() {
-	case AnalogInputDevice:
-		status = device.(AnalogDevice).GetValue()
-
-	case DigitalInputDevice:
-	case DigitalOutputDevice:
-		status = device.(DigitalDevice).GetStatus()
-	}
-	return status
 }
 
 // CreateBuses creates the set of available actuators

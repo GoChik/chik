@@ -11,6 +11,7 @@ import (
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 )
 
 type io struct {
@@ -41,17 +42,24 @@ func (h *io) listenForDeviceChanges(channel <-chan string) {
 
 func (h *io) setStatus(controller *chik.Controller, deviceID string) {
 	h.status.Edit(controller, func(rawStatus interface{}) interface{} {
-		var status map[string]interface{}
+		var status []bus.DeviceDescription
 		types.Decode(rawStatus, &status)
 		if status == nil {
-			status = make(map[string]interface{})
+			status = make([]bus.DeviceDescription, 0)
 		}
+		deviceStatus := bus.DeviceDescription{}
 		for _, a := range h.actuators {
 			if device, err := a.Device(deviceID); err == nil {
-				status[deviceID] = bus.GetStatus(device)
+				deviceStatus = device.Description()
 			}
 		}
-		return status
+
+		return funk.Map(status, func(d bus.DeviceDescription) bus.DeviceDescription {
+			if d.ID == deviceID {
+				return deviceStatus
+			}
+			return d
+		})
 	})
 }
 
@@ -107,16 +115,17 @@ func (h *io) parseMessage(remote *chik.Controller, message *chik.Message) {
 }
 
 func (h *io) setup(remote *chik.Controller) {
-	initialStatus := make(map[string]interface{})
+	initialStatus := make([]bus.DeviceDescription, 0)
 	for k, v := range h.actuators {
 		v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
-		h.listenForDeviceChanges(v.DeviceChanges())
 		for _, id := range v.DeviceIds() {
 			// ignoring errors because we trust device apis
 			device, _ := v.Device(id)
-			initialStatus[id] = bus.GetStatus(device)
+			initialStatus = append(initialStatus, device.Description())
 		}
+		h.listenForDeviceChanges(v.DeviceChanges())
 	}
+	logrus.Debug("Initial status: ", initialStatus)
 	h.status.Set(initialStatus, remote)
 }
 

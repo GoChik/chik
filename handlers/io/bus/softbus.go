@@ -30,6 +30,14 @@ func (d *softDevice) Kind() DeviceKind {
 	return DigitalOutputDevice
 }
 
+func (d *softDevice) Description() DeviceDescription {
+	return DeviceDescription{
+		ID:    d.Id,
+		Kind:  d.Kind(),
+		State: d.GetStatus(),
+	}
+}
+
 func (d *softDevice) TurnOn() {
 	logrus.Debug("Turning on ", d.Id)
 	d.status = true

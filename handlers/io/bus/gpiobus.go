@@ -80,6 +80,14 @@ func (d *device) Kind() DeviceKind {
 	return DigitalOutputDevice
 }
 
+func (d *device) Description() DeviceDescription {
+	return DeviceDescription{
+		ID:    d.Id,
+		Kind:  d.Kind(),
+		State: d.GetStatus(),
+	}
+}
+
 func (d *device) TurnOn() {
 	d.set(true)
 }
