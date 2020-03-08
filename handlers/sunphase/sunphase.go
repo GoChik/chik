@@ -69,7 +69,7 @@ func New() chik.Handler {
 func requestTimerStatus(controller *chik.Controller) []types.TimedCommand {
 	result := make([]types.TimedCommand, 0)
 	sub := controller.SubOnce(types.StatusNotificationCommandType.String())
-	statusCommand := types.SimpleCommand{Command: []types.Action{types.SET}}
+	statusCommand := types.SimpleCommand{Action: []types.Action{types.PUSH}}
 	controller.Pub(types.NewCommand(types.StatusSubscriptionCommandType, statusCommand), chik.LoopbackID)
 	select {
 	case statusRaw := <-sub:
@@ -84,50 +84,6 @@ func requestTimerStatus(controller *chik.Controller) []types.TimedCommand {
 		logrus.Error("Cannot fetch timer status")
 		return result
 	}
-}
-
-func (h *suntime) updateTimers(controller *chik.Controller) {
-	// fetch sun time
-	h.fetchSunTime()
-
-	// fetch timers from a status request
-	timers := requestTimerStatus(controller)
-	logrus.Debug("Timers: ", timers)
-
-	for _, timer := range timers {
-		send := false
-
-		if funk.Contains(timer.Action, types.SUNRISE) {
-			timer.Time = types.JSONTime{h.cache.sunrise.In(time.Local)}
-			send = true
-		}
-
-		if funk.Contains(timer.Action, types.SUNSET) {
-			timer.Time = types.JSONTime{h.cache.sunset.In(time.Local)}
-			send = true
-		}
-
-		if send {
-			logrus.Debug("Updating timer according to sun time")
-			controller.Pub(types.NewCommand(types.TimerCommandType, timer), chik.LoopbackID)
-		}
-	}
-}
-
-func (h *suntime) worker(controller *chik.Controller) *time.Ticker {
-	ticker := time.NewTicker(23 * time.Hour)
-	go func() {
-		lastDay := time.Now().Day()
-		h.updateTimers(controller)
-		for tick := range ticker.C {
-			if lastDay == tick.Day() {
-				continue
-			}
-			lastDay = tick.Day()
-			h.updateTimers(controller)
-		}
-	}()
-	return ticker
 }
 
 func (h *suntime) fetchSunTime() {
@@ -225,45 +181,84 @@ func (h *suntime) removeSunTimer(controller *chik.Controller, timer types.TimedC
 	controller.Pub(types.NewCommand(types.TimerCommandType, timer), chik.LoopbackID)
 }
 
-func (h *suntime) Run(controller *chik.Controller) {
-	worker := h.worker(controller)
-	defer worker.Stop()
+func (h *suntime) Dependencies() []string {
+	return []string{"timers"}
+}
 
-	sub := controller.Sub(types.SunsetCommandType.String())
-	for rawMessage := range sub {
-		message := rawMessage.(*chik.Message)
-		var command types.TimedCommand
-		err := json.Unmarshal(message.Command().Data, &command)
-		if err != nil {
-			logrus.Error("Command parsing failed")
-			continue
+func (h *suntime) Topics() []types.CommandType {
+	return []types.CommandType{types.SunsetCommandType}
+}
+
+func (h *suntime) Setup(controller *chik.Controller) chik.Timer {
+	return chik.NewTimer(23*time.Hour, true)
+}
+
+func (h *suntime) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
+	if h.cache.sunrise.Day() == tick.Day() {
+		return
+	}
+
+	// fetch sun time
+	h.fetchSunTime()
+
+	// fetch timers from a status request
+	timers := requestTimerStatus(controller)
+	logrus.Debug("Timers: ", timers)
+
+	for _, timer := range timers {
+		send := false
+
+		if funk.Contains(timer.Action, types.SUNRISE) {
+			timer.Time = types.JSONTime{h.cache.sunrise.In(time.Local)}
+			send = true
 		}
 
-		if len(command.Action) < 2 {
-			logrus.Warning("Unexpected command length, skipping")
-			continue
+		if funk.Contains(timer.Action, types.SUNSET) {
+			timer.Time = types.JSONTime{h.cache.sunset.In(time.Local)}
+			send = true
 		}
 
-		if funk.Contains(command.Action, types.SET) {
-			if command.TimerID == 0 {
-				logrus.Debug("Adding a new sun timer: ", command)
-				h.addSunTimer(controller, command)
-			} else {
-				logrus.Debug("Editing sun timer: ", command)
-				h.editSunTimer(controller, command)
-			}
-			continue
+		if send {
+			logrus.Debug("Updating timer according to sun time")
+			controller.Pub(types.NewCommand(types.TimerCommandType, timer), chik.LoopbackID)
 		}
-
-		if funk.Contains(command.Command, types.RESET) {
-			logrus.Debug("Removing sun timer: ", command)
-			h.removeSunTimer(controller, command)
-			continue
-		}
-
-		logrus.Warning("Unexpected sun command received, skipping")
 	}
 }
+
+func (h *suntime) HandleMessage(message *chik.Message, controller *chik.Controller) {
+	var command types.TimedCommand
+	err := json.Unmarshal(message.Command().Data, &command)
+	if err != nil {
+		logrus.Error("Command parsing failed")
+		return
+	}
+
+	if len(command.Action) < 2 {
+		logrus.Warning("Unexpected command length, skipping")
+		return
+	}
+
+	if funk.Contains(command.Action, types.SET) {
+		if command.TimerID == 0 {
+			logrus.Debug("Adding a new sun timer: ", command)
+			h.addSunTimer(controller, command)
+		} else {
+			logrus.Debug("Editing sun timer: ", command)
+			h.editSunTimer(controller, command)
+		}
+		return
+	}
+
+	if funk.Contains(command.Command, types.RESET) {
+		logrus.Debug("Removing sun timer: ", command)
+		h.removeSunTimer(controller, command)
+		return
+	}
+
+	logrus.Warning("Unexpected sun command received, skipping")
+}
+
+func (h *suntime) Teardown() {}
 
 func (h *suntime) String() string {
 	return "sunphase"

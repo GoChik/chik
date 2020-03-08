@@ -5,18 +5,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/sirupsen/logrus"
 )
 
 // WriteTimeout defines the time after which a write operation is considered failed
 const WriteTimeout = 1 * time.Minute
-
-// OutgoingMessage is the signature a message needs to go to remote peers
-const OutgoingMessage = "out"
-
-// IncomingMessage is a message that comes from remote peers
-const IncomingMessage = "in"
 
 // Remote represents a remote endpoint, data can be sent or received through
 // InBuffer and OutBuffer
@@ -36,7 +31,7 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 	// Send function
 	go func() {
 		logrus.Debug("Sender started")
-		out := controller.Sub(OutgoingMessage)
+		out := controller.Sub(types.AnyOutgoingCommandType.String())
 		for data := range out {
 			message, ok := data.(*Message)
 			if !ok {
@@ -72,7 +67,7 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 				return
 			}
 			logrus.Debug("Message received: ", message)
-			controller.PubMessage(message, IncomingMessage, message.Command().Type.String())
+			controller.PubMessage(message, types.AnyIncomingCommandType.String(), message.Command().Type.String())
 		}
 	}()
 

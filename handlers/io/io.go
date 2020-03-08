@@ -11,60 +11,58 @@ import (
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
-	"github.com/thoas/go-funk"
 )
 
+type ioStatus map[string]bus.DeviceDescription
 type io struct {
-	actuators     map[string]bus.Bus
-	status        *chik.StatusHolder
-	wg            sync.WaitGroup
-	deviceChanges chan string
+	actuators map[string]bus.Bus
+	status    *chik.StatusHolder
+	wg        sync.WaitGroup
 }
 
+type ioDeviceChanges struct {
+	DeviceID string
+}
+
+// New creates a new IO handler
 func New() chik.Handler {
 	return &io{
 		bus.CreateBuses(),
 		chik.NewStatusHolder("io"),
 		sync.WaitGroup{},
-		make(chan string, 0),
 	}
 }
 
-func (h *io) listenForDeviceChanges(channel <-chan string) {
+func (h *io) listenForDeviceChanges(channel <-chan string, controller *chik.Controller) {
 	h.wg.Add(1)
 	go func() {
 		for device := range channel {
-			h.deviceChanges <- device
+			controller.Pub(types.NewCommand(types.IODeviceStatusChangedCommandType, &ioDeviceChanges{device}),
+				chik.LoopbackID)
 		}
 		h.wg.Done()
 	}()
 }
 
-func (h *io) setStatus(controller *chik.Controller, deviceID string) {
+func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 	h.status.Edit(controller, func(rawStatus interface{}) interface{} {
-		var status []bus.DeviceDescription
+		var status ioStatus
 		types.Decode(rawStatus, &status)
 		if status == nil {
-			status = make([]bus.DeviceDescription, 0)
+			status = make(ioStatus)
 		}
-		deviceStatus := bus.DeviceDescription{}
 		for _, a := range h.actuators {
-			if device, err := a.Device(deviceID); err == nil {
-				deviceStatus = device.Description()
+			if device, err := a.Device(applianceID); err == nil {
+				status[applianceID] = device.Description()
 			}
 		}
 
-		return funk.Map(status, func(d bus.DeviceDescription) bus.DeviceDescription {
-			if d.ID == deviceID {
-				return deviceStatus
-			}
-			return d
-		})
+		return status
 	})
 }
 
-func executeDigitalCommand(command types.Action, device bus.DigitalDevice, remote *chik.Controller) {
-	switch types.Action(command) {
+func executeDigitalCommand(action types.Action, device bus.DigitalDevice, remote *chik.Controller) {
+	switch types.Action(action) {
 	case types.RESET:
 		logrus.Debug("Turning off device ", device.ID())
 		device.TurnOff()
@@ -85,7 +83,7 @@ func executeDigitalCommand(command types.Action, device bus.DigitalDevice, remot
 	}
 }
 
-func (h *io) parseMessage(remote *chik.Controller, message *chik.Message) {
+func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message) {
 	command := types.DigitalCommand{}
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
@@ -93,67 +91,76 @@ func (h *io) parseMessage(remote *chik.Controller, message *chik.Message) {
 		return
 	}
 
-	if len(command.Command) != 1 {
-		logrus.Error("Unexpected command length: ", len(command.Command))
+	if len(command.Action) != 1 {
+		logrus.Error("Unexpected command length: ", len(command.Action))
 		return
 	}
 
 	for _, a := range h.actuators {
-		device, err := a.Device(command.DeviceID)
+		device, err := a.Device(command.ApplianceID)
 		if err == nil {
 			switch device.Kind() {
 			case bus.DigitalInputDevice:
 			case bus.DigitalOutputDevice:
-				executeDigitalCommand(command.Command[0], device.(bus.DigitalDevice), remote)
+				executeDigitalCommand(command.Action[0], device.(bus.DigitalDevice), remote)
 
 			case bus.AnalogInputDevice:
 				logrus.Warn("Analog commands are not yet implemented")
 			}
-			h.setStatus(remote, command.DeviceID)
+			h.setStatus(remote, command.ApplianceID)
 		}
 	}
 }
 
-func (h *io) setup(remote *chik.Controller) {
-	initialStatus := make([]bus.DeviceDescription, 0)
+func (h *io) Dependencies() []string {
+	return []string{"status"}
+}
+
+func (h *io) Topics() []types.CommandType {
+	return []types.CommandType{
+		types.DigitalCommandType,
+		types.IODeviceStatusChangedCommandType,
+	}
+}
+
+func (h *io) Setup(controller *chik.Controller) chik.Timer {
+	initialStatus := make(ioStatus, 0)
 	for k, v := range h.actuators {
 		v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
 		for _, id := range v.DeviceIds() {
 			// ignoring errors because we trust device apis
 			device, _ := v.Device(id)
-			initialStatus = append(initialStatus, device.Description())
+			initialStatus[id] = device.Description()
 		}
-		h.listenForDeviceChanges(v.DeviceChanges())
+		h.listenForDeviceChanges(v.DeviceChanges(), controller)
 	}
 	logrus.Debug("Initial status: ", initialStatus)
-	h.status.Set(initialStatus, remote)
+	h.status.Set(initialStatus, controller)
+	return chik.NewEmptyTimer()
 }
 
-func (h *io) tearDown() {
+func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) {
+	switch message.Command().Type {
+	case types.DigitalCommandType:
+		h.parseDigitalCommand(controller, message)
+
+	case types.IODeviceStatusChangedCommandType:
+		var data ioDeviceChanges
+		err := json.Unmarshal(message.Command().Data, data)
+		if err != nil {
+			logrus.Warn("Cannot parse device update ", err)
+		}
+		h.setStatus(controller, data.DeviceID)
+	}
+}
+
+func (h *io) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
+
+func (h *io) Teardown() {
 	for _, v := range h.actuators {
 		v.Deinitialize()
 	}
 	h.wg.Wait()
-	close(h.deviceChanges)
-}
-
-func (h *io) Run(remote *chik.Controller) {
-	h.setup(remote)
-	defer h.tearDown()
-
-	in := remote.Sub(types.DigitalCommandType.String())
-	for {
-		select {
-		case data, ok := <-in:
-			if !ok {
-				return
-			}
-			h.parseMessage(remote, data.(*chik.Message))
-
-		case deviceID := <-h.deviceChanges:
-			h.setStatus(remote, deviceID)
-		}
-	}
 }
 
 func (h *io) String() string {

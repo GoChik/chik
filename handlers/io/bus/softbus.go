@@ -9,8 +9,9 @@ import (
 )
 
 type softDevice struct {
-	Id     string
-	status bool
+	Id       string
+	SoftKind DeviceKind
+	status   bool
 }
 
 type softBus struct {
@@ -27,7 +28,7 @@ func (d *softDevice) ID() string {
 }
 
 func (d *softDevice) Kind() DeviceKind {
-	return DigitalOutputDevice
+	return d.SoftKind
 }
 
 func (d *softDevice) Description() DeviceDescription {

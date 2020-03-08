@@ -67,16 +67,46 @@ func NewController() *Controller {
 	}
 }
 
+func topicsAsStrings(topics []types.CommandType) []string {
+	result := make([]string, len(topics))
+	for _, topic := range topics {
+		result = append(result, topic.String())
+	}
+	return result
+}
+
 // Start starts every registered handler
-func (c *Controller) Start(h Handler) {
-	c.handlers.Add(1)
-	go func() {
-		for c.active {
-			logrus.Debugf("Starting %s handler", h.String())
-			h.Run(c)
-		}
-		c.handlers.Done()
-	}()
+func (c *Controller) Start(handlers []Handler) {
+	// TODO: order handlers by dependencies
+	for _, h := range handlers {
+		c.handlers.Add(1)
+		logrus.Debugf("Starting %s handler", h.String())
+		timer := h.Setup(c)
+		subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
+		go func(handler Handler, t Timer, s <-chan interface{}) {
+			if t.triggerAtStart {
+				handler.HandleTimerEvent(time.Now(), c)
+			}
+		loop:
+			for c.active {
+				select {
+				case rawMessage, ok := <-s:
+					if !ok {
+						logrus.Debugf("%s channel closed. Quitting", handler.String())
+						break loop
+					}
+					handler.HandleMessage(rawMessage.(*Message), c)
+
+				case tick := <-t.ticker.C:
+					handler.HandleTimerEvent(tick, c)
+				}
+			}
+			logrus.Debugf("Stopping %s handler", handler.String())
+			t.ticker.Stop()
+			handler.Teardown()
+			c.handlers.Done()
+		}(h, timer, subscribedTopics)
+	}
 }
 
 // Connect tries to brign up the remoe connection
@@ -104,7 +134,7 @@ func (c *Controller) PubMessage(message *Message, topics ...string) {
 
 // Pub publishes a Message composed by the given Command
 func (c *Controller) Pub(command *types.Command, receiverID uuid.UUID) {
-	messageKind := OutgoingMessage
+	messageKind := types.AnyOutgoingCommandType.String()
 	if receiverID == LoopbackID {
 		messageKind = command.Type.String()
 	}

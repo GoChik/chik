@@ -19,17 +19,24 @@ type EnabledDays uint16
 // CommandType represent the type of the current message
 type CommandType uint8
 
-// Message types used in various plugins
+// Command types types used in various plugins
 const (
 	HeartbeatType CommandType = iota
 	DigitalCommandType
 	TimerCommandType
 	StatusSubscriptionCommandType
 	StatusNotificationCommandType
-	StatusUpdateCommandType
 	VersionRequestCommandType
 	VersionReplyCommandType
 	SunsetCommandType
+
+	// private commands (sent on the loopback address)
+	StatusUpdateCommandType
+	IODeviceStatusChangedCommandType
+
+	// special command types
+	AnyIncomingCommandType
+	AnyOutgoingCommandType
 
 	messageBound
 )
@@ -80,14 +87,14 @@ func NewCommand(t CommandType, data interface{}) *Command {
 
 // SimpleCommand is used to send a basic request regarding the whole system
 type SimpleCommand struct {
-	Command JSIntArr `json:",JSIntArr"`
+	Action JSIntArr `json:",JSIntArr"`
 }
 
 // DigitalCommand used to instruct the appliance to execute
 // a Command on a gpio pin
 type DigitalCommand struct {
-	Command  JSIntArr `json:",JSIntArr"`
-	DeviceID string
+	Action      JSIntArr `json:",JSIntArr"`
+	ApplianceID string   // TODO: substitute with ApplianceID
 }
 
 // TimedCommand represent a command with an associated delay in minutes

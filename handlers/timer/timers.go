@@ -21,6 +21,7 @@ type timers struct {
 	status           *chik.StatusHolder
 }
 
+// New creates a new handler for timers
 func New() chik.Handler {
 	var savedTimers []types.TimedCommand
 	err := config.GetStruct(timerStoragePath, &savedTimers)
@@ -76,7 +77,20 @@ func (h *timers) editTimer(timer types.TimedCommand) {
 	h.addTimer(timer)
 }
 
-func (h *timers) parseMessage(message *chik.Message, controller *chik.Controller) {
+func (*timers) Dependencies() []string {
+	return []string{"status"}
+}
+
+func (*timers) Topics() []types.CommandType {
+	return []types.CommandType{types.TimerCommandType}
+}
+
+func (h *timers) Setup(controller *chik.Controller) chik.Timer {
+	h.status.Set(h.timers, controller)
+	return chik.NewTimer(30*time.Second, true)
+}
+
+func (h *timers) HandleMessage(message *chik.Message, controller *chik.Controller) {
 	var command types.TimedCommand
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
@@ -101,39 +115,19 @@ func (h *timers) parseMessage(message *chik.Message, controller *chik.Controller
 	h.status.Set(h.timers, controller)
 }
 
-func (h *timers) verifyTimers(tick time.Time, remote *chik.Controller) {
+func (h *timers) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
 	if tick.Minute() == h.lastTickedMinute {
 		return
 	}
 	h.lastTickedMinute = tick.Minute()
 	for _, timer := range h.timers {
 		if timer.Time.Hour() == tick.Hour() && timer.Time.Minute() == tick.Minute() {
-			remote.Pub(timer.Command, chik.LoopbackID)
+			controller.Pub(timer.Command, chik.LoopbackID)
 		}
 	}
 }
 
-func (h *timers) Run(remote *chik.Controller) {
-	ticker := time.NewTicker(30 * time.Second)
-	defer ticker.Stop()
-
-	h.status.Set(h.timers, remote)
-
-	incoming := remote.Sub(types.TimerCommandType.String())
-
-	for {
-		select {
-		case rawMessage, ok := <-incoming:
-			if !ok {
-				return
-			}
-			h.parseMessage(rawMessage.(*chik.Message), remote)
-
-		case tick := <-ticker.C:
-			h.verifyTimers(tick, remote)
-		}
-	}
-}
+func (h *timers) Teardown() {}
 
 func (h *timers) String() string {
 	return "timers"

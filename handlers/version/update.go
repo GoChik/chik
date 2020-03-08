@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
@@ -55,52 +56,65 @@ func (h *updater) update() {
 	os.Exit(0)
 }
 
-func (h *updater) Run(remote *chik.Controller) {
-	in := remote.Sub(types.VersionRequestCommandType.String())
-	for data := range in {
-		message := data.(*chik.Message)
-		var command types.SimpleCommand
-		err := json.Unmarshal(message.Command().Data, &command)
-		if err != nil {
-			logrus.Warn("Unexpected message")
-			continue
-		}
-
-		if len(command.Command) != 1 {
-			logrus.Error("Unexpected composed command")
-			continue
-		}
-
-		switch command.Command[0] {
-		case types.GET:
-			sender := message.SenderUUID()
-			if sender == uuid.Nil {
-				logrus.Warn("Cannot get sender")
-				break
-			}
-			logrus.Debug("Getting update info from: ", h.updater.ApiURL)
-			err := h.updater.FetchInfo()
-			if err != nil {
-				logrus.Warning("Cannot fetch update info:", err)
-				continue
-			}
-			version := types.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
-			remote.Reply(message, types.VersionReplyCommandType, version)
-
-		case types.SET:
-			h.update()
-		}
-	}
-	logrus.Debug("shutting down version handler")
+func (h *updater) Dependencies() []string {
+	return []string{}
 }
 
-func (h *updater) Status() interface{} {
+func (h *updater) Topics() []types.CommandType {
+	return []types.CommandType{types.VersionRequestCommandType}
+}
+
+func (h *updater) Setup(controller *chik.Controller) chik.Timer {
+	// TODO: check periodically for new versions
+	return chik.NewEmptyTimer()
+}
+
+func (h *updater) HandleMessage(message *chik.Message, remote *chik.Controller) {
+	var command types.SimpleCommand
+	err := json.Unmarshal(message.Command().Data, &command)
+	if err != nil {
+		logrus.Warn("Unexpected message")
+		return
+	}
+
+	if len(command.Action) != 1 {
+		logrus.Error("Unexpected composed command")
+		return
+	}
+
+	switch command.Action[0] {
+	case types.GET:
+		sender := message.SenderUUID()
+		if sender == uuid.Nil {
+			logrus.Warn("Cannot get sender")
+			return
+		}
+		logrus.Debug("Getting update info from: ", h.updater.ApiURL)
+		err := h.updater.FetchInfo()
+		if err != nil {
+			logrus.Warning("Cannot fetch update info:", err)
+			return
+		}
+		version := types.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
+		remote.Reply(message, types.VersionReplyCommandType, version)
+
+	case types.SET:
+		h.update()
+	}
+}
+
+func (h *updater) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
+
+func (h *updater) Teardown() {}
+
+// TODO: remove and replace with status holder (updated on regular intervals)
+func (h *updater) status() interface{} {
 	if h.updater.Info.Version == "" {
 		h.updater.FetchInfo()
 	}
-	return map[string]interface{}{
-		"current": h.updater.CurrentVersion,
-		"latest":  h.updater.Info.Version,
+	return types.VersionIndication{
+		h.updater.CurrentVersion,
+		h.updater.Info.Version,
 	}
 }
 

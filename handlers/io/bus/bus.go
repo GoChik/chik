@@ -8,11 +8,18 @@ var actuators []func() Bus
 
 type DeviceKind uint8
 
+// device types
+// None: not assigned or unknown
+// DigitalInputDevice: a digital device that can be only read (eg: wall switch)
+// DigitalOutputDevice: a digital device that can be written (eg: light bulb)
+// AnalogInputDevice: an analog device that can be read (eg: dimmer)
+// AnalogOutputDevice: an analog device that can be written (eg: room temperature)
 const (
 	None DeviceKind = iota
 	DigitalInputDevice
 	DigitalOutputDevice
 	AnalogInputDevice
+	AnalogOutputDevice
 )
 
 type DeviceDescription struct {

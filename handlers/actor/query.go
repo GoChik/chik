@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type State struct {
@@ -14,14 +16,9 @@ type State struct {
 
 func (s *State) GetField(key string) (interface{}, error) {
 	slices := strings.Split(key, ".")
+	logrus.Debug(slices, s)
 	value := reflect.ValueOf(s).Elem()
-	for i, slice := range slices {
-		slice = strings.Title(slice)
-		// skip the case where key starts with "state"
-		if i == 0 && slice == "State" {
-			continue
-		}
-
+	for _, slice := range slices {
 		var tmp reflect.Value
 		switch value.Kind() {
 		case reflect.Map:

@@ -55,8 +55,10 @@ func CreateServer(t *testing.T) net.Listener {
 				t.Fatal("Cannot create controller")
 			}
 			go func() {
-				srv.Start(router.New(&peers))
-				srv.Start(heartbeat.New(1 * time.Second))
+				srv.Start([]chik.Handler{
+					router.New(&peers),
+					heartbeat.New(1 * time.Second),
+				})
 				<-srv.Connect(conn)
 				srv.Shutdown()
 			}()
