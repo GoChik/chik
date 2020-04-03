@@ -94,7 +94,7 @@ type SimpleCommand struct {
 // a Command on a gpio pin
 type DigitalCommand struct {
 	Action      JSIntArr `json:",JSIntArr"`
-	ApplianceID string   // TODO: substitute with ApplianceID
+	ApplianceID string
 }
 
 // TimedCommand represent a command with an associated delay in minutes

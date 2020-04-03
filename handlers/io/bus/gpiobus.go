@@ -28,15 +28,14 @@ type gpioBus struct {
 }
 
 func init() {
-	actuators = append(actuators, newGpioActuator)
-}
-
-func newGpioActuator() Bus {
-	return &gpioBus{
-		devices:      make(map[string]*device),
-		devicesByPin: make(map[uint]*device),
-		watcher:      gpio.NewWatcher(),
-	}
+	actuators = append(actuators,
+		func() Bus {
+			return &gpioBus{
+				devices:      make(map[string]*device),
+				devicesByPin: make(map[uint]*device),
+				watcher:      gpio.NewWatcher(),
+			}
+		})
 }
 
 func (d *device) init() {
