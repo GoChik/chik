@@ -37,7 +37,7 @@ func (h *io) listenForDeviceChanges(channel <-chan string, controller *chik.Cont
 	h.wg.Add(1)
 	go func() {
 		for device := range channel {
-			controller.Pub(types.NewCommand(types.IODeviceStatusChangedCommandType, &ioDeviceChanges{device}),
+			controller.Pub(types.NewCommand(types.IODeviceStatusChangedCommandType, ioDeviceChanges{device}),
 				chik.LoopbackID)
 		}
 		h.wg.Done()
@@ -146,7 +146,7 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) {
 
 	case types.IODeviceStatusChangedCommandType:
 		var data ioDeviceChanges
-		err := json.Unmarshal(message.Command().Data, data)
+		err := json.Unmarshal(message.Command().Data, &data)
 		if err != nil {
 			logrus.Warn("Cannot parse device update ", err)
 		}
