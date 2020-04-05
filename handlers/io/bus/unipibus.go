@@ -1,4 +1,4 @@
-///+build unipiDevice
+// +build unipiDevice
 
 package bus
 
@@ -62,11 +62,12 @@ func (d *unipiDevice) path() string {
 }
 
 func (d *unipiDevice) initialize() (err error) {
+	path := []string{d.path(), fmt.Sprintf(unipiDeviceValue, d.Type.String())}
 	openMode := os.O_RDWR
 	if d.Kind() == DigitalInputDevice {
 		openMode = os.O_RDONLY
 	}
-	d.file, err = os.OpenFile(strings.Join([]string{d.path(), fmt.Sprintf(unipiDeviceValue, d.Type.String())}, "/"), openMode, 0600)
+	d.file, err = os.OpenFile(strings.Join(path, "/"), openMode, 0600)
 	if err != nil {
 		logrus.Error("Unipi device initialization failed: ", err)
 		return
@@ -161,7 +162,7 @@ func (b *unipiBus) startPoll(frequency time.Duration) {
 					logrus.Error("Error fetching device status: ", err)
 				}
 				if oldStatus != device.status {
-					b.deviceNotifications <- device.ID()
+					b.deviceNotifications <- device.Id
 				}
 			}
 		}
