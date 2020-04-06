@@ -1,6 +1,6 @@
 // +build unipiDevice
 
-package bus
+package unipibus
 
 import (
 	"fmt"
@@ -9,17 +9,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 	funk "github.com/thoas/go-funk"
 )
+
+var log = logrus.WithFields(logrus.Fields{
+	"handler": "io",
+	"bus":     "unipi",
+})
 
 const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
 const unipiDeviceValue = "%s_value"
 const pollSpeed = 50 * time.Millisecond
 
 func init() {
-	actuators = append(actuators, func() Bus {
+	bus.Actuators = append(bus.Actuators, func() bus.Bus {
 		return &unipiBus{}
 	})
 }
@@ -64,12 +70,12 @@ func (d *unipiDevice) path() string {
 func (d *unipiDevice) initialize() (err error) {
 	path := []string{d.path(), fmt.Sprintf(unipiDeviceValue, d.Type.String())}
 	openMode := os.O_RDWR
-	if d.Kind() == DigitalInputDevice {
+	if d.Kind() == bus.DigitalInputDevice {
 		openMode = os.O_RDONLY
 	}
 	d.file, err = os.OpenFile(strings.Join(path, "/"), openMode, 0600)
 	if err != nil {
-		logrus.Error("Unipi device initialization failed: ", err)
+		log.Error("Device initialization failed: ", err)
 		return
 	}
 	d.buffer = make([]byte, 128)
@@ -80,11 +86,11 @@ func (d *unipiDevice) fetchStatus() error {
 	d.file.Seek(0, 0)
 	size, err := d.file.Read(d.buffer)
 	if err != nil {
-		return fmt.Errorf("Unipi device: error reading sysfs interface %s: %v", d.Id, err)
+		return fmt.Errorf("failed reading sysfs interface %s: %v", d.Id, err)
 	}
 	status, err := strconv.ParseUint(string(d.buffer[0:size-1]), 10, 32)
 	if err != nil {
-		return fmt.Errorf("Unipi device: error parsing status: %s", string(d.buffer))
+		return fmt.Errorf("failed parsing status: %s", string(d.buffer))
 	}
 	d.status = uint32(status)
 	return nil
@@ -94,27 +100,27 @@ func (d *unipiDevice) ID() string {
 	return d.Id
 }
 
-func (d *unipiDevice) Kind() DeviceKind {
+func (d *unipiDevice) Kind() bus.DeviceKind {
 	switch d.Type {
 	case unipiDigitalInput:
-		return DigitalInputDevice
+		return bus.DigitalInputDevice
 
 	case unipiDigitalOutput:
 	case unipiRelayOutput:
-		return DigitalOutputDevice
+		return bus.DigitalOutputDevice
 
 	case unipiAnalogOutput:
-		return AnalogOutputDevice
+		return bus.AnalogOutputDevice
 	}
-	return DigitalInputDevice
+	return bus.DigitalInputDevice
 }
 
-func (d *unipiDevice) Description() DeviceDescription {
+func (d *unipiDevice) Description() bus.DeviceDescription {
 	var status interface{} = d.status
 	if d.Type < unipiAnalogOutput {
 		status = (d.status == 1)
 	}
-	return DeviceDescription{
+	return bus.DeviceDescription{
 		ID:    d.Id,
 		Kind:  d.Kind(),
 		State: status,
@@ -159,7 +165,7 @@ func (b *unipiBus) startPoll(frequency time.Duration) {
 				oldStatus := device.status
 				err := device.fetchStatus()
 				if err != nil {
-					logrus.Error("Error fetching device status: ", err)
+					log.Errorf("Error fetching device status: %v", err)
 				}
 				if oldStatus != device.status {
 					b.deviceNotifications <- device.Id
@@ -175,14 +181,14 @@ func (b *unipiBus) String() string {
 }
 
 func (b *unipiBus) Initialize(config interface{}) {
-	logrus.Debug("Initialising unipi bus")
+	log.Debug("Initialising bus")
 	var devices []*unipiDevice
 	types.Decode(config, &devices)
 	b.polledDevices = make([]*unipiDevice, 0)
 	for _, device := range devices {
 		device.initialize()
 		if device.Type == unipiDigitalInput {
-			logrus.Debugf("Add %s to polled devices", device.Id)
+			log.Debugf("Add %s to polled devices", device.Id)
 			b.polledDevices = append(b.polledDevices, device)
 		}
 	}
@@ -197,10 +203,10 @@ func (b *unipiBus) Deinitialize() {
 	}
 }
 
-func (b *unipiBus) Device(id string) (Device, error) {
+func (b *unipiBus) Device(id string) (bus.Device, error) {
 	device, ok := b.devices[id]
 	if !ok {
-		return nil, fmt.Errorf("[UnipiBus] No soft device with ID: %s found", id)
+		return nil, fmt.Errorf("No soft device with ID: %s found", id)
 	}
 	return device, nil
 }

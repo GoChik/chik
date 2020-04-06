@@ -1,16 +1,22 @@
 // +build gpioActuator
 
-package bus
+package gpiobus
 
 import (
 	"fmt"
 	"sync"
 
+	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/gochik/gpio"
 	"github.com/sirupsen/logrus"
 	funk "github.com/thoas/go-funk"
 )
+
+var log = logrus.WithFields(logrus.Fields{
+	"handler": "io",
+	"bus":     "gpio",
+})
 
 var mutex = sync.Mutex{}
 
@@ -28,8 +34,8 @@ type gpioBus struct {
 }
 
 func init() {
-	actuators = append(actuators,
-		func() Bus {
+	bus.Actuators = append(bus.Actuators,
+		func() bus.Bus {
 			return &gpioBus{
 				devices:      make(map[string]*device),
 				devicesByPin: make(map[uint]*device),
@@ -39,17 +45,17 @@ func init() {
 }
 
 func (d *device) init() {
-	logrus.Debug("Opening pin ", d.Number, " with inverted logic: ", d.Inverted)
+	log.Debug("Opening pin ", d.Number, " with inverted logic: ", d.Inverted)
 	pin, err := gpio.NewOutput(d.Number, false)
 	if err != nil {
-		logrus.Fatalf("Cannot open pin %d: %v", d.Number, err)
+		log.Fatalf("Cannot open pin %d: %v", d.Number, err)
 	}
 	d.pin = pin
 
 	if d.Inverted {
 		err := d.pin.High()
 		if err != nil {
-			logrus.Error(err)
+			log.Error(err)
 		}
 	}
 }
@@ -61,12 +67,12 @@ func (d *device) set(value bool) {
 	if value != d.Inverted {
 		err := d.pin.High()
 		if err != nil {
-			logrus.Error(err)
+			log.Error(err)
 		}
 	} else {
 		err := d.pin.Low()
 		if err != nil {
-			logrus.Error(err)
+			log.Error(err)
 		}
 	}
 }
@@ -75,12 +81,12 @@ func (d *device) ID() string {
 	return d.Id
 }
 
-func (d *device) Kind() DeviceKind {
-	return DigitalOutputDevice
+func (d *device) Kind() bus.DeviceKind {
+	return bus.DigitalOutputDevice
 }
 
-func (d *device) Description() DeviceDescription {
-	return DeviceDescription{
+func (d *device) Description() bus.DeviceDescription {
+	return bus.DeviceDescription{
 		ID:    d.Id,
 		Kind:  d.Kind(),
 		State: d.GetStatus(),
@@ -111,11 +117,11 @@ func (a *gpioBus) Initialize(conf interface{}) {
 	var devices []*device
 	err := types.Decode(conf, &devices)
 	if err != nil {
-		logrus.Error(err)
+		log.Error(err)
 		return
 	}
 	for _, device := range devices {
-		logrus.Debug("New device for GPIO actuator: ", device)
+		log.Debug("New device for GPIO actuator: ", device)
 		device.init()
 		a.watcher.AddPin(device.pin)
 	}
@@ -130,7 +136,7 @@ func (a *gpioBus) Deinitialize() {
 	a.watcher.Close()
 }
 
-func (a *gpioBus) Device(id string) (Device, error) {
+func (a *gpioBus) Device(id string) (bus.Device, error) {
 	device := a.devices[id]
 	if device == nil {
 		return nil, fmt.Errorf("No GPIO device with ID: %s found", id)

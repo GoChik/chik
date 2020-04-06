@@ -1,4 +1,4 @@
-package bus
+package unipibus_test
 
 import (
 	"testing"

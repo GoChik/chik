@@ -1,4 +1,4 @@
-package bus
+package w1bus
 
 import (
 	"fmt"
@@ -8,15 +8,27 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 	funk "github.com/thoas/go-funk"
 )
 
+var log = logrus.WithFields(logrus.Fields{
+	"handler": "io",
+	"bus":     "w1",
+})
+
 const w1BusPollingInterval = 1 * time.Minute
 const w1DevicePath = "sys/bus/w1/devices/w1_bus_master"
 const ds18b20Template = "28-%s/w1_slave" // Only DS18B20 thermostat
 var temperatureRegExp = regexp.MustCompile(".* t=([0-9]+)$")
+
+func init() {
+	bus.Actuators = append(bus.Actuators, func() bus.Bus {
+		return &w1Bus{}
+	})
+}
 
 type w1Device struct {
 	Id       string
@@ -43,13 +55,13 @@ func (d *w1Device) getCurrentValue() {
 	d.file.Seek(0, 0)
 	size, err := d.file.Read(buffer)
 	if err != nil {
-		logrus.Errorf("[w1] Failed reading device %s: %v", d.DeviceID, err)
+		log.Errorf("Failed reading device %s: %v", d.DeviceID, err)
 		return
 	}
 	temperatureString := temperatureRegExp.FindString(string(buffer[:size-1]))
 	l := len(temperatureString)
 	if l == 0 {
-		logrus.Error("[w1] Error while parsing temperature from sensor")
+		log.Error("Error while parsing temperature from sensor")
 		return
 	}
 	// in order to avoid doing float operations we add the decimal dot in the proper position
@@ -57,7 +69,7 @@ func (d *w1Device) getCurrentValue() {
 	temperatureString = temperatureString[:l-3] + "." + temperatureString[l-3:]
 	temperature, err := strconv.ParseFloat(temperatureString, 32)
 	if err != nil {
-		logrus.Errorf("[w1] Failed parsing temperature string: %v", err)
+		log.Errorf("Failed parsing temperature string: %v", err)
 		return
 	}
 	d.value = float32(temperature)
@@ -67,14 +79,14 @@ func (d *w1Device) ID() string {
 	return d.Id
 }
 
-func (d *w1Device) Kind() DeviceKind {
-	return AnalogInputDevice
+func (d *w1Device) Kind() bus.DeviceKind {
+	return bus.AnalogInputDevice
 }
 
-func (d *w1Device) Description() DeviceDescription {
-	return DeviceDescription{
+func (d *w1Device) Description() bus.DeviceDescription {
+	return bus.DeviceDescription{
 		ID:    d.Id,
-		Kind:  AnalogInputDevice,
+		Kind:  bus.AnalogInputDevice,
 		State: d.value,
 	}
 }
@@ -122,10 +134,10 @@ func (b *w1Bus) Deinitialize() {
 	b.timer.Stop()
 }
 
-func (b *w1Bus) Device(id string) (Device, error) {
+func (b *w1Bus) Device(id string) (bus.Device, error) {
 	device, ok := b.devices[id]
 	if !ok {
-		return nil, fmt.Errorf("[W1Bus] No soft device with ID: %s found", id)
+		return nil, fmt.Errorf("No soft device with ID: %s found", id)
 	}
 	return device, nil
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-var actuators []func() Bus
+var Actuators []func() Bus
 
 type DeviceKind uint8
 
@@ -58,7 +58,7 @@ type AnalogDevice interface {
 // CreateBuses creates the set of available actuators
 func CreateBuses() map[string]Bus {
 	result := make(map[string]Bus)
-	for _, fun := range actuators {
+	for _, fun := range Actuators {
 		a := fun()
 		result[a.String()] = a
 	}
