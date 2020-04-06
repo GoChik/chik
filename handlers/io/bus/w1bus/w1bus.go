@@ -20,15 +20,9 @@ var log = logrus.WithFields(logrus.Fields{
 })
 
 const w1BusPollingInterval = 1 * time.Minute
-const w1DevicePath = "sys/bus/w1/devices/w1_bus_master"
+const w1DevicePath = "/sys/bus/w1/devices"
 const ds18b20Template = "28-%s/w1_slave" // Only DS18B20 thermostat
-var temperatureRegExp = regexp.MustCompile(".* t=([0-9]+)$")
-
-func init() {
-	bus.Actuators = append(bus.Actuators, func() bus.Bus {
-		return &w1Bus{}
-	})
-}
+var temperatureRegExp = regexp.MustCompile(`.* t=([0-9]+)$`)
 
 type w1Device struct {
 	Id       string
@@ -44,6 +38,7 @@ func (d *w1Device) initialize() (err error) {
 	}
 	d.file, err = os.OpenFile(strings.Join(path, "/"), os.O_RDONLY, 0600)
 	if err != nil {
+		log.Error(err)
 		return
 	}
 	d.getCurrentValue()
@@ -58,20 +53,22 @@ func (d *w1Device) getCurrentValue() {
 		log.Errorf("Failed reading device %s: %v", d.DeviceID, err)
 		return
 	}
-	temperatureString := temperatureRegExp.FindString(string(buffer[:size-1]))
-	l := len(temperatureString)
-	if l == 0 {
-		log.Error("Error while parsing temperature from sensor")
+	matches := temperatureRegExp.FindSubmatch(buffer[:size-1])
+	if len(matches) != 2 {
+		log.Errorf("Can't find temperature indication in sensor output: %s", buffer[:size-1])
 		return
 	}
+	temperatureString := string(matches[1])
 	// in order to avoid doing float operations we add the decimal dot in the proper position
 	// and convert directly the string to float
+	l := len(temperatureString)
 	temperatureString = temperatureString[:l-3] + "." + temperatureString[l-3:]
 	temperature, err := strconv.ParseFloat(temperatureString, 32)
 	if err != nil {
 		log.Errorf("Failed parsing temperature string: %v", err)
 		return
 	}
+	log.Debugf("Read from sensor %s: %v", d.Id, temperature)
 	d.value = float32(temperature)
 }
 
@@ -99,6 +96,10 @@ type w1Bus struct {
 	devices             map[string]*w1Device
 	deviceNotifications chan string
 	timer               *time.Ticker
+}
+
+func New() bus.Bus {
+	return &w1Bus{}
 }
 
 func (b *w1Bus) String() string {

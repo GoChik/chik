@@ -1,5 +1,3 @@
-// +build gpioActuator
-
 package gpiobus
 
 import (
@@ -33,15 +31,12 @@ type gpioBus struct {
 	watcher      *gpio.Watcher
 }
 
-func init() {
-	bus.Actuators = append(bus.Actuators,
-		func() bus.Bus {
-			return &gpioBus{
-				devices:      make(map[string]*device),
-				devicesByPin: make(map[uint]*device),
-				watcher:      gpio.NewWatcher(),
-			}
-		})
+func New() bus.Bus {
+	return &gpioBus{
+		devices:      make(map[string]*device),
+		devicesByPin: make(map[uint]*device),
+		watcher:      gpio.NewWatcher(),
+	}
 }
 
 func (d *device) init() {

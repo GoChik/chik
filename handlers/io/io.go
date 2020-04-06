@@ -9,6 +9,7 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/handlers/io/bus"
+	"github.com/gochik/chik/handlers/io/platform"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 )
@@ -27,7 +28,7 @@ type ioDeviceChanges struct {
 // New creates a new IO handler
 func New() chik.Handler {
 	return &io{
-		bus.CreateBuses(),
+		platform.CreateBuses(),
 		chik.NewStatusHolder("io"),
 		sync.WaitGroup{},
 	}

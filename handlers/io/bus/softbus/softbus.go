@@ -25,10 +25,8 @@ type softBus struct {
 	updates chan string
 }
 
-func init() {
-	bus.Actuators = append(bus.Actuators, func() bus.Bus {
-		return &softBus{make(map[string]*softDevice), make(chan string, 0)}
-	})
+func New() bus.Bus {
+	return &softBus{make(map[string]*softDevice), make(chan string, 0)}
 }
 
 func (d *softDevice) ID() string {

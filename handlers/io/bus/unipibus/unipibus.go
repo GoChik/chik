@@ -1,5 +1,3 @@
-// +build unipiDevice
-
 package unipibus
 
 import (
@@ -23,12 +21,6 @@ var log = logrus.WithFields(logrus.Fields{
 const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
 const unipiDeviceValue = "%s_value"
 const pollSpeed = 50 * time.Millisecond
-
-func init() {
-	bus.Actuators = append(bus.Actuators, func() bus.Bus {
-		return &unipiBus{}
-	})
-}
 
 type unipiPinType uint8
 
@@ -154,6 +146,10 @@ type unipiBus struct {
 	polledDevices       []*unipiDevice
 	deviceNotifications chan string
 	notificationTimer   *time.Ticker
+}
+
+func New() bus.Bus {
+	return &unipiBus{}
 }
 
 func (b *unipiBus) startPoll(frequency time.Duration) {
