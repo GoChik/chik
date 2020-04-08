@@ -83,7 +83,7 @@ func (q *MixedQuery) Execute(state *State) (bool, error) {
 		return false, errors.New("Cannot execute query with null field")
 	}
 
-	for _, target := range []string{"state", "current", "previous"} {
+	for _, target := range []string{"current", "previous"} {
 		if strings.ToLower(slices[0]) == target {
 			slices = slices[1:]
 		}
@@ -93,11 +93,11 @@ func (q *MixedQuery) Execute(state *State) (bool, error) {
 		return strings.Join(append([]string{root}, slices...), ".")
 	}
 
-	currentValue, err := state.GetField(queryValue("current"))
+	currentValue, err := state.GetField(queryValue("Current"))
 	if err != nil {
 		return false, err
 	}
-	previousValue, err := state.GetField(queryValue("previous"))
+	previousValue, err := state.GetField(queryValue("Previous"))
 
 	if reflect.DeepEqual(previousValue, currentValue) {
 		return false, nil
