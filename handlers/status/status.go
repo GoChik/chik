@@ -22,7 +22,7 @@ type handler struct {
 	currentStatus types.Status
 }
 
-type subscriptionCommand struct {
+type SubscriptionCommand struct {
 	Command types.Action `json:",int"`
 	Query   string       `json:",omitempty"`
 }
@@ -53,7 +53,7 @@ func (h *handler) Setup(controller *chik.Controller) chik.Timer {
 func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) {
 	switch message.Command().Type {
 	case types.StatusSubscriptionCommandType:
-		var content subscriptionCommand
+		var content SubscriptionCommand
 		err := json.Unmarshal(message.Command().Data, &content)
 		if err == nil && content.Command == types.SET {
 			if message.SenderUUID() != chik.LoopbackID &&

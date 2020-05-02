@@ -9,6 +9,7 @@ import (
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/handlers/status"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
 	"github.com/thoas/go-funk"
@@ -69,7 +70,7 @@ func New() chik.Handler {
 func requestTimerStatus(controller *chik.Controller) []types.TimedCommand {
 	result := make([]types.TimedCommand, 0)
 	sub := controller.SubOnce(types.StatusNotificationCommandType.String())
-	statusCommand := types.SimpleCommand{Action: []types.Action{types.PUSH}}
+	statusCommand := status.SubscriptionCommand{Command: types.PUSH, Query: "timers"}
 	controller.Pub(types.NewCommand(types.StatusSubscriptionCommandType, statusCommand), chik.LoopbackID)
 	select {
 	case statusRaw := <-sub:
@@ -86,7 +87,7 @@ func requestTimerStatus(controller *chik.Controller) []types.TimedCommand {
 	}
 }
 
-func (h *suntime) fetchSunTime() {
+func (h *suntime) fetchSunTime() (err error) {
 	logrus.Debug("Fetching sunrise/sunset")
 
 	client := http.Client{}
@@ -149,7 +150,7 @@ func (h *suntime) fetchSunTime() {
 	err = json.Unmarshal(*results["sunrise"], &sunriseRaw)
 	if err != nil {
 		logrus.Error(err)
-		return
+		return err
 	}
 	h.cache.sunrise, err = time.Parse(time.RFC3339, sunriseRaw)
 	if err != nil {
@@ -158,6 +159,7 @@ func (h *suntime) fetchSunTime() {
 	}
 
 	logrus.Debug("Sunrise: ", h.cache.sunrise, " sunset: ", h.cache.sunset)
+	return
 }
 
 func (h *suntime) addSunTimer(controller *chik.Controller, timer types.TimedCommand) {
@@ -199,7 +201,10 @@ func (h *suntime) HandleTimerEvent(tick time.Time, controller *chik.Controller) 
 	}
 
 	// fetch sun time
-	h.fetchSunTime()
+	err := h.fetchSunTime()
+	if err != nil {
+		return
+	}
 
 	// fetch timers from a status request
 	timers := requestTimerStatus(controller)
