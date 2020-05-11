@@ -77,12 +77,7 @@ func (h *updater) HandleMessage(message *chik.Message, remote *chik.Controller) 
 		return
 	}
 
-	if len(command.Action) != 1 {
-		logrus.Error("Unexpected composed command")
-		return
-	}
-
-	switch command.Action[0] {
+	switch command.Action {
 	case types.GET:
 		sender := message.SenderUUID()
 		if sender == uuid.Nil {

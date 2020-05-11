@@ -1,7 +1,6 @@
 package actor
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -10,13 +9,46 @@ import (
 )
 
 type State struct {
-	Current  interface{}
-	Previous interface{}
+	Current  interface{} `json:"current"`
+	Previous interface{} `json:"previous"`
 }
 
-func (s *State) GetField(key string) (interface{}, error) {
+type FieldDescriptor struct {
+	value                      interface{}
+	changedSincePreviousUpdate bool
+}
+
+func valueMatch(value reflect.StructField, name string) bool {
+	if value.Name == name {
+		return true
+	}
+
+	if strings.Split(value.Tag.Get("json"), ",")[0] == name {
+		return true
+	}
+
+	return false
+}
+
+func (s *State) GetFieldDescriptor(key string) (*FieldDescriptor, error) {
 	slices := strings.Split(key, ".")
-	logrus.Debug(slices, s)
+	queryValue := func(root string) []string {
+		return append([]string{root}, slices...)
+	}
+
+	currentValue, err := s.GetField(queryValue("current"))
+	if err != nil {
+		return nil, err
+	}
+	previousValue, err := s.GetField(queryValue("previous"))
+
+	return &FieldDescriptor{
+		currentValue,
+		!reflect.DeepEqual(previousValue, currentValue),
+	}, nil
+}
+
+func (s *State) GetField(slices []string) (interface{}, error) {
 	value := reflect.ValueOf(s).Elem()
 	for _, slice := range slices {
 		var tmp reflect.Value
@@ -28,9 +60,11 @@ func (s *State) GetField(key string) (interface{}, error) {
 			}
 
 		case reflect.Struct:
-			tmp = value.FieldByName(slice)
-			if !tmp.IsValid() {
-				tmp = value.FieldByName(strings.ToLower(slice))
+			for i := 0; i < value.NumField(); i++ {
+				if valueMatch(value.Type().Field(i), slice) {
+					tmp = value.Field(i)
+					break
+				}
 			}
 		}
 
@@ -52,58 +86,48 @@ type StateQuery interface {
 
 // StructQuery compares two elements of the State oin every state change
 type StructQuery struct {
-	FirstField  string
-	Operator    string
-	SecondField string
+	Var1 string
+	Op   string
+	Var2 string
 }
 
 func (q *StructQuery) Execute(state *State) (bool, error) {
-	firstValue, err := state.GetField(q.FirstField)
+	firstValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
 		return false, err
 	}
-	secondValue, err := state.GetField(q.SecondField)
+	secondValue, err := state.GetFieldDescriptor(q.Var2)
 	if err != nil {
 		return false, err
 	}
 
-	return Compare(firstValue, secondValue, q.Operator)
+	if !firstValue.changedSincePreviousUpdate && !secondValue.changedSincePreviousUpdate {
+		logrus.Debug("Values have not changed since previous execution")
+		return false, nil
+	}
+
+	return Compare(firstValue, secondValue, q.Op)
 }
 
 // MixedQuery compares an element of State.Current with a constant only if that element is different from the same in State.Previous
 type MixedQuery struct {
-	Field    string
-	Operator string
-	Constant interface{}
+	Var1  string
+	Op    string
+	Const interface{}
 }
 
 func (q *MixedQuery) Execute(state *State) (bool, error) {
-	slices := strings.Split(q.Field, ".")
-	if len(slices) == 0 {
-		return false, errors.New("Cannot execute query with null field")
-	}
-
-	for _, target := range []string{"current", "previous"} {
-		if strings.ToLower(slices[0]) == target {
-			slices = slices[1:]
-		}
-	}
-
-	queryValue := func(root string) string {
-		return strings.Join(append([]string{root}, slices...), ".")
-	}
-
-	currentValue, err := state.GetField(queryValue("Current"))
+	currentValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
 		return false, err
 	}
-	previousValue, err := state.GetField(queryValue("Previous"))
 
-	if reflect.DeepEqual(previousValue, currentValue) {
+	if !currentValue.changedSincePreviousUpdate {
+		logrus.Debug("Value is not changed since previous execution")
 		return false, nil
 	}
 
-	return Compare(currentValue, q.Constant, q.Operator)
+	return Compare(currentValue, q.Const, q.Op)
 }
 
 func StringInterfaceToStateQuery(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {
@@ -128,8 +152,8 @@ func StringInterfaceToStateQuery(sourceType, targetType reflect.Type, sourceData
 		return value, nil
 	}
 
-	_, ok1 := mapSource["Constant"]
-	_, ok2 := mapSource["constant"]
+	_, ok1 := mapSource["Const"]
+	_, ok2 := mapSource["const"]
 	if ok1 || ok2 {
 		return setValue(&MixedQuery{})
 	}

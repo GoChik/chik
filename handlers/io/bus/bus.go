@@ -21,9 +21,9 @@ const (
 )
 
 type DeviceDescription struct {
-	ID    string
-	Kind  DeviceKind
-	State interface{}
+	ID    string      `json:"id"`
+	Kind  DeviceKind  `json:"kind"`
+	State interface{} `json:"state"`
 }
 
 // Device is the interface every kind of device should implement

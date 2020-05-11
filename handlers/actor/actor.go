@@ -8,22 +8,23 @@ import (
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	"github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 )
 
 ///////// Todos in priority order /////////
 // TODO: Perform may also contain an uuid in order to send a remote notification to an app
-// TODO: There might be an operation to add an action to the actor from a mobile application (in order to replace timers)
 
 const configKey = "storage.actions"
 
 // Action is composed of a list of Queries and a Command to perform in case the AND composition of queries returns true
 type Action struct {
+	ID      string
 	Query   []StateQuery
 	Perform *types.Command
 }
 
 type actor struct {
-	actions       []Action
+	actions       map[string]Action
 	previousState interface{}
 }
 
@@ -35,7 +36,8 @@ func New() chik.Handler {
 		logrus.Warn("Cannot get actions form config file: ", err)
 		config.Set(configKey, actions)
 	}
-	return &actor{actions, nil}
+
+	return &actor{funk.ToMap(actions, "ID").(map[string]Action), nil}
 }
 
 func (h *actor) executeActions(controller *chik.Controller, currentState interface{}) {
@@ -62,11 +64,11 @@ func (h *actor) executeActions(controller *chik.Controller, currentState interfa
 }
 
 func (h *actor) Dependencies() []string {
-	return []string{"io", "status"}
+	return []string{"io", "status", "time", "sun"}
 }
 
 func (h *actor) Topics() []types.CommandType {
-	return []types.CommandType{types.StatusUpdateCommandType}
+	return []types.CommandType{types.StatusNotificationCommandType}
 }
 
 func (h *actor) Setup(controller *chik.Controller) chik.Timer {
@@ -76,9 +78,8 @@ func (h *actor) Setup(controller *chik.Controller) chik.Timer {
 func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller) {
 	var status types.Status
 	json.Unmarshal(message.Command().Data, &status)
-	currentState := status["io"]
-	h.executeActions(controller, currentState)
-	h.previousState = currentState
+	h.executeActions(controller, status)
+	h.previousState = status
 }
 
 func (h *actor) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}

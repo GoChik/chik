@@ -4,9 +4,26 @@ package types
 
 import "strconv"
 
-const _CommandType_name = "HeartbeatTypeDigitalCommandTypeTimerCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeStatusUpdateCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeSunsetCommandTypemessageBound"
+func _() {
+	// An "invalid array index" compiler error signifies that the constant values have changed.
+	// Re-run the stringer command to generate them again.
+	var x [1]struct{}
+	_ = x[HeartbeatType-0]
+	_ = x[DigitalCommandType-1]
+	_ = x[StatusSubscriptionCommandType-2]
+	_ = x[StatusNotificationCommandType-3]
+	_ = x[VersionRequestCommandType-4]
+	_ = x[VersionReplyCommandType-5]
+	_ = x[StatusUpdateCommandType-6]
+	_ = x[IODeviceStatusChangedCommandType-7]
+	_ = x[AnyIncomingCommandType-8]
+	_ = x[AnyOutgoingCommandType-9]
+	_ = x[messageBound-10]
+}
 
-var _CommandType_index = [...]uint8{0, 13, 31, 47, 76, 105, 128, 153, 176, 193, 205}
+const _CommandType_name = "HeartbeatTypeDigitalCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeStatusUpdateCommandTypeIODeviceStatusChangedCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
+
+var _CommandType_index = [...]uint8{0, 13, 31, 60, 89, 114, 137, 160, 192, 214, 236, 248}
 
 func (i CommandType) String() string {
 	if i >= CommandType(len(_CommandType_index)-1) {

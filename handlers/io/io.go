@@ -92,18 +92,13 @@ func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message)
 		return
 	}
 
-	if len(command.Action) != 1 {
-		logrus.Error("Unexpected command length: ", len(command.Action))
-		return
-	}
-
 	for _, a := range h.actuators {
 		device, err := a.Device(command.ApplianceID)
 		if err == nil {
 			switch device.Kind() {
 			case bus.DigitalInputDevice:
 			case bus.DigitalOutputDevice:
-				executeDigitalCommand(command.Action[0], device.(bus.DigitalDevice), remote)
+				executeDigitalCommand(command.Action, device.(bus.DigitalDevice), remote)
 
 			case bus.AnalogInputDevice:
 				logrus.Warn("Analog commands are not yet implemented")

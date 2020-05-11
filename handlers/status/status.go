@@ -50,25 +50,42 @@ func (h *handler) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewEmptyTimer()
 }
 
+func (h *handler) getStatus(query string) types.Status {
+	if query == "" {
+		return h.currentStatus
+	}
+	val, found := h.currentStatus[query]
+	if !found {
+		return types.Status{}
+	}
+	return map[string]interface{}{query: val}
+}
+
 func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) {
 	switch message.Command().Type {
 	case types.StatusSubscriptionCommandType:
 		var content SubscriptionCommand
 		err := json.Unmarshal(message.Command().Data, &content)
-		if err == nil && content.Command == types.SET {
-			if message.SenderUUID() != chik.LoopbackID &&
-				message.SenderUUID() != remote.ID {
-				logrus.Debug("Registering subscriber ", message.SenderUUID(), content.Query)
-				current := h.subscribers[message.SenderUUID()]
-				if current.listeners == nil {
-					current.listeners = make(map[string]set, 1)
-				}
-				current.listeners[content.Query] = set{}
-				current.lastConact = time.Now()
-				h.subscribers[message.SenderUUID()] = current
-			}
+		if err != nil {
+			logrus.Error("Failed to decode status subscription command")
+			return
 		}
-		remote.Reply(message, types.StatusNotificationCommandType, h.currentStatus)
+
+		if content.Command == types.SET &&
+			message.SenderUUID() != chik.LoopbackID &&
+			message.SenderUUID() != remote.ID {
+			logrus.Debug("Registering subscriber ", message.SenderUUID(), content.Query)
+			current := h.subscribers[message.SenderUUID()]
+			if current.listeners == nil {
+				current.listeners = make(map[string]set, 1)
+			}
+			current.listeners[content.Query] = set{}
+			current.lastConact = time.Now()
+			h.subscribers[message.SenderUUID()] = current
+		}
+		logrus.Debug("Send status")
+
+		remote.Reply(message, types.StatusNotificationCommandType, h.getStatus(content.Query))
 
 	case types.StatusUpdateCommandType:
 		logrus.Debug("Status update received ", message)
@@ -89,6 +106,8 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 				}
 			}
 		}
+
+		remote.Pub(types.NewCommand(types.StatusNotificationCommandType, h.currentStatus), chik.LoopbackID)
 	}
 }
 
