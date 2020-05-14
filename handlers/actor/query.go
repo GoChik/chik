@@ -13,6 +13,11 @@ type State struct {
 	Previous interface{} `json:"previous"`
 }
 
+type QueryResult struct {
+	match                          bool
+	changedSincePreviousEvaluation bool
+}
+
 type fieldDescriptor struct {
 	value                      interface{}
 	changedSincePreviousUpdate bool
@@ -81,7 +86,7 @@ func (s *State) GetField(slices []string) (interface{}, error) {
 }
 
 type StateQuery interface {
-	Execute(state *State) (bool, error)
+	Execute(state *State) (QueryResult, error)
 }
 
 // StructQuery compares two elements of the State oin every state change
@@ -91,22 +96,36 @@ type StructQuery struct {
 	Var2 string
 }
 
-func (q *StructQuery) Execute(state *State) (bool, error) {
+func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
+	logrus.Debugf("Executing StructQuery query: %v %v %v", q.Var1, q.Op, q.Var2)
 	firstValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
-		return false, err
+		return
 	}
 	secondValue, err := state.GetFieldDescriptor(q.Var2)
 	if err != nil {
-		return false, err
+		return
 	}
 
-	if !firstValue.changedSincePreviousUpdate && !secondValue.changedSincePreviousUpdate {
-		logrus.Debug("Values have not changed since previous execution")
-		return false, nil
+	match, err := Compare(firstValue.value, secondValue.value, q.Op)
+	if err != nil {
+		return
 	}
 
-	return Compare(firstValue, secondValue, q.Op)
+	logrus.Debugf(
+		"Query between %v and %v result: %v, %v",
+		firstValue.value,
+		secondValue.value,
+		match,
+		firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate,
+	)
+
+	res = QueryResult{
+		match:                          match,
+		changedSincePreviousEvaluation: firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate,
+	}
+
+	return
 }
 
 // MixedQuery compares an element of State.Current with a constant only if that element is different from the same in State.Previous
@@ -116,18 +135,26 @@ type MixedQuery struct {
 	Const interface{}
 }
 
-func (q *MixedQuery) Execute(state *State) (bool, error) {
+func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
+	logrus.Debugf("Executing mixed query: %v %v %v", q.Var1, q.Op, q.Const)
 	currentValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
-		return false, err
+		return
 	}
 
-	if !currentValue.changedSincePreviousUpdate {
-		logrus.Debug("Value is not changed since previous execution")
-		return false, nil
+	match, err := Compare(currentValue.value, q.Const, q.Op)
+	if err != nil {
+		return
 	}
 
-	return Compare(currentValue, q.Const, q.Op)
+	logrus.Debugf("Query between %v and %v result: %v, %v", currentValue.value, q.Const, match, currentValue.changedSincePreviousUpdate)
+
+	res = QueryResult{
+		match:                          match,
+		changedSincePreviousEvaluation: currentValue.changedSincePreviousUpdate,
+	}
+
+	return
 }
 
 func StringInterfaceToStateQuery(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {

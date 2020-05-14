@@ -47,17 +47,20 @@ func (h *actor) executeActions(controller *chik.Controller, currentState interfa
 	}
 
 	for _, action := range h.actions {
-		composedResult := true
+		composedResult := QueryResult{true, false}
 		for _, query := range action.Query {
 			result, err := query.Execute(state)
 			if err != nil {
 				logrus.Warn("State query failed: ", err)
 			}
-			composedResult = (result && composedResult)
+			composedResult = QueryResult{
+				composedResult.match && result.match,
+				composedResult.changedSincePreviousEvaluation || result.changedSincePreviousEvaluation,
+			}
 		}
 
-		if composedResult {
-			logrus.Debug("Query returned positive results, executing: ", action.Perform)
+		if composedResult.match && composedResult.changedSincePreviousEvaluation {
+			logrus.Debugf("Query returned positive results, executing: %v", action.Perform)
 			controller.Pub(action.Perform, chik.LoopbackID)
 		}
 	}
