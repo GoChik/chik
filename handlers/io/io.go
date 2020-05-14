@@ -63,7 +63,7 @@ func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 }
 
 func executeDigitalCommand(action types.Action, device bus.DigitalDevice, remote *chik.Controller) {
-	switch types.Action(action) {
+	switch action {
 	case types.RESET:
 		logrus.Debug("Turning off device ", device.ID())
 		device.TurnOff()
@@ -81,6 +81,9 @@ func executeDigitalCommand(action types.Action, device bus.DigitalDevice, remote
 	case types.TOGGLE:
 		logrus.Debug("Toggling device ", device.ID())
 		device.Toggle()
+
+	default:
+		logrus.Warningf("Unknown action %v", action)
 	}
 }
 
