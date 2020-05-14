@@ -13,7 +13,7 @@ type State struct {
 	Previous interface{} `json:"previous"`
 }
 
-type FieldDescriptor struct {
+type fieldDescriptor struct {
 	value                      interface{}
 	changedSincePreviousUpdate bool
 }
@@ -30,7 +30,7 @@ func valueMatch(value reflect.StructField, name string) bool {
 	return false
 }
 
-func (s *State) GetFieldDescriptor(key string) (*FieldDescriptor, error) {
+func (s *State) GetFieldDescriptor(key string) (*fieldDescriptor, error) {
 	slices := strings.Split(key, ".")
 	queryValue := func(root string) []string {
 		return append([]string{root}, slices...)
@@ -42,7 +42,7 @@ func (s *State) GetFieldDescriptor(key string) (*FieldDescriptor, error) {
 	}
 	previousValue, err := s.GetField(queryValue("previous"))
 
-	return &FieldDescriptor{
+	return &fieldDescriptor{
 		currentValue,
 		!reflect.DeepEqual(previousValue, currentValue),
 	}, nil

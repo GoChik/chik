@@ -18,9 +18,9 @@ const configKey = "storage.actions"
 
 // Action is composed of a list of Queries and a Command to perform in case the AND composition of queries returns true
 type Action struct {
-	ID      string
-	Query   []StateQuery
-	Perform *types.Command
+	ID      string         `json:"id"`
+	Query   []StateQuery   `json:"query"`
+	Perform *types.Command `json:"perform"`
 }
 
 type actor struct {

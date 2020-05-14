@@ -15,9 +15,9 @@ var log = logrus.WithFields(logrus.Fields{
 })
 
 type softDevice struct {
-	Id       string
-	SoftKind bus.DeviceKind
-	status   bool
+	Id     string
+	Type   bus.DeviceKind
+	status bool
 }
 
 type softBus struct {
@@ -34,7 +34,7 @@ func (d *softDevice) ID() string {
 }
 
 func (d *softDevice) Kind() bus.DeviceKind {
-	return d.SoftKind
+	return d.Type
 }
 
 func (d *softDevice) Description() bus.DeviceDescription {
