@@ -84,8 +84,11 @@ func fetchSunTime(latitude, longitude float64) (c cache, err error) {
 		return
 	}
 
-	c.Sunrise = stime{sunrise.Hour(), sunrise.Minute()}
-	c.Sunset = stime{sunset.Hour(), sunset.Minute()}
+	localSunrise := sunrise.Local()
+	localSunset := sunset.Local()
+
+	c.Sunrise = stime{localSunrise.Hour(), localSunrise.Minute()}
+	c.Sunset = stime{localSunset.Hour(), localSunset.Minute()}
 
 	return
 }
