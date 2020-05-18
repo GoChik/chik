@@ -39,7 +39,7 @@ const (
 	messageBound
 )
 
-// Available command types
+// Available actions
 const (
 	SET    Action = iota // Turn on/activate something
 	RESET                // Turn off/deactivate something
