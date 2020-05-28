@@ -50,8 +50,8 @@ const (
 
 // Command is the root object in every message
 type Command struct {
-	Type CommandType
-	Data json.RawMessage
+	Type CommandType     `json:"type"`
+	Data json.RawMessage `json:"data"`
 }
 
 func (c *Command) String() string {
