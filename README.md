@@ -16,8 +16,7 @@ Available handlers are:
  - IO: allows to communicate with various kind of IO devices and protocols
  - Router: allows to route messages between two devices (handler used in server applications)
  - Status: stores a global status comphrensive of every handler state and allows to register remote devices as listener for status changes within the application
- - Sunphase: allows to execute an action at sunrise or sunset (powered by: https://sunrise-sunset.org/api)
- - Timer: allows to execute an action at a certain date and time
+ - Time: allows to execute an action at a certain date and time or at sunrise/sunset
  - Version: stores the version of the application and allows OTA updates
 
 Ready made applications:

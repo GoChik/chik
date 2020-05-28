@@ -67,7 +67,7 @@ func (h *actor) executeActions(controller *chik.Controller, currentState interfa
 }
 
 func (h *actor) Dependencies() []string {
-	return []string{"io", "status", "time", "sun"}
+	return []string{"io", "status", "time"}
 }
 
 func (h *actor) Topics() []types.CommandType {
