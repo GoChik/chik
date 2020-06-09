@@ -1,9 +1,13 @@
 package chik
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cskr/pubsub"
 	"github.com/gochik/chik/config"
@@ -26,10 +30,7 @@ type Controller struct {
 	ID         uuid.UUID
 	pubSub     *pubsub.PubSub
 	remote     *Remote
-	shutdown   sync.Once
 	disconnect sync.Mutex
-	handlers   sync.WaitGroup
-	active     bool
 }
 
 // NewController creates a new controller
@@ -59,7 +60,6 @@ func NewController() *Controller {
 	log.Info().Str("identity", identity.String())
 
 	return &Controller{
-		active: true,
 		ID:     identity,
 		pubSub: pubsub.New(BufferSize),
 	}
@@ -73,42 +73,57 @@ func topicsAsStrings(topics []types.CommandType) []string {
 	return result
 }
 
-// Start starts every registered handler
-func (c *Controller) Start(handlers []Handler) {
-	// TODO: order handlers by dependencies
-	for _, h := range handlers {
-		c.handlers.Add(1)
-		log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
-		timer := h.Setup(c)
-		subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
-		go func(handler Handler, t Timer, s <-chan interface{}) {
-			if t.triggerAtStart {
-				handler.HandleTimerEvent(time.Now(), c)
-			}
-		loop:
-			for c.active {
-				select {
-				case rawMessage, ok := <-s:
-					if !ok {
-						log.Info().
-							Str("handler", handler.String()).
-							Msg("Message channel closed. Quitting")
-						break loop
-					}
-					handler.HandleMessage(rawMessage.(*Message), c)
-
-				case tick := <-t.ticker.C:
-					handler.HandleTimerEvent(tick, c)
-				}
-			}
+func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
+	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
+	timer := h.Setup(c)
+	subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
+	g.Go(func() error {
+		stop := func() {
+			timer.ticker.Stop()
+			h.Teardown()
 			log.Debug().
-				Str("handler", handler.String()).
+				Str("handler", h.String()).
 				Msg("Stopping handler")
-			t.ticker.Stop()
-			handler.Teardown()
-			c.handlers.Done()
-		}(h, timer, subscribedTopics)
+		}
+		if timer.triggerAtStart {
+			h.HandleTimerEvent(time.Now(), c)
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				stop()
+				return ctx.Err()
+			case rawMessage, ok := <-subscribedTopics:
+				if !ok {
+					log.Error().
+						Str("handler", h.String()).
+						Msg("Message channel closed. Quitting")
+					stop()
+					return fmt.Errorf("Channel closed on handler %v", h.String())
+				}
+				err := h.HandleMessage(rawMessage.(*Message), c)
+				if err != nil {
+					return err
+				}
+
+			case tick := <-timer.ticker.C:
+				h.HandleTimerEvent(tick, c)
+			}
+		}
+	})
+}
+
+// Start starts every registered handler
+func (c *Controller) Start(ctx context.Context, handlers []Handler) {
+	// TODO: order handlers by dependencies
+	g, ctx := errgroup.WithContext(ctx)
+	for _, h := range handlers {
+		c.run(ctx, g, h)
 	}
+	g.Wait()
+	log.Info().Msg("Controller terminated")
+	c.Disconnect()
+	c.pubSub.Shutdown()
 }
 
 // Connect tries to brign up the remoe connection
@@ -161,14 +176,4 @@ func (c *Controller) Reply(request *Message, replyType types.CommandType, replyC
 
 	// If sender is null the message is internal, otherwise it needs to go out
 	c.Pub(command, receiver)
-}
-
-// Shutdown disconnects and turns off every handler
-func (c *Controller) Shutdown() {
-	c.Disconnect()
-	c.shutdown.Do(func() {
-		c.active = false
-		c.pubSub.Shutdown()
-		c.handlers.Wait()
-	})
 }

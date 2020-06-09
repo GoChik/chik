@@ -79,11 +79,12 @@ func (h *actor) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewEmptyTimer()
 }
 
-func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller) {
+func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller) error {
 	var status types.Status
 	json.Unmarshal(message.Command().Data, &status)
 	h.executeActions(controller, status)
 	h.previousState = status
+	return nil
 }
 
 func (h *actor) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}

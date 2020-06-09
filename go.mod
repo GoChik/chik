@@ -10,6 +10,7 @@ require (
 	github.com/rferrazz/go-selfupdate v0.0.0-20181213211355-e2860d6a51c7
 	github.com/rs/zerolog v1.19.0
 	github.com/thoas/go-funk v0.0.0-20180701190756-e2f8da694c9c
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980 // indirect
 )
 

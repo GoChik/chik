@@ -1,6 +1,8 @@
 package router
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -36,13 +38,13 @@ func (h *forwarding) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewEmptyTimer()
 }
 
-func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Controller) {
+func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Controller) error {
 	logger.Debug().Msg("Received a message to route")
 	sender := message.SenderUUID()
 	if sender == uuid.Nil {
-		logger.Error().Msg("Unable to get sender UUID")
-		controller.Shutdown()
-		return
+		err := errors.New("Unable to get sender UUID")
+		logger.Err(err)
+		return err
 	}
 
 	if h.id == uuid.Nil {
@@ -50,26 +52,26 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 		h.id = sender
 		h.peers.Store(h.id, controller)
 	} else if h.id != sender {
-		logger.Error().Msgf("Unexpected sender, expecting: %v got: %v", h.id, sender)
-		controller.Shutdown()
-		return
+		err := fmt.Errorf("Unexpected sender, expecting: %v got: %v", h.id, sender)
+		logger.Err(err)
+		return err
 	}
 
 	receiver, err := message.ReceiverUUID()
 	if err != nil {
 		logger.Warn().Msgf("Unable to read receiver UUID: %v", err)
-		return
+		return nil
 	}
 
 	switch receiver {
 	case uuid.Nil:
 		logger.Warn().Msg("No receiver specified")
-		return
+		return nil
 
 	case h.id:
 	case controller.ID:
 		logger.Warn().Msg("Ignoring message to self")
-		return
+		return nil
 
 	default:
 		logger.Info().Msgf("Forwarding a message to: %v", receiver)
@@ -77,11 +79,12 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 		receiverRemote, _ := h.peers.Load(receiver)
 		if receiverRemote == nil {
 			logger.Error().Msgf("Peer disconnected: %v", receiver)
-			return
+			return nil
 		}
 
 		receiverRemote.(*chik.Controller).PubMessage(message, types.AnyOutgoingCommandType.String())
 	}
+	return nil
 }
 
 func (h *forwarding) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}

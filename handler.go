@@ -36,7 +36,7 @@ type Handler interface {
 	Dependencies() []string
 	Topics() []types.CommandType
 	Setup(controller *Controller) Timer
-	HandleMessage(message *Message, controller *Controller)
+	HandleMessage(message *Message, controller *Controller) error
 	HandleTimerEvent(tick time.Time, controller *Controller)
 	Teardown()
 }

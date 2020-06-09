@@ -74,7 +74,7 @@ func (h *datetime) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewTimer(30*time.Second, true)
 }
 
-func (h *datetime) HandleMessage(message *chik.Message, controller *chik.Controller) {}
+func (h *datetime) HandleMessage(message *chik.Message, controller *chik.Controller) error { return nil }
 
 func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
 	if h.data.Minute == tick.Minute() {

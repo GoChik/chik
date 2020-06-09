@@ -63,14 +63,14 @@ func (h *handler) getStatus(query string) types.Status {
 	return map[string]interface{}{query: val}
 }
 
-func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) {
+func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) error {
 	switch message.Command().Type {
 	case types.StatusSubscriptionCommandType:
 		var content SubscriptionCommand
 		err := json.Unmarshal(message.Command().Data, &content)
 		if err != nil {
 			logger.Error().Msgf("Failed to decode status subscription command: %v", err)
-			return
+			return nil
 		}
 
 		if content.Command == types.SET &&
@@ -94,7 +94,7 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 		err := json.Unmarshal(message.Command().Data, &status)
 		if err != nil {
 			logger.Warn().Msgf("Failed to decode Status update: %v", err)
-			return
+			return nil
 		}
 
 		// here there is just one iteration because status is a pair[string]interface{}
@@ -110,6 +110,7 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 
 		remote.Pub(types.NewCommand(types.StatusNotificationCommandType, h.currentStatus), chik.LoopbackID)
 	}
+	return nil
 }
 
 func (h *handler) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}

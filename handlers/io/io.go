@@ -140,7 +140,7 @@ func (h *io) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewEmptyTimer()
 }
 
-func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) {
+func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) error {
 	switch message.Command().Type {
 	case types.DigitalCommandType:
 		h.parseDigitalCommand(controller, message)
@@ -153,6 +153,7 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) {
 		}
 		h.setStatus(controller, data.DeviceID)
 	}
+	return nil
 }
 
 func (h *io) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}

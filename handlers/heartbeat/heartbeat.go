@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var logger = log.With().Str("handler", "actor").Logger()
+var logger = log.With().Str("handler", "heartbeat").Logger()
 
 const maxErrors uint32 = 300
 
@@ -43,7 +43,7 @@ func (h *heartbeat) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewTimer(h.interval, true)
 }
 
-func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Controller) {
+func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Controller) error {
 	if h.remoteID == uuid.Nil {
 		h.remoteID = message.SenderUUID()
 	}
@@ -51,6 +51,7 @@ func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Contro
 	if message.Command().Type == types.HeartbeatType {
 		atomic.StoreUint32(&h.errors, 0)
 	}
+	return nil
 }
 
 func (h *heartbeat) HandleTimerEvent(tick time.Time, controller *chik.Controller) {

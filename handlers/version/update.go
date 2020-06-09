@@ -71,12 +71,12 @@ func (h *updater) Setup(controller *chik.Controller) chik.Timer {
 	return chik.NewEmptyTimer()
 }
 
-func (h *updater) HandleMessage(message *chik.Message, remote *chik.Controller) {
+func (h *updater) HandleMessage(message *chik.Message, remote *chik.Controller) error {
 	var command types.SimpleCommand
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
 		logger.Warn().Msg("Unexpected message")
-		return
+		return nil
 	}
 
 	switch command.Action {
@@ -84,13 +84,13 @@ func (h *updater) HandleMessage(message *chik.Message, remote *chik.Controller) 
 		sender := message.SenderUUID()
 		if sender == uuid.Nil {
 			logger.Warn().Msg("Cannot get sender")
-			return
+			return nil
 		}
 		logger.Debug().Msgf("Getting update info from: %v", h.updater.ApiURL)
 		err := h.updater.FetchInfo()
 		if err != nil {
 			logger.Warn().Msgf("Cannot fetch update info: %v", err)
-			return
+			return nil
 		}
 		version := types.VersionIndication{h.updater.CurrentVersion, h.updater.Info.Version}
 		remote.Reply(message, types.VersionReplyCommandType, version)
@@ -98,6 +98,7 @@ func (h *updater) HandleMessage(message *chik.Message, remote *chik.Controller) 
 	case types.SET:
 		h.update()
 	}
+	return nil
 }
 
 func (h *updater) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
