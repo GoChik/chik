@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/sirupsen/logrus"
 )
 
 type State struct {
@@ -97,7 +95,7 @@ type StructQuery struct {
 }
 
 func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
-	logrus.Debugf("Executing StructQuery query: %v %v %v", q.Var1, q.Op, q.Var2)
+	logger.Info().Str("query_type", "struct").Msgf("Executing query: %v %v %v", q.Var1, q.Op, q.Var2)
 	firstValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
 		return
@@ -112,7 +110,7 @@ func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
 		return
 	}
 
-	logrus.Debugf(
+	logger.Debug().Str("query_type", "struct").Msgf(
 		"Query between %v and %v result: %v, %v",
 		firstValue.value,
 		secondValue.value,
@@ -136,7 +134,7 @@ type MixedQuery struct {
 }
 
 func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
-	logrus.Debugf("Executing mixed query: %v %v %v", q.Var1, q.Op, q.Const)
+	logger.Info().Str("query_type", "mixed").Msgf("Executing mixed query: %v %v %v", q.Var1, q.Op, q.Const)
 	currentValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
 		return
@@ -147,7 +145,9 @@ func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
 		return
 	}
 
-	logrus.Debugf("Query between %v and %v result: %v, %v", currentValue.value, q.Const, match, currentValue.changedSincePreviousUpdate)
+	logger.Debug().
+		Str("query_type", "mixed").
+		Msgf("Query between %v and %v result: %v, %v", currentValue.value, q.Const, match, currentValue.changedSincePreviousUpdate)
 
 	res = QueryResult{
 		match:                          match,

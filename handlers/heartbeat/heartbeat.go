@@ -7,8 +7,10 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
+
+var logger = log.With().Str("handler", "actor").Logger()
 
 const maxErrors uint32 = 300
 
@@ -21,7 +23,7 @@ type heartbeat struct {
 // New creates a new heartbeat handler
 func New(interval time.Duration) chik.Handler {
 	if interval <= 100*time.Millisecond {
-		logrus.Error("Interval value too low: ", interval)
+		logger.Error().Msgf("Interval value too low: %v", interval)
 		return nil
 	}
 	return &heartbeat{
@@ -52,12 +54,12 @@ func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Contro
 }
 
 func (h *heartbeat) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
-	logrus.Debug("Sending heartbeat")
+	logger.Debug().Msg("Sending heartbeat")
 	controller.PubMessage(chik.NewMessage(h.remoteID, types.NewCommand(types.HeartbeatType, nil)),
 		types.AnyOutgoingCommandType.String())
 	atomic.AddUint32(&h.errors, 1)
 	if h.errors >= maxErrors {
-		logrus.Error("Heartbeat error threshold exceeded: shutting down remote connection")
+		logger.Error().Msg("Heartbeat threshold exceeded: shutting down remote connection")
 		controller.Disconnect()
 		return
 	}

@@ -10,14 +10,11 @@ import (
 
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	funk "github.com/thoas/go-funk"
 )
 
-var log = logrus.WithFields(logrus.Fields{
-	"handler": "io",
-	"bus":     "w1",
-})
+var logger = log.With().Str("handler", "io").Str("bus", "w1").Logger()
 
 const w1BusPollingInterval = 1 * time.Minute
 const w1DevicePath = "/sys/bus/w1/devices"
@@ -38,7 +35,7 @@ func (d *w1Device) initialize() (err error) {
 	}
 	d.file, err = os.OpenFile(strings.Join(path, "/"), os.O_RDONLY, 0600)
 	if err != nil {
-		log.Error(err)
+		logger.Error().Msgf("Device initialization failed: %v", err)
 		return
 	}
 	d.getCurrentValue()
@@ -50,12 +47,12 @@ func (d *w1Device) getCurrentValue() {
 	d.file.Seek(0, 0)
 	size, err := d.file.Read(buffer)
 	if err != nil {
-		log.Errorf("Failed reading device %s: %v", d.DeviceID, err)
+		logger.Error().Msgf("Failed reading device %s: %v", d.DeviceID, err)
 		return
 	}
 	matches := temperatureRegExp.FindSubmatch(buffer[:size-1])
 	if len(matches) != 2 {
-		log.Errorf("Can't find temperature indication in sensor output: %s", buffer[:size-1])
+		logger.Error().Msgf("Can't find temperature indication in sensor output: %s", buffer[:size-1])
 		return
 	}
 	temperatureString := string(matches[1])
@@ -65,10 +62,10 @@ func (d *w1Device) getCurrentValue() {
 	temperatureString = temperatureString[:l-3] + "." + temperatureString[l-3:]
 	temperature, err := strconv.ParseFloat(temperatureString, 32)
 	if err != nil {
-		log.Errorf("Failed parsing temperature string: %v", err)
+		logger.Error().Msgf("Failed parsing temperature string: %v", err)
 		return
 	}
-	log.Debugf("Read from sensor %s: %v", d.Id, temperature)
+	logger.Info().Msgf("Read from sensor %s: %v", d.Id, temperature)
 	d.value = float32(temperature)
 }
 

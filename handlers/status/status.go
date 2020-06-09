@@ -7,8 +7,10 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
+
+var logger = log.With().Str("handler", "status").Logger()
 
 type set struct{}
 
@@ -67,14 +69,14 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 		var content SubscriptionCommand
 		err := json.Unmarshal(message.Command().Data, &content)
 		if err != nil {
-			logrus.Error("Failed to decode status subscription command")
+			logger.Error().Msgf("Failed to decode status subscription command: %v", err)
 			return
 		}
 
 		if content.Command == types.SET &&
 			message.SenderUUID() != chik.LoopbackID &&
 			message.SenderUUID() != remote.ID {
-			logrus.Debug("Registering subscriber ", message.SenderUUID(), content.Query)
+			logger.Info().Msgf("Subscribing %v to %v", message.SenderUUID(), content.Query)
 			current := h.subscribers[message.SenderUUID()]
 			if current.listeners == nil {
 				current.listeners = make(map[string]set, 1)
@@ -83,16 +85,15 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 			current.lastConact = time.Now()
 			h.subscribers[message.SenderUUID()] = current
 		}
-		logrus.Debug("Send status")
 
 		remote.Reply(message, types.StatusNotificationCommandType, h.getStatus(content.Query))
 
 	case types.StatusUpdateCommandType:
-		logrus.Debug("Status update received ", message)
+		logger.Debug().Msgf("Status update received: %v", message)
 		var status types.Status
 		err := json.Unmarshal(message.Command().Data, &status)
 		if err != nil {
-			logrus.Warning("Failed to decode Status update command: ", err)
+			logger.Warn().Msgf("Failed to decode Status update: %v", err)
 			return
 		}
 

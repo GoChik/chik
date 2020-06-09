@@ -5,14 +5,11 @@ import (
 
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	funk "github.com/thoas/go-funk"
 )
 
-var log = logrus.WithFields(logrus.Fields{
-	"handler": "io",
-	"bus":     "soft",
-})
+var logger = log.With().Str("handler", "io").Str("bus", "soft").Logger()
 
 type softDevice struct {
 	Id     string
@@ -46,40 +43,37 @@ func (d *softDevice) Description() bus.DeviceDescription {
 }
 
 func (d *softDevice) TurnOn() {
-	log.Debug("Turning on ", d.Id)
 	d.status = true
 }
 
 func (d *softDevice) TurnOff() {
-	log.Debug("Turning off ", d.Id)
 	d.status = false
 }
 
 func (d *softDevice) Toggle() {
-	log.Debug("Toggling on ", d.Id)
 	d.status = !d.status
 }
 
 func (d *softDevice) GetStatus() bool {
-	log.Debug("Get Status of ", d.Id)
+	logger.Debug().Msgf("Get Status of ", d.Id)
 	return d.status
 }
 
 func (a *softBus) Initialize(config interface{}) {
-	log.Debug("Initialize called")
 	var devices []*softDevice
-	types.Decode(config, &devices)
-	log.Debug("Devices found: ", len(devices))
+	err := types.Decode(config, &devices)
+	if err != nil {
+		logger.Error().Msgf("Failed initializing bus: %v", err)
+	}
 	a.devices = funk.ToMap(devices, "Id").(map[string]*softDevice)
 }
 
 func (a *softBus) Deinitialize() {
-	log.Debug("Deinitialize called")
+	logger.Debug().Msg("Deinitialize called")
 	close(a.updates)
 }
 
 func (a *softBus) Device(id string) (bus.Device, error) {
-	log.Debug(id)
 	device, ok := a.devices[id]
 	if !ok {
 		return nil, fmt.Errorf("No soft device with ID: %s found", id)
@@ -90,7 +84,6 @@ func (a *softBus) Device(id string) (bus.Device, error) {
 func (a *softBus) DeviceIds() []string {
 	result := make([]string, 0, len(a.devices))
 	for k := range a.devices {
-		log.Debug(k)
 		result = append(result, k)
 	}
 	return result

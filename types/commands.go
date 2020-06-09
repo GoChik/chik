@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 // Action is an enum of all the possible commands
@@ -55,14 +55,14 @@ type Command struct {
 }
 
 func (c *Command) String() string {
-	return fmt.Sprintf("{Type: %v, Data: %s}", c.Type, string(c.Data))
+	return fmt.Sprintf("{type: %v, data: %s}", c.Type, string(c.Data))
 }
 
 // NewCommand creates a command given a type and his content
 func NewCommand(t CommandType, data interface{}) *Command {
 	body, err := json.Marshal(data)
 	if err != nil {
-		logrus.Error("Cannot compose command: ", err)
+		log.Error().Msgf("Cannot compose command: %v", err)
 		return nil
 	}
 

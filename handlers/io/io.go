@@ -11,8 +11,10 @@ import (
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/handlers/io/platform"
 	"github.com/gochik/chik/types"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
+
+var logger = log.With().Str("handler", "io").Logger()
 
 type ioStatus map[string]bus.DeviceDescription
 type io struct {
@@ -65,25 +67,25 @@ func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 func executeDigitalCommand(action types.Action, device bus.DigitalDevice, remote *chik.Controller) {
 	switch action {
 	case types.RESET:
-		logrus.Debug("Turning off device ", device.ID())
+		logger.Info().Msgf("Turning off %v", device.ID())
 		device.TurnOff()
 
 	case types.SET:
-		logrus.Debug("Turning on device ", device.ID())
+		logger.Info().Msgf("Turning on %v", device.ID())
 		device.TurnOn()
 
 	case types.PUSH:
-		logrus.Debug("Pushing device ", device.ID())
+		logger.Info().Msgf("Pushing %v", device.ID())
 		device.TurnOn()
 		time.Sleep(500 * time.Millisecond)
 		device.TurnOff()
 
 	case types.TOGGLE:
-		logrus.Debug("Toggling device ", device.ID())
+		logger.Info().Msgf("Toggling %v", device.ID())
 		device.Toggle()
 
 	default:
-		logrus.Warningf("Unknown action %v", action)
+		logger.Warn().Msgf("Unknown action %v", action)
 	}
 }
 
@@ -91,7 +93,7 @@ func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message)
 	command := types.DigitalCommand{}
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
-		logrus.Error("cannot decode digital command: ", err)
+		logger.Error().Msgf("Cannot decode digital command: %v", err)
 		return
 	}
 
@@ -104,7 +106,7 @@ func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message)
 				executeDigitalCommand(command.Action, device.(bus.DigitalDevice), remote)
 
 			case bus.AnalogInputDevice:
-				logrus.Warn("Analog commands are not yet implemented")
+				logger.Warn().Msg("Analog commands are not yet implemented")
 			}
 			h.setStatus(remote, command.ApplianceID)
 		}
@@ -133,7 +135,7 @@ func (h *io) Setup(controller *chik.Controller) chik.Timer {
 		}
 		h.listenForDeviceChanges(v.DeviceChanges(), controller)
 	}
-	logrus.Debug("Initial status: ", initialStatus)
+	logger.Debug().Msgf("Initial status: %v", initialStatus)
 	h.status.Set(initialStatus, controller)
 	return chik.NewEmptyTimer()
 }
@@ -147,7 +149,7 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) {
 		var data ioDeviceChanges
 		err := json.Unmarshal(message.Command().Data, &data)
 		if err != nil {
-			logrus.Warn("Cannot parse device update ", err)
+			logger.Warn().Msgf("Cannot parse device update %v", err)
 		}
 		h.setStatus(controller, data.DeviceID)
 	}

@@ -9,7 +9,8 @@ import (
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // BufferSize is the size of channel buffers
@@ -33,21 +34,18 @@ type Controller struct {
 
 // NewController creates a new controller
 func NewController() *Controller {
-	logrus.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp:    true,
-		DisableTimestamp: false,
-	})
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 
 	var levelString string
 	config.GetStruct("log_level", &levelString)
-	logLevel, err := logrus.ParseLevel(levelString)
+	logLevel, err := zerolog.ParseLevel(levelString)
 	if err != nil {
-		logrus.Warn("Cannot parse log level, setting it to warning by default: ", err)
+		log.Warn().Msgf("Cannot parse log level, setting it to warning by default: %s", err)
 		config.Set("log_level", "warning")
 		config.Sync()
-		logLevel = logrus.WarnLevel
+		logLevel = zerolog.WarnLevel
 	}
-	logrus.SetLevel(logLevel)
+	zerolog.SetGlobalLevel(logLevel)
 
 	var idString string
 	config.GetStruct("identity", &idString)
@@ -56,9 +54,9 @@ func NewController() *Controller {
 		identity, _ = uuid.NewV1()
 		config.Set("identity", identity)
 		config.Sync()
-		logrus.Warn("Cannot get identity from config file, one has been auto generated")
+		log.Warn().Msg("Cannot get identity from config file, one has been auto generated")
 	}
-	logrus.Warn(identity)
+	log.Info().Str("identity", identity.String())
 
 	return &Controller{
 		active: true,
@@ -80,7 +78,7 @@ func (c *Controller) Start(handlers []Handler) {
 	// TODO: order handlers by dependencies
 	for _, h := range handlers {
 		c.handlers.Add(1)
-		logrus.Debugf("Starting %s handler", h.String())
+		log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
 		timer := h.Setup(c)
 		subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
 		go func(handler Handler, t Timer, s <-chan interface{}) {
@@ -92,7 +90,9 @@ func (c *Controller) Start(handlers []Handler) {
 				select {
 				case rawMessage, ok := <-s:
 					if !ok {
-						logrus.Debugf("%s channel closed. Quitting", handler.String())
+						log.Info().
+							Str("handler", handler.String()).
+							Msg("Message channel closed. Quitting")
 						break loop
 					}
 					handler.HandleMessage(rawMessage.(*Message), c)
@@ -101,7 +101,9 @@ func (c *Controller) Start(handlers []Handler) {
 					handler.HandleTimerEvent(tick, c)
 				}
 			}
-			logrus.Debugf("Stopping %s handler", handler.String())
+			log.Debug().
+				Str("handler", handler.String()).
+				Msg("Stopping handler")
 			t.ticker.Stop()
 			handler.Teardown()
 			c.handlers.Done()

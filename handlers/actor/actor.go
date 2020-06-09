@@ -7,12 +7,13 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
 )
 
-///////// Todos in priority order /////////
 // TODO: Perform may also contain an uuid in order to send a remote notification to an app
+
+var logger = log.With().Str("handler", "actor").Logger()
 
 const configKey = "storage.actions"
 
@@ -33,7 +34,7 @@ func New() chik.Handler {
 	actions := make([]Action, 0)
 	err := config.GetStruct(configKey, &actions, StringInterfaceToStateQuery)
 	if err != nil {
-		logrus.Warn("Cannot get actions form config file: ", err)
+		logger.Warn().Msgf("Cannot get actions form config file: %v", err)
 		config.Set(configKey, actions)
 	}
 
@@ -51,7 +52,7 @@ func (h *actor) executeActions(controller *chik.Controller, currentState interfa
 		for _, query := range action.Query {
 			result, err := query.Execute(state)
 			if err != nil {
-				logrus.Warn("State query failed: ", err)
+				logger.Warn().Msgf("State query failed: %v", err)
 			}
 			composedResult = QueryResult{
 				composedResult.match && result.match,
@@ -60,7 +61,7 @@ func (h *actor) executeActions(controller *chik.Controller, currentState interfa
 		}
 
 		if composedResult.match && composedResult.changedSincePreviousEvaluation {
-			logrus.Debugf("Query returned positive results, executing: %v", action.Perform)
+			logger.Info().Msgf("Query returned positive results, executing: %v", action.Perform)
 			controller.Pub(action.Perform, chik.LoopbackID)
 		}
 	}

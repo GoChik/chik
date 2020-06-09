@@ -7,14 +7,11 @@ import (
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/gochik/gpio"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	funk "github.com/thoas/go-funk"
 )
 
-var log = logrus.WithFields(logrus.Fields{
-	"handler": "io",
-	"bus":     "gpio",
-})
+var logger = log.With().Str("handler", "io").Str("bus", "gpio").Logger()
 
 var mutex = sync.Mutex{}
 
@@ -40,17 +37,17 @@ func New() bus.Bus {
 }
 
 func (d *device) init() {
-	log.Debug("Opening pin ", d.Number, " with inverted logic: ", d.Inverted)
+	logger.Debug().Str("device", d.Id).Msgf("Opening pin %v with inverted logic: %v", d.Number, d.Inverted)
 	pin, err := gpio.NewOutput(d.Number, false)
 	if err != nil {
-		log.Fatalf("Cannot open pin %d: %v", d.Number, err)
+		logger.Fatal().Str("device", d.Id).Msgf("Cannot open pin %d: %v", d.Number, err)
 	}
 	d.pin = pin
 
 	if d.Inverted {
 		err := d.pin.High()
 		if err != nil {
-			log.Error(err)
+			logger.Warn().Str("device", d.Id).Msgf("Failed tuning pin high %v", err)
 		}
 	}
 }
@@ -62,12 +59,12 @@ func (d *device) set(value bool) {
 	if value != d.Inverted {
 		err := d.pin.High()
 		if err != nil {
-			log.Error(err)
+			logger.Warn().Str("device", d.Id).Msgf("Failed tuning pin high %v", err)
 		}
 	} else {
 		err := d.pin.Low()
 		if err != nil {
-			log.Error(err)
+			logger.Warn().Str("device", d.Id).Msgf("Failed tuning pin low %v", err)
 		}
 	}
 }
@@ -112,11 +109,11 @@ func (a *gpioBus) Initialize(conf interface{}) {
 	var devices []*device
 	err := types.Decode(conf, &devices)
 	if err != nil {
-		log.Error(err)
+		logger.Error().Msgf("Failed initializing bus: %v", err)
 		return
 	}
 	for _, device := range devices {
-		log.Debug("New device for GPIO actuator: ", device)
+		logger.Debug().Msgf("New device: %v", device.Id)
 		device.init()
 		a.watcher.AddPin(device.pin)
 	}

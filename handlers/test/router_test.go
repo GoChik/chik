@@ -7,7 +7,6 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 func TestForwarding(t *testing.T) {
@@ -22,8 +21,6 @@ func TestForwarding(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.Debug("Sender:", client1.id, "receiver:", client2.id)
 
 	forwarded := client1.remote.Sub(types.DigitalCommandType.String())
 	time.Sleep(500 * time.Millisecond) // TODO: fix the handshake
@@ -34,7 +31,7 @@ func TestForwarding(t *testing.T) {
 
 	select {
 	case <-forwarded:
-		logrus.Debug("forwarding done")
+		t.Log("OK")
 
 	case <-time.After(1000 * time.Millisecond):
 		t.Fail()

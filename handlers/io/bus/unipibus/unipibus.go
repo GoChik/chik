@@ -9,14 +9,11 @@ import (
 
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 	funk "github.com/thoas/go-funk"
 )
 
-var log = logrus.WithFields(logrus.Fields{
-	"handler": "io",
-	"bus":     "unipi",
-})
+var logger = log.With().Str("handler", "io").Str("bus", "unipi").Logger()
 
 const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
 const unipiDeviceValue = "%s_value"
@@ -67,7 +64,7 @@ func (d *unipiDevice) initialize() (err error) {
 	}
 	d.file, err = os.OpenFile(strings.Join(path, "/"), openMode, 0600)
 	if err != nil {
-		log.Error("Device initialization failed: ", err)
+		logger.Error().Msgf("Device initialization failed: %v", err)
 		return
 	}
 	d.buffer = make([]byte, 128)
@@ -161,7 +158,7 @@ func (b *unipiBus) startPoll(frequency time.Duration) {
 				oldStatus := device.status
 				err := device.fetchStatus()
 				if err != nil {
-					log.Errorf("Error fetching device status: %v", err)
+					logger.Error().Msgf("Error fetching device status: %v", err)
 				}
 				if oldStatus != device.status {
 					b.deviceNotifications <- device.Id
@@ -177,14 +174,17 @@ func (b *unipiBus) String() string {
 }
 
 func (b *unipiBus) Initialize(config interface{}) {
-	log.Debug("Initialising bus")
+	logger.Debug().Msg("Initialising bus")
 	var devices []*unipiDevice
-	types.Decode(config, &devices)
+	err := types.Decode(config, &devices)
+	if err != nil {
+		logger.Error().Msgf("Failed initializing bus: %v", err)
+	}
 	b.polledDevices = make([]*unipiDevice, 0)
 	for _, device := range devices {
 		device.initialize()
 		if device.Type == unipiDigitalInput {
-			log.Debugf("Add %s to polled devices", device.Id)
+			logger.Debug().Msgf("Add %s to polled devices", device.Id)
 			b.polledDevices = append(b.polledDevices, device)
 		}
 	}

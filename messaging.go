@@ -10,7 +10,6 @@ import (
 
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 type Message struct {
@@ -57,7 +56,6 @@ func ParseMessage(reader io.Reader) (*Message, error) {
 		data := make([]byte, datalength)
 		err := binary.Read(reader, binary.BigEndian, &data)
 		if err != nil {
-			logrus.Warn("Error reading data part of the message")
 			return nil, err
 		}
 		err = json.Unmarshal(data, &message.command)
@@ -85,11 +83,10 @@ func (m *Message) Command() *types.Command {
 }
 
 // Bytes returns the binary rapresentation of the message
-func (m *Message) Bytes() []byte {
+func (m *Message) Bytes() ([]byte, error) {
 	data, err := json.Marshal(m.command)
 	if err != nil {
-		logrus.Error("Failed to create a message, parsing data failed")
-		return []byte{}
+		return []byte{}, err
 	}
 	length := uint32(16*2 + len(data))
 	buffer := bytes.Buffer{}
@@ -99,7 +96,7 @@ func (m *Message) Bytes() []byte {
 	binary.Write(&buffer, binary.BigEndian, m.receiver)
 	binary.Write(&buffer, binary.BigEndian, data)
 
-	return buffer.Bytes()
+	return buffer.Bytes(), nil
 }
 
 // Equal compares two messages

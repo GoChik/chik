@@ -3,13 +3,14 @@ package datetime
 import (
 	"time"
 
-	"github.com/gochik/chik/config"
-	"github.com/sirupsen/logrus"
-
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	"github.com/nathan-osman/go-sunrise"
+	"github.com/rs/zerolog/log"
 )
+
+var logger = log.With().Str("handler", "time").Logger()
 
 const configKey = "localization"
 
@@ -46,7 +47,7 @@ func New() chik.Handler {
 	var conf timeConfig
 	err := config.GetStruct(configKey, &conf)
 	if err != nil {
-		logrus.Warn("Cannot get actions form config file: ", err)
+		logger.Warn().Msgf("Cannot get actions form config file: %v", err)
 		config.Set(configKey, conf)
 	}
 
