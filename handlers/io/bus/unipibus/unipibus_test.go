@@ -1,4 +1,4 @@
-package unipibus_test
+package unipibus
 
 import (
 	"testing"
@@ -21,7 +21,7 @@ func TestString(t *testing.T) {
 			"/sys/devices/platform/unipi_plc/io_group1/di_1_02",
 		},
 	} {
-		actual := d.device.Path()
+		actual := d.device.path()
 		if actual != d.expectedPath {
 			t.Errorf("got: %v, expected: %v", actual, d.expectedPath)
 		}

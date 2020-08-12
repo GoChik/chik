@@ -23,7 +23,7 @@ func testRoutine(t *testing.T, f func(c net.Conn, controller *Controller)) {
 	}
 	controller := NewController()
 	stopChannel = controller.Connect(s)
-	defer controller.Shutdown()
+	defer controller.Disconnect()
 
 	f(c, controller)
 }

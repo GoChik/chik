@@ -6,7 +6,6 @@ import (
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
-	"github.com/gofrs/uuid"
 )
 
 func TestForwarding(t *testing.T) {
@@ -23,10 +22,8 @@ func TestForwarding(t *testing.T) {
 	}
 
 	forwarded := client1.remote.Sub(types.DigitalCommandType.String())
-	time.Sleep(500 * time.Millisecond) // TODO: fix the handshake
-	client1.remote.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
-	client2.remote.PubMessage(chik.NewMessage(uuid.Nil, types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
-	time.Sleep(500 * time.Millisecond) // TODO: fix the handshake
+	client1.remote.PubMessage(chik.NewMessage(serverID, types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
+	client2.remote.PubMessage(chik.NewMessage(serverID, types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
 	client2.remote.Pub(types.NewCommand(types.DigitalCommandType, types.SimpleCommand{}), client1.id)
 
 	select {

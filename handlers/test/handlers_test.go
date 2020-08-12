@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"net"
@@ -24,6 +25,7 @@ type TestClient struct {
 
 var address net.Addr
 var peers = sync.Map{}
+var serverID = uuid.Nil
 
 func createController() *chik.Controller {
 	f, err := ioutil.TempFile("", "tst")
@@ -54,13 +56,15 @@ func CreateServer(t *testing.T) net.Listener {
 			if srv == nil {
 				t.Fatal("Cannot create controller")
 			}
+			serverID = srv.ID
 			go func() {
-				srv.Start([]chik.Handler{
+				ctx, cancel := context.WithCancel(context.Background())
+				go srv.Start(ctx, []chik.Handler{
 					router.New(&peers),
 					heartbeat.New(1 * time.Second),
 				})
 				<-srv.Connect(conn)
-				srv.Shutdown()
+				cancel()
 			}()
 		}
 	}()
