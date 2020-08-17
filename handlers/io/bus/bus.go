@@ -44,13 +44,11 @@ type DigitalDevice interface {
 	TurnOn()
 	TurnOff()
 	Toggle()
-	GetStatus() bool
 }
 
 // AnalogDevice is the interface that an analog input device must implement
 type AnalogDevice interface {
 	Device
-	GetValue() float32
 }
 
 // Bus interface

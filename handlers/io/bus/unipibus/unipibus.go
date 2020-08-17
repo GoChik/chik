@@ -134,10 +134,6 @@ func (d *unipiDevice) Toggle() {
 	d.TurnOn()
 }
 
-func (d *unipiDevice) GetStatus() bool {
-	return d.status == 1
-}
-
 type unipiBus struct {
 	devices             map[string]*unipiDevice
 	polledDevices       []*unipiDevice
