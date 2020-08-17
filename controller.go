@@ -42,7 +42,7 @@ func NewController() *Controller {
 	logLevel, err := zerolog.ParseLevel(levelString)
 	if err != nil {
 		log.Warn().Msgf("Cannot parse log level, setting it to warning by default: %s", err)
-		config.Set("log_level", "warning")
+		config.Set("log_level", "debug")
 		config.Sync()
 		logLevel = zerolog.WarnLevel
 	}
