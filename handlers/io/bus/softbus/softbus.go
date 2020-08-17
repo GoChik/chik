@@ -12,9 +12,9 @@ import (
 var logger = log.With().Str("handler", "io").Str("bus", "soft").Logger()
 
 type softDevice struct {
-	Id     string
-	Type   bus.DeviceKind
-	status bool
+	Id    string
+	Type  bus.DeviceKind
+	Value interface{}
 }
 
 type softBus struct {
@@ -38,25 +38,32 @@ func (d *softDevice) Description() bus.DeviceDescription {
 	return bus.DeviceDescription{
 		ID:    d.Id,
 		Kind:  d.Kind(),
-		State: d.GetStatus(),
+		State: d.Value,
 	}
 }
 
 func (d *softDevice) TurnOn() {
-	d.status = true
+	if d.Type != bus.DigitalOutputDevice {
+		logger.Error().Msgf("Cannot turn on %v, it is not a digital output device", d.Id)
+		return
+	}
+	d.Value = true
 }
 
 func (d *softDevice) TurnOff() {
-	d.status = false
+	if d.Type != bus.DigitalOutputDevice {
+		logger.Error().Msgf("Cannot turn off %v, it is not a digital output device", d.Id)
+		return
+	}
+	d.Value = false
 }
 
 func (d *softDevice) Toggle() {
-	d.status = !d.status
-}
-
-func (d *softDevice) GetStatus() bool {
-	logger.Debug().Msgf("Get Status of ", d.Id)
-	return d.status
+	if d.Type != bus.DigitalOutputDevice {
+		logger.Error().Msgf("Cannot toggle %v, it is not a digital output device", d.Id)
+		return
+	}
+	d.Value = !d.Value.(bool)
 }
 
 func (a *softBus) Initialize(config interface{}) {
