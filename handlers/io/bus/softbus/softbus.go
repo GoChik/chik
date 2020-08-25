@@ -35,10 +35,31 @@ func (d *softDevice) Kind() bus.DeviceKind {
 }
 
 func (d *softDevice) Description() bus.DeviceDescription {
+	var state interface{}
+	switch d.Kind() {
+	case bus.DigitalInputDevice:
+	case bus.DigitalOutputDevice:
+		if d.Value == nil {
+			state = false
+		} else {
+			state = d.Value.(bool)
+		}
+
+	case bus.AnalogInputDevice:
+	case bus.AnalogOutputDevice:
+		if d.Value == nil {
+			state = float64(0)
+		} else {
+			state = d.Value.(float64)
+		}
+
+	default:
+		state = false
+	}
 	return bus.DeviceDescription{
 		ID:    d.Id,
 		Kind:  d.Kind(),
-		State: d.Value,
+		State: state,
 	}
 }
 
