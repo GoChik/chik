@@ -8,7 +8,6 @@ import (
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
-	"github.com/thoas/go-funk"
 )
 
 // TODO: Perform may also contain an uuid in order to send a remote notification to an app
@@ -25,7 +24,7 @@ type Action struct {
 }
 
 type actor struct {
-	actions       map[string]Action
+	actions       []Action
 	previousState interface{}
 }
 
@@ -38,7 +37,7 @@ func New() chik.Handler {
 		config.Set(configKey, actions)
 	}
 
-	return &actor{funk.ToMap(actions, "ID").(map[string]Action), nil}
+	return &actor{actions, nil}
 }
 
 func (h *actor) executeActions(controller *chik.Controller, currentState interface{}) {
@@ -72,7 +71,10 @@ func (h *actor) Dependencies() []string {
 }
 
 func (h *actor) Topics() []types.CommandType {
-	return []types.CommandType{types.StatusNotificationCommandType}
+	return []types.CommandType{
+		types.StatusNotificationCommandType,
+		types.ActionRequestCommandType,
+	}
 }
 
 func (h *actor) Setup(controller *chik.Controller) chik.Timer {
@@ -80,10 +82,18 @@ func (h *actor) Setup(controller *chik.Controller) chik.Timer {
 }
 
 func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller) error {
-	var status types.Status
-	json.Unmarshal(message.Command().Data, &status)
-	h.executeActions(controller, status)
-	h.previousState = status
+	switch message.Command().Type {
+	case types.StatusNotificationCommandType:
+		var status types.Status
+		json.Unmarshal(message.Command().Data, &status)
+		h.executeActions(controller, status)
+		h.previousState = status
+
+	case types.ActionRequestCommandType:
+		// TODO: allow to make query on actions to get
+		controller.Reply(message, types.ActionReplyCommandType, h.actions)
+	}
+
 	return nil
 }
 

@@ -28,6 +28,10 @@ const (
 	VersionRequestCommandType
 	VersionReplyCommandType
 
+	// Actor commands: request and reply
+	ActionRequestCommandType
+	ActionReplyCommandType
+
 	// private commands (sent on the loopback address)
 	StatusUpdateCommandType
 	IODeviceStatusChangedCommandType
@@ -78,7 +82,7 @@ type SimpleCommand struct {
 // a Command on a gpio pin
 type DigitalCommand struct {
 	Action      Action `json:"action,int"`
-	ApplianceID string
+	ApplianceID string `json:"applianceID"`
 }
 
 // Status is the response to a status request Command
