@@ -89,9 +89,9 @@ type StateQuery interface {
 
 // StructQuery compares two elements of the State oin every state change
 type StructQuery struct {
-	Var1 string
-	Op   string
-	Var2 string
+	Var1 string `json:"var1"`
+	Op   string `json:"op"`
+	Var2 string `json:"var2"`
 }
 
 func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
@@ -128,9 +128,9 @@ func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
 
 // MixedQuery compares an element of State.Current with a constant only if that element is different from the same in State.Previous
 type MixedQuery struct {
-	Var1  string
-	Op    string
-	Const interface{}
+	Var1  string      `json:"var1"`
+	Op    string      `json:"op"`
+	Const interface{} `json:"const"`
 }
 
 func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
