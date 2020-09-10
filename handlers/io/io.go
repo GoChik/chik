@@ -120,6 +120,7 @@ func (h *io) Dependencies() []string {
 func (h *io) Topics() []types.CommandType {
 	return []types.CommandType{
 		types.DigitalCommandType,
+		types.AnalogCommandType,
 		types.IODeviceStatusChangedCommandType,
 	}
 }

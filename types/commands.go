@@ -23,6 +23,7 @@ type CommandType uint8
 const (
 	HeartbeatType CommandType = iota
 	DigitalCommandType
+	AnalogCommandType
 	StatusSubscriptionCommandType
 	StatusNotificationCommandType
 	VersionRequestCommandType
@@ -83,6 +84,12 @@ type SimpleCommand struct {
 type DigitalCommand struct {
 	Action      Action `json:"action,int"`
 	ApplianceID string `json:"applianceID"`
+}
+
+type AnalogCommand struct {
+	ApplianceID string  `json:"applianceID"`
+	Action      Action  `json:"action,int"`
+	Value       float64 `json:"value,float"`
 }
 
 // Status is the response to a status request Command

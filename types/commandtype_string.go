@@ -10,22 +10,23 @@ func _() {
 	var x [1]struct{}
 	_ = x[HeartbeatType-0]
 	_ = x[DigitalCommandType-1]
-	_ = x[StatusSubscriptionCommandType-2]
-	_ = x[StatusNotificationCommandType-3]
-	_ = x[VersionRequestCommandType-4]
-	_ = x[VersionReplyCommandType-5]
-	_ = x[ActionRequestCommandType-6]
-	_ = x[ActionReplyCommandType-7]
-	_ = x[StatusUpdateCommandType-8]
-	_ = x[IODeviceStatusChangedCommandType-9]
-	_ = x[AnyIncomingCommandType-10]
-	_ = x[AnyOutgoingCommandType-11]
-	_ = x[messageBound-12]
+	_ = x[AnalogCommandType-2]
+	_ = x[StatusSubscriptionCommandType-3]
+	_ = x[StatusNotificationCommandType-4]
+	_ = x[VersionRequestCommandType-5]
+	_ = x[VersionReplyCommandType-6]
+	_ = x[ActionRequestCommandType-7]
+	_ = x[ActionReplyCommandType-8]
+	_ = x[StatusUpdateCommandType-9]
+	_ = x[IODeviceStatusChangedCommandType-10]
+	_ = x[AnyIncomingCommandType-11]
+	_ = x[AnyOutgoingCommandType-12]
+	_ = x[messageBound-13]
 }
 
-const _CommandType_name = "HeartbeatTypeDigitalCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeIODeviceStatusChangedCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
+const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeIODeviceStatusChangedCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
 
-var _CommandType_index = [...]uint16{0, 13, 31, 60, 89, 114, 137, 161, 183, 206, 238, 260, 282, 294}
+var _CommandType_index = [...]uint16{0, 13, 31, 48, 77, 106, 131, 154, 178, 200, 223, 255, 277, 299, 311}
 
 func (i CommandType) String() string {
 	if i >= CommandType(len(_CommandType_index)-1) {
