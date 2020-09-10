@@ -94,8 +94,7 @@ func (d *unipiDevice) Kind() bus.DeviceKind {
 	case unipiDigitalInput:
 		return bus.DigitalInputDevice
 
-	case unipiDigitalOutput:
-	case unipiRelayOutput:
+	case unipiDigitalOutput, unipiRelayOutput:
 		return bus.DigitalOutputDevice
 
 	case unipiAnalogOutput:

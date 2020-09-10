@@ -101,12 +101,12 @@ func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message)
 		device, err := a.Device(command.ApplianceID)
 		if err == nil {
 			switch device.Kind() {
-			case bus.DigitalInputDevice:
-			case bus.DigitalOutputDevice:
+			case bus.DigitalInputDevice, bus.DigitalOutputDevice:
 				executeDigitalCommand(command.Action, device.(bus.DigitalDevice), remote)
 
-			case bus.AnalogInputDevice:
-				logger.Warn().Msg("Analog commands are not yet implemented")
+			default:
+				logger.Warn().Msg("Device does not support digital commands")
+				return
 			}
 			h.setStatus(remote, command.ApplianceID)
 		}

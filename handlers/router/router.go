@@ -68,8 +68,7 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 		logger.Warn().Msg("No receiver specified")
 		return nil
 
-	case h.id:
-	case controller.ID:
+	case h.id, controller.ID:
 		logger.Warn().Msg("Ignoring message to self")
 		return nil
 

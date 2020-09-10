@@ -37,16 +37,14 @@ func (d *softDevice) Kind() bus.DeviceKind {
 func (d *softDevice) Description() bus.DeviceDescription {
 	var state interface{}
 	switch d.Kind() {
-	case bus.DigitalInputDevice:
-	case bus.DigitalOutputDevice:
+	case bus.DigitalInputDevice, bus.DigitalOutputDevice:
 		if d.Value == nil {
 			state = false
 		} else {
 			state = d.Value.(bool)
 		}
 
-	case bus.AnalogInputDevice:
-	case bus.AnalogOutputDevice:
+	case bus.AnalogInputDevice, bus.AnalogOutputDevice:
 		if d.Value == nil {
 			state = float64(0)
 		} else {
