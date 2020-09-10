@@ -130,6 +130,10 @@ func (b *modbus) Initialize(conf interface{}) {
 		b.devices[d.ID()] = d
 		d.actions = b.devicesActions
 	}
+	if c.SerialPort == "" {
+		logger.Error().Msg("Cannot open serial port: device not specified.")
+		return
+	}
 	port, err := serial.OpenPort(&serial.Config{
 		Name:   c.SerialPort,
 		Baud:   c.BaudRate,
