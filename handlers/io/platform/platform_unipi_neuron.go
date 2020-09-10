@@ -3,10 +3,10 @@
 package platform
 
 import (
+	"github.com/gochik/chik/handlers/io/bus/modbus"
 	"github.com/gochik/chik/handlers/io/bus/softbus"
 	"github.com/gochik/chik/handlers/io/bus/unipibus"
 	"github.com/gochik/chik/handlers/io/bus/w1bus"
-	"github.com/gochik/chik/handlers/io/bus/modbus"
 )
 
 func init() {
