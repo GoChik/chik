@@ -3,7 +3,6 @@ module github.com/gochik/chik
 go 1.13
 
 require (
-	github.com/cloudflare/cfssl v1.4.1
 	github.com/cskr/pubsub v1.0.2
 	github.com/gochik/gpio v1.2.0
 	github.com/gochik/modbus v0.0.0-20200807142711-9712c9793b42

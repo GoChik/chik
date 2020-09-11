@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"reflect"
 
-	"github.com/cloudflare/cfssl/log"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -23,7 +22,6 @@ func StringInterfaceToJsonRawMessage(sourceType, targetType reflect.Type, source
 
 func Decode(input, output interface{}, hooks ...mapstructure.DecodeHookFunc) error {
 	hooks = append(hooks, StringInterfaceToJsonRawMessage)
-	log.Debug("HOOKS", len(hooks))
 	config := mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
 		DecodeHook:       mapstructure.ComposeDecodeHookFunc(hooks...),
