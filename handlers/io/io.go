@@ -36,6 +36,16 @@ func New() chik.Handler {
 	}
 }
 
+func (h *io) getDevice(deviceID string) (device bus.Device, err error) {
+	for _, actuator := range h.actuators {
+		device, err = actuator.Device(deviceID)
+		if err == nil {
+			return
+		}
+	}
+	return
+}
+
 func (h *io) listenForDeviceChanges(channel <-chan string, controller *chik.Controller) {
 	h.wg.Add(1)
 	go func() {
@@ -54,12 +64,9 @@ func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 		if status == nil {
 			status = make(ioStatus)
 		}
-		for _, a := range h.actuators {
-			if device, err := a.Device(applianceID); err == nil {
-				status[applianceID] = device.Description()
-			}
+		if device, err := h.getDevice(applianceID); err == nil {
+			status[applianceID] = device.Description()
 		}
-
 		return status
 	})
 }
@@ -97,19 +104,42 @@ func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message)
 		return
 	}
 
-	for _, a := range h.actuators {
-		device, err := a.Device(command.ApplianceID)
-		if err == nil {
-			switch device.Kind() {
-			case bus.DigitalInputDevice, bus.DigitalOutputDevice:
-				executeDigitalCommand(command.Action, device.(bus.DigitalDevice), remote)
+	device, err := h.getDevice(command.ApplianceID)
+	if err != nil {
+		logger.Error().Msgf("Cannot find the specified device: %v", command.ApplianceID)
+		return
+	}
 
-			default:
-				logger.Warn().Msg("Device does not support digital commands")
-				return
-			}
-			h.setStatus(remote, command.ApplianceID)
-		}
+	switch device.Kind() {
+	case bus.DigitalInputDevice, bus.DigitalOutputDevice:
+		executeDigitalCommand(command.Action, device.(bus.DigitalDevice), remote)
+		h.setStatus(remote, command.ApplianceID)
+
+	default:
+		logger.Warn().Msgf("Device %v does not support digital commands", command.ApplianceID)
+	}
+}
+
+func (h *io) parseAnalogCommand(controller *chik.Controller, message *chik.Message) {
+	var command types.AnalogCommand
+	err := json.Unmarshal(message.Command().Data, &command)
+	if err != nil {
+		logger.Error().Msgf("Cannot decode analog command: %v", err)
+		return
+	}
+
+	device, err := h.getDevice(command.ApplianceID)
+	if err != nil {
+		logger.Error().Msgf("Cannot find the specified device: %v", command.ApplianceID)
+		return
+	}
+	switch device.Kind() {
+	case bus.AnalogInputDevice, bus.AnalogOutputDevice:
+		device.(bus.AnalogDevice).SetValue(command.Value)
+		h.setStatus(controller, command.ApplianceID)
+
+	default:
+		logger.Warn().Msgf("Device %v does not support analog commands", command.ApplianceID)
 	}
 }
 
@@ -145,6 +175,9 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) e
 	switch message.Command().Type {
 	case types.DigitalCommandType:
 		h.parseDigitalCommand(controller, message)
+
+	case types.AnalogCommandType:
+		h.parseAnalogCommand(controller, message)
 
 	case types.IODeviceStatusChangedCommandType:
 		var data ioDeviceChanges

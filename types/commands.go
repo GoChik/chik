@@ -86,9 +86,9 @@ type DigitalCommand struct {
 	ApplianceID string `json:"applianceID"`
 }
 
+// AnalogCommand is a command to set a value on an analog device
 type AnalogCommand struct {
 	ApplianceID string  `json:"applianceID"`
-	Action      Action  `json:"action,int"`
 	Value       float64 `json:"value,float"`
 }
 

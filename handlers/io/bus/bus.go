@@ -49,6 +49,7 @@ type DigitalDevice interface {
 // AnalogDevice is the interface that an analog input device must implement
 type AnalogDevice interface {
 	Device
+	SetValue(value float64)
 }
 
 // Bus interface
