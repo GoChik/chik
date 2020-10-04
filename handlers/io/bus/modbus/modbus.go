@@ -17,6 +17,8 @@ var logger = log.With().Str("handler", "io").Str("bus", "modbus").Logger()
 
 const (
 	pollTime = 100 * time.Millisecond
+
+	commandSize = 2
 )
 
 // Config is the configuration structure used to setup the modbus BUS
@@ -28,7 +30,7 @@ type Config struct {
 
 type device struct {
 	Id            string
-	StartAddress  uint16
+	Register      uint16
 	BitNumber     uint8
 	DeviceAddress uint8
 	Type          bus.DeviceKind // supported only DigitalInput and DigitalOutput
@@ -176,54 +178,48 @@ func (b *modbus) String() string {
 
 func (b *modbus) sendAction(action *deviceAction) {
 	device := b.devices[action.id]
-	commandSize := uint16(1)
-	command := make([]byte, commandSize)
+	var command uint16
 	for _, d := range b.devices {
 		if d.Kind() == bus.DigitalOutputDevice &&
 			d.DeviceAddress == device.DeviceAddress &&
-			d.StartAddress == device.StartAddress && d.status {
-			byteNumber := uint16(d.BitNumber / 8)
-			if commandSize < byteNumber {
-				command = append(command, byte(0))
-				commandSize = byteNumber
-			}
-			command[byteNumber] = command[byteNumber] | (0x01 << (d.BitNumber % 8))
+			d.Register == device.Register && d.status {
+			command = command | (0x0001 << d.BitNumber)
 		}
 	}
 	if action.action {
-		command[device.BitNumber/8] = command[device.BitNumber/8] | (0x01 << (device.BitNumber % 8))
+		command = command | (0x0001 << device.BitNumber)
+	} else {
+		command = command & (0xffff ^ (0x0001 << device.BitNumber))
 	}
+
 	b.handler.SetSlave(device.DeviceAddress)
-	_, err := b.client.WriteMultipleRegisters(device.StartAddress, commandSize, command)
+	reply, err := b.client.WriteSingleRegister(device.Register, command)
 	if err != nil {
 		logger.Error().Msgf("Failed changing status of %v: %v", device.ID(), err)
 	}
+	logger.Debug().Msgf("Changed status of digital appliance, reply: %v", reply)
 }
 
 type mbDeviceGroup struct {
-	maxIndex uint8
-	devices  []*device
+	devices []*device
 }
 
-type mbDeviceGroupByStartAddress map[uint16]mbDeviceGroup
-type mbDescriptionByAddress map[uint8]mbDeviceGroupByStartAddress
+type mbDeviceGroupByRegisterAddress map[uint16]mbDeviceGroup
+type mbDescriptionByAddress map[uint8]mbDeviceGroupByRegisterAddress
 
 func (b *modbus) polledDevicesList() mbDescriptionByAddress {
 	polledDevices := make(mbDescriptionByAddress)
 	for _, d := range b.devices {
 		if polledDevices[d.DeviceAddress] == nil {
-			polledDevices[d.DeviceAddress] = make(mbDeviceGroupByStartAddress)
+			polledDevices[d.DeviceAddress] = make(mbDeviceGroupByRegisterAddress)
 		}
 		if d.Kind() == bus.DigitalInputDevice {
-			currentGroup := polledDevices[d.DeviceAddress][d.StartAddress]
+			currentGroup := polledDevices[d.DeviceAddress][d.Register]
 			if currentGroup.devices == nil {
-				currentGroup.devices = make([]*device, 1)
-			}
-			if currentGroup.maxIndex < d.BitNumber {
-				currentGroup.maxIndex = d.BitNumber
+				currentGroup.devices = make([]*device, 0, 1)
 			}
 			currentGroup.devices = append(currentGroup.devices, d)
-			polledDevices[d.DeviceAddress][d.StartAddress] = currentGroup
+			polledDevices[d.DeviceAddress][d.Register] = currentGroup
 		}
 
 	}
@@ -248,20 +244,21 @@ func (b *modbus) startModbusWorker() {
 	}()
 }
 
-func (b *modbus) queryDeviceChanges(polledDevices map[uint8]mbDeviceGroupByStartAddress) {
+func (b *modbus) queryDeviceChanges(polledDevices map[uint8]mbDeviceGroupByRegisterAddress) {
 	for k, v := range polledDevices {
 		b.handler.SetSlave(k)
-		for startAddress, groupData := range v {
-			result, err := b.client.ReadDiscreteInputs(startAddress, uint16(groupData.maxIndex)+1)
+		for registerAddress, groupData := range v {
+			response, err := b.client.ReadHoldingRegisters(registerAddress, 1)
 			if err != nil {
-				log.Fatal().Msgf("Failed to read address %v with length %v: %v", startAddress, groupData.maxIndex+1, err)
+				logger.Error().Msgf("Failed to read address %v: %v", registerAddress, err)
+				continue
 			}
-			response, err := b.handler.Decode(result)
-			if err != nil {
-				log.Fatal().Msgf("Failed to get reply; got: %v", result)
+			if response == nil || len(response) != 2 {
+				logger.Error().Msgf("Unexpected reply: %v", response)
+				continue
 			}
 			for _, d := range groupData.devices {
-				if d.setStatus((response.Data[d.BitNumber/8] & (0x01 << (d.BitNumber % 8))) > 0) {
+				if d.setStatus((response[1-(d.BitNumber/8)] & (0x01 << (d.BitNumber % 8))) > 0) {
 					b.deviceChanges <- d.ID()
 				}
 			}

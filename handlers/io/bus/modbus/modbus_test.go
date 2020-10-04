@@ -17,11 +17,11 @@ func TestInitialization(t *testing.T) {
 		BaudRate:   115200,
 		Devices: []*device{
 			&device{
-				Id:            "test",
-				StartAddress:  0,
-				BitNumber:     0,
-				DeviceAddress: 1,
-				Type:          bus.DigitalInputDevice,
+				Id:              "test",
+				Register: 0,
+				BitNumber:       0,
+				DeviceAddress:   1,
+				Type:            bus.DigitalInputDevice,
 			},
 		},
 	}
