@@ -38,7 +38,6 @@ func (d *w1Device) initialize() (err error) {
 		logger.Error().Msgf("Device initialization failed: %v", err)
 		return
 	}
-	d.getCurrentValue()
 	return
 }
 
@@ -115,7 +114,7 @@ func (b *w1Bus) Initialize(config interface{}) {
 	b.devices = funk.ToMap(devices, "Id").(map[string]*w1Device)
 	b.timer = time.NewTicker(w1BusPollingInterval)
 	go func() {
-		for range b.timer.C {
+		getValues := func() {
 			for id, device := range b.devices {
 				oldValue := device.value
 				device.getCurrentValue()
@@ -123,6 +122,10 @@ func (b *w1Bus) Initialize(config interface{}) {
 					b.deviceNotifications <- id
 				}
 			}
+		}
+		getValues()
+		for range b.timer.C {
+			getValues()
 		}
 		close(b.deviceNotifications)
 	}()
