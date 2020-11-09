@@ -25,7 +25,7 @@ type Action struct {
 
 type actor struct {
 	actions       []Action
-	previousState interface{}
+	previousState map[string]interface{}
 }
 
 // New creates a new actor handler
@@ -40,7 +40,7 @@ func New() chik.Handler {
 	return &actor{actions, nil}
 }
 
-func (h *actor) executeActions(controller *chik.Controller, currentState interface{}) {
+func (h *actor) executeActions(controller *chik.Controller, currentState map[string]interface{}) {
 	state := &State{
 		Previous: h.previousState,
 		Current:  currentState,

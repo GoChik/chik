@@ -1,14 +1,17 @@
 package actor
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/PaesslerAG/gval"
 )
 
 type State struct {
-	Current  interface{} `json:"current"`
-	Previous interface{} `json:"previous"`
+	Current  map[string]interface{} `json:"current"`
+	Previous map[string]interface{} `json:"previous"`
 }
 
 type QueryResult struct {
@@ -34,53 +37,25 @@ func valueMatch(value reflect.StructField, name string) bool {
 }
 
 func (s *State) GetFieldDescriptor(key string) (*fieldDescriptor, error) {
-	slices := strings.Split(key, ".")
-	queryValue := func(root string) []string {
-		return append([]string{root}, slices...)
-	}
-
-	currentValue, err := s.GetField(queryValue("current"))
+	expression, err := gval.Full().NewEvaluable(key)
 	if err != nil {
 		return nil, err
 	}
-	previousValue, err := s.GetField(queryValue("previous"))
+
+	expressionValue := func(data map[string]interface{}) (interface{}, error) {
+		return expression(context.Background(), data)
+	}
+
+	currentValue, err := expressionValue(s.Current)
+	if err != nil {
+		return nil, err
+	}
+	previousValue, err := expressionValue(s.Previous)
 
 	return &fieldDescriptor{
 		currentValue,
 		!reflect.DeepEqual(previousValue, currentValue),
 	}, nil
-}
-
-func (s *State) GetField(slices []string) (interface{}, error) {
-	value := reflect.ValueOf(s).Elem()
-	for _, slice := range slices {
-		var tmp reflect.Value
-		switch value.Kind() {
-		case reflect.Map:
-			tmp = value.MapIndex(reflect.ValueOf(slice))
-			if !tmp.IsValid() {
-				tmp = value.MapIndex(reflect.ValueOf(strings.ToLower(slice)))
-			}
-
-		case reflect.Struct:
-			for i := 0; i < value.NumField(); i++ {
-				if valueMatch(value.Type().Field(i), slice) {
-					tmp = value.Field(i)
-					break
-				}
-			}
-		}
-
-		if !tmp.IsValid() {
-			return nil, fmt.Errorf("Cannot find field with name %s in %+v", slice, s)
-		}
-		if tmp.Kind() == reflect.Interface || tmp.Kind() == reflect.Ptr {
-			value = tmp.Elem()
-		} else {
-			value = tmp
-		}
-	}
-	return value.Interface(), nil
 }
 
 type StateQuery interface {
