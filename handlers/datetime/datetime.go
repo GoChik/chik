@@ -19,19 +19,14 @@ type timeConfig struct {
 	Longitude float64 `json:"longitude"`
 }
 
-type timeIndication struct {
-	Hour   int `json:"hour"`
-	Minute int `json:"minute"`
-}
-
 type data struct {
-	Year    int            `json:"year"`
-	Month   int            `json:"month"`
-	Day     int            `json:"day"`
-	Hour    int            `json:"hour"`
-	Minute  int            `json:"minute"`
-	Sunrise timeIndication `json:"sunrise"`
-	Sunset  timeIndication `json:"sunset"`
+	Year    int                  `json:"year"`
+	Month   int                  `json:"month"`
+	Day     int                  `json:"day"`
+	Hour    int                  `json:"hour"`
+	Minute  int                  `json:"minute"`
+	Sunrise types.TimeIndication `json:"sunrise"`
+	Sunset  types.TimeIndication `json:"sunset"`
 }
 
 type datetime struct {

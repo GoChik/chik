@@ -16,7 +16,12 @@ import (
 
 var logger = log.With().Str("handler", "io").Logger()
 
-type ioStatus map[string]bus.DeviceDescription
+type currentstatus struct {
+	bus.DeviceDescription
+	LastStateChange types.TimeIndication `json:"last_state_change"`
+}
+
+type ioStatus map[string]currentstatus
 type io struct {
 	actuators map[string]bus.Bus
 	status    *chik.StatusHolder
@@ -65,7 +70,13 @@ func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 			status = make(ioStatus)
 		}
 		if device, err := h.getDevice(applianceID); err == nil {
-			status[applianceID] = device.Description()
+			status[applianceID] = currentstatus{
+				device.Description(),
+				types.TimeIndication{
+					Hour:   time.Now().Hour(),
+					Minute: time.Now().Minute(),
+				},
+			}
 		}
 		return status
 	})
@@ -162,7 +173,13 @@ func (h *io) Setup(controller *chik.Controller) chik.Timer {
 		for _, id := range v.DeviceIds() {
 			// ignoring errors because we trust device apis
 			device, _ := v.Device(id)
-			initialStatus[id] = device.Description()
+			initialStatus[id] = currentstatus{
+				device.Description(),
+				types.TimeIndication{
+					Hour:   time.Now().Hour(),
+					Minute: time.Now().Minute(),
+				},
+			}
 		}
 		h.listenForDeviceChanges(v.DeviceChanges(), controller)
 	}

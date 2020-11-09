@@ -7,6 +7,12 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+// TimeIndication defines a basic struct for time with resolution of 1 min
+type TimeIndication struct {
+	Hour   int `json:"hour"`
+	Minute int `json:"minute"`
+}
+
 func StringInterfaceToJsonRawMessage(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {
 	if sourceType.Kind() != reflect.Map {
 		return sourceData, nil
