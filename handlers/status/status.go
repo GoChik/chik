@@ -98,14 +98,22 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 		}
 
 		// here there is just one iteration because status is a pair[string]interface{}
+		inactiveSubscribers := []uuid.UUID{}
 		for k, v := range status {
 			h.currentStatus[k] = v
 			for id, data := range h.subscribers {
+				if time.Now().Sub(data.lastConact) > 10*time.Minute {
+					inactiveSubscribers = append(inactiveSubscribers, id)
+				}
 				_, exists := data.listeners[k]
 				if exists {
 					remote.Pub(types.NewCommand(types.StatusNotificationCommandType, map[string]interface{}{k: v}), id)
 				}
 			}
+		}
+
+		for _, s := range inactiveSubscribers {
+			delete(h.subscribers, s)
 		}
 
 		remote.Pub(types.NewCommand(types.StatusNotificationCommandType, h.currentStatus), chik.LoopbackID)
