@@ -25,8 +25,8 @@ type handler struct {
 }
 
 type SubscriptionCommand struct {
-	Command types.Action `json:",int"`
-	Query   string       `json:",omitempty"`
+	Action types.Action `json:",int"`
+	Query  string       `json:",omitempty"`
 }
 
 // New creates a new status handler
@@ -73,7 +73,7 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 			return nil
 		}
 
-		if content.Command == types.SET &&
+		if content.Action == types.SET &&
 			message.SenderUUID() != chik.LoopbackID &&
 			message.SenderUUID() != remote.ID {
 			logger.Info().Msgf("Subscribing %v to %v", message.SenderUUID(), content.Query)
