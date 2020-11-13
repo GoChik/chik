@@ -48,6 +48,11 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 	}
 
 	if h.id == uuid.Nil {
+		_, exists := h.peers.Load(sender)
+		if exists {
+			logger.Warn().Msgf("Peer %v is already running. dropping this connection", sender)
+			return errors.New("Cannot allocate an already existing peer")
+		}
 		logger.Debug().Msgf("Adding peer %v", sender)
 		h.id = sender
 		h.peers.Store(h.id, controller)
