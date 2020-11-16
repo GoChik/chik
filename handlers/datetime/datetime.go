@@ -6,7 +6,7 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/types"
-	"github.com/nathan-osman/go-sunrise"
+	"github.com/gochik/sunrisesunset"
 	"github.com/rs/zerolog/log"
 )
 
@@ -76,10 +76,7 @@ func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 		return
 	}
 	if h.data.Day != tick.Day() {
-		sunrise, sunset := sunrise.SunriseSunset(
-			h.conf.Latitude, h.conf.Longitude,
-			tick.Year(), tick.Month(), tick.Day(),
-		)
+		sunrise, sunset, _ := sunrisesunset.GetSunriseSunset(h.conf.Latitude, h.conf.Longitude, tick)
 		localSunrise := sunrise.Local()
 		localSunset := sunset.Local()
 		h.data.Sunrise.Hour = localSunrise.Hour()
