@@ -2,6 +2,8 @@ package unipibus
 
 import (
 	"fmt"
+	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -17,6 +19,11 @@ var logger = log.With().Str("handler", "io").Str("bus", "unipi").Logger()
 
 const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
 const unipiDeviceValue = "%s_value"
+const pwmDutyCycle = "pwm_duty_cycle"
+const pwmPrescale = "pwm_prescale"
+const defaultPwmPrescale = 100
+const pwmFrequencyCycle = "pwm_frequency_cycle"
+const defaultPwmFrequencyCycle = 1000
 const pollSpeed = 50 * time.Millisecond
 
 type unipiPinType uint8
@@ -26,13 +33,14 @@ const (
 	unipiDigitalOutput
 	unipiRelayOutput
 	unipiAnalogOutput
+	unipiPwmOutput
 )
 
 func (pin unipiPinType) String() string {
 	switch pin {
 	case unipiDigitalInput:
 		return "di"
-	case unipiDigitalOutput:
+	case unipiDigitalOutput, unipiPwmOutput:
 		return "do"
 	case unipiRelayOutput:
 		return "ro"
@@ -56,8 +64,22 @@ func (d *unipiDevice) path() string {
 	return fmt.Sprintf(unipiDevicePath, d.Group, d.Type.String(), d.Group, d.Pin)
 }
 
+func (d *unipiDevice) writeDefaults(filename, value string) {
+	ioutil.WriteFile(
+		strings.Join([]string{d.path(), filename}, "/"),
+		[]byte(value),
+		0644,
+	)
+}
+
 func (d *unipiDevice) initialize() (err error) {
-	path := []string{d.path(), fmt.Sprintf(unipiDeviceValue, d.Type.String())}
+	filename := fmt.Sprintf(unipiDeviceValue, d.Type.String())
+	if d.Type == unipiPwmOutput {
+		filename = pwmDutyCycle
+		d.writeDefaults(pwmPrescale, strconv.Itoa(defaultPwmPrescale))
+		d.writeDefaults(pwmFrequencyCycle, strconv.Itoa(defaultPwmFrequencyCycle))
+	}
+	path := []string{d.path(), filename}
 	openMode := os.O_RDWR
 	if d.Kind() == bus.DigitalInputDevice {
 		openMode = os.O_RDONLY
@@ -97,7 +119,7 @@ func (d *unipiDevice) Kind() bus.DeviceKind {
 	case unipiDigitalOutput, unipiRelayOutput:
 		return bus.DigitalOutputDevice
 
-	case unipiAnalogOutput:
+	case unipiAnalogOutput, unipiPwmOutput:
 		return bus.AnalogOutputDevice
 	}
 	return bus.DigitalInputDevice
@@ -131,6 +153,15 @@ func (d *unipiDevice) Toggle() {
 		return
 	}
 	d.TurnOn()
+}
+
+func (d *unipiDevice) SetValue(value float64) {
+	if d.Type < unipiAnalogOutput {
+		logger.Error().Msgf("Cannot set analog value to device %v", d)
+	}
+	status := int(math.Round(value))
+	d.file.Write([]byte(strconv.Itoa(status) + "\n"))
+	d.status = uint32(status)
 }
 
 type unipiBus struct {
