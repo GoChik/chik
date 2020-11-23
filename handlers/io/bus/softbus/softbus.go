@@ -85,6 +85,14 @@ func (d *softDevice) Toggle() {
 	d.Value = !d.Value.(bool)
 }
 
+func (d *softDevice) SetValue(value float64) {
+	if d.Type != bus.AnalogOutputDevice {
+		logger.Error().Msgf("Cannot set value on %v, it is not an analog output device", d.Id)
+		return
+	}
+	d.Value = value
+}
+
 func (a *softBus) Initialize(config interface{}) {
 	var devices []*softDevice
 	err := types.Decode(config, &devices)
