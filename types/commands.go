@@ -9,9 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Action is an enum of all the possible commands
-type Action uint16
-
 // EnabledDays days on which a TimedCommand is enabled
 // used as binary flag
 type EnabledDays uint16
@@ -44,6 +41,9 @@ const (
 	messageBound
 )
 
+// Action is an enum of all the possible commands
+type Action uint16
+
 // Available actions
 const (
 	SET    Action = iota // Turn on/activate something
@@ -51,6 +51,15 @@ const (
 	TOGGLE               // Toggle something from on/activated to off/deactivated
 	PUSH                 // Used to define actions shuch as the one of pushing a button
 	GET                  // Retrieve a value
+)
+
+// AnalogValueType is an enum to define how to handle an analog value
+type AnalogValueType uint8
+
+// Available AnalogValueType
+const (
+	Absolute AnalogValueType = iota
+	Relative
 )
 
 // Command is the root object in every message
@@ -86,10 +95,12 @@ type DigitalCommand struct {
 	ApplianceID string `json:"applianceID"`
 }
 
-// AnalogCommand is a command to set a value on an analog device
+// AnalogCommand is a command to set a value on an analog device.
+// By default the ValueType is 0: Absolute.
 type AnalogCommand struct {
-	ApplianceID string  `json:"applianceID"`
-	Value       float64 `json:"value,float"`
+	ApplianceID string          `json:"applianceID"`
+	Value       float64         `json:"value,float"`
+	ValueType   AnalogValueType `json:"value_type,int,omitempty"`
 }
 
 // Status is the response to a status request Command

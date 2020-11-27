@@ -144,14 +144,23 @@ func (h *io) parseAnalogCommand(controller *chik.Controller, message *chik.Messa
 		logger.Error().Msgf("Cannot find the specified device: %v", command.ApplianceID)
 		return
 	}
-	switch device.Kind() {
-	case bus.AnalogInputDevice, bus.AnalogOutputDevice:
+	if device.Kind() != bus.AnalogInputDevice && device.Kind() != bus.AnalogOutputDevice {
+		logger.Error().Msgf("Device %v does not support analog commands", command.ApplianceID)
+		return
+	}
+	switch command.ValueType {
+	case types.Absolute:
 		device.(bus.AnalogDevice).SetValue(command.Value)
-		h.setStatus(controller, command.ApplianceID)
+
+	case types.Relative:
+		device.(bus.AnalogDevice).AddValue(command.Value)
 
 	default:
-		logger.Warn().Msgf("Device %v does not support analog commands", command.ApplianceID)
+		logger.Error().Msgf("Unsupported analog command value_type: %v", command.ValueType)
+		return
 	}
+
+	h.setStatus(controller, command.ApplianceID)
 }
 
 func (h *io) Dependencies() []string {

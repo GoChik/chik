@@ -55,7 +55,7 @@ type unipiDevice struct {
 	Group  uint8
 	Pin    uint8
 	Type   unipiPinType
-	status uint32
+	status int
 	file   *os.File
 	buffer []byte
 }
@@ -99,11 +99,11 @@ func (d *unipiDevice) fetchStatus() error {
 	if err != nil {
 		return fmt.Errorf("failed reading sysfs interface %s: %v", d.Id, err)
 	}
-	status, err := strconv.ParseUint(string(d.buffer[0:size-1]), 10, 32)
+	status, err := strconv.ParseInt(string(d.buffer[0:size-1]), 10, 32)
 	if err != nil {
 		return fmt.Errorf("failed parsing status: %s", string(d.buffer))
 	}
-	d.status = uint32(status)
+	d.status = int(status)
 	return nil
 }
 
@@ -161,7 +161,16 @@ func (d *unipiDevice) SetValue(value float64) {
 	}
 	status := int(math.Round(value))
 	d.file.Write([]byte(strconv.Itoa(status) + "\n"))
-	d.status = uint32(status)
+	d.status = int(status)
+}
+
+func (d *unipiDevice) AddValue(value float64) {
+	if d.Type < unipiAnalogOutput {
+		logger.Error().Msgf("Cannot set analog value to device %v", d)
+	}
+	status := d.status + int(math.Round(value))
+	d.file.Write([]byte(strconv.Itoa(status) + "\n"))
+	d.status = int(math.Max(0, float64(status)))
 }
 
 type unipiBus struct {

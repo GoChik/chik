@@ -50,6 +50,7 @@ type DigitalDevice interface {
 type AnalogDevice interface {
 	Device
 	SetValue(value float64)
+	AddValue(value float64)
 }
 
 // Bus interface
