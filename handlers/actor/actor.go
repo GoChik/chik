@@ -18,9 +18,9 @@ const configKey = "storage.actions"
 
 // Action is composed of a list of Queries and a Command to perform in case the AND composition of queries returns true
 type Action struct {
-	ID      string         `json:"id"`
-	Query   []StateQuery   `json:"query"`
-	Perform *types.Command `json:"perform"`
+	ID      string           `json:"id"`
+	Query   []StateQuery     `json:"query"`
+	Perform []*types.Command `json:"perform"`
 }
 
 type actor struct {
@@ -61,7 +61,9 @@ func (h *actor) executeActions(controller *chik.Controller, currentState map[str
 
 		if composedResult.match && composedResult.changedSincePreviousEvaluation {
 			logger.Info().Msgf("Query returned positive results, executing: %v", action.Perform)
-			controller.Pub(action.Perform, chik.LoopbackID)
+			for _, command := range action.Perform {
+				controller.Pub(command, chik.LoopbackID)
+			}
 		}
 	}
 }
