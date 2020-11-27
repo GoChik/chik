@@ -77,12 +77,10 @@ func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 	}
 	if h.data.Day != tick.Day() {
 		sunrise, sunset, _ := sunrisesunset.GetSunriseSunset(h.conf.Latitude, h.conf.Longitude, tick)
-		localSunrise := sunrise.Local()
-		localSunset := sunset.Local()
-		h.data.Sunrise.Hour = localSunrise.Hour()
-		h.data.Sunrise.Minute = localSunrise.Minute()
-		h.data.Sunset.Hour = localSunset.Hour()
-		h.data.Sunset.Minute = localSunset.Minute()
+		h.data.Sunrise.Hour = sunrise.Hour()
+		h.data.Sunrise.Minute = sunrise.Minute()
+		h.data.Sunset.Hour = sunset.Hour()
+		h.data.Sunset.Minute = sunset.Minute()
 	}
 	h.data.Year = tick.Year()
 	h.data.Month = int(tick.Month())
