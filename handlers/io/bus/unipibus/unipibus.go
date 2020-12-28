@@ -21,9 +21,9 @@ const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
 const unipiDeviceValue = "%s_value"
 const pwmDutyCycle = "pwm_duty_cycle"
 const pwmPrescale = "pwm_prescale"
-const defaultPwmPrescale = 100
+const defaultPwmPrescale = 1500
 const pwmFrequencyCycle = "pwm_frequency_cycle"
-const defaultPwmFrequencyCycle = 1000
+const defaultPwmFrequencyCycle = 100
 const pollSpeed = 50 * time.Millisecond
 
 type unipiPinType uint8
