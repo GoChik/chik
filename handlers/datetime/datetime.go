@@ -12,7 +12,7 @@ import (
 
 var logger = log.With().Str("handler", "time").Logger()
 
-const configKey = "localization"
+const configKey = "time"
 
 type timeConfig struct {
 	Latitude  float64 `json:"latitude"`
