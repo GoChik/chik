@@ -109,10 +109,9 @@ func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controll
 	for _, r := range h.Rooms {
 		logger.Debug().Msgf("%v current:%v target:%v, factor:%v", r.ID, r.currentTemperature, r.targetTemperature, currentSizeFactor)
 
-		wantsToBeTurnedOn := r.currentTemperature-r.targetTemperature < -h.Threshold ||
+		wantsToBeTurnedOn := r.currentTemperature-r.targetTemperature < 0 ||
 			(currentSizeFactor > 0 && currentSizeFactor < 100)
-		wantsToBeTurnedOff := r.currentTemperature-r.targetTemperature > h.Threshold && !wantsToBeTurnedOn
-
+		wantsToBeTurnedOff := (r.currentTemperature-r.targetTemperature > h.Threshold) && (currentSizeFactor == 0 || currentSizeFactor >= 100)
 		isTurnedOn, err := getValue(status, r.ThermalValveID)
 		if err != nil {
 			logger.Error().Msgf("Cannot read Valve state: %v", err)
