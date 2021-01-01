@@ -34,6 +34,9 @@ const (
 	StatusUpdateCommandType
 	IODeviceStatusChangedCommandType
 
+	// Telegram notifications
+	TelegramNotificationCommandType
+
 	// special command types
 	AnyIncomingCommandType
 	AnyOutgoingCommandType

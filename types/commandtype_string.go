@@ -19,14 +19,15 @@ func _() {
 	_ = x[ActionReplyCommandType-8]
 	_ = x[StatusUpdateCommandType-9]
 	_ = x[IODeviceStatusChangedCommandType-10]
-	_ = x[AnyIncomingCommandType-11]
-	_ = x[AnyOutgoingCommandType-12]
-	_ = x[messageBound-13]
+	_ = x[TelegramNotificationCommandType-11]
+	_ = x[AnyIncomingCommandType-12]
+	_ = x[AnyOutgoingCommandType-13]
+	_ = x[messageBound-14]
 }
 
-const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeIODeviceStatusChangedCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
+const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeIODeviceStatusChangedCommandTypeTelegramNotificationCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
 
-var _CommandType_index = [...]uint16{0, 13, 31, 48, 77, 106, 131, 154, 178, 200, 223, 255, 277, 299, 311}
+var _CommandType_index = [...]uint16{0, 13, 31, 48, 77, 106, 131, 154, 178, 200, 223, 255, 286, 308, 330, 342}
 
 func (i CommandType) String() string {
 	if i >= CommandType(len(_CommandType_index)-1) {

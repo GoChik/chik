@@ -15,5 +15,6 @@ require (
 	github.com/thoas/go-funk v0.7.0
 	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	golang.org/x/sys v0.0.0-20200810151505-1b9f1253b3ed // indirect
+	gopkg.in/tucnak/telebot.v2 v2.3.5
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
