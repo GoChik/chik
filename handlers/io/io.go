@@ -95,7 +95,7 @@ func executeDigitalCommand(action types.Action, device bus.DigitalDevice, remote
 	case types.PUSH:
 		logger.Info().Msgf("Pushing %v", device.ID())
 		device.TurnOn()
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 		device.TurnOff()
 
 	case types.TOGGLE:
