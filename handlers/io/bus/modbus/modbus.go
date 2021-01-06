@@ -137,9 +137,10 @@ func (b *modbus) Initialize(conf interface{}) {
 		return
 	}
 	port, err := serial.OpenPort(&serial.Config{
-		Name:   c.SerialPort,
-		Baud:   c.BaudRate,
-		Parity: serial.ParityNone,
+		Name:        c.SerialPort,
+		Baud:        c.BaudRate,
+		Parity:      serial.ParityNone,
+		ReadTimeout: 5 * time.Second,
 	})
 	if err != nil {
 		logger.Fatal().Msgf("Cannot open serial port %v: %v", c.SerialPort, err)
