@@ -3,7 +3,6 @@ package softbus
 import (
 	"fmt"
 
-	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
@@ -92,8 +91,6 @@ func (d *softDevice) SetValue(value float64) {
 		return
 	}
 	d.Value = value
-	config.Set(fmt.Sprintf("actuators.soft.%s.value", d.Id), d.Value)
-	config.Sync()
 }
 
 func (d *softDevice) AddValue(value float64) {
@@ -102,8 +99,6 @@ func (d *softDevice) AddValue(value float64) {
 		return
 	}
 	d.Value = d.Value.(float64) + value
-	config.Set(fmt.Sprintf("actuators.soft.%s.value", d.Id), d.Value)
-	config.Sync()
 }
 
 func (a *softBus) Initialize(config interface{}) {
