@@ -144,8 +144,8 @@ func (h *io) parseAnalogCommand(controller *chik.Controller, message *chik.Messa
 		logger.Error().Msgf("Cannot find the specified device: %v", command.ApplianceID)
 		return
 	}
-	if device.Kind() != bus.AnalogInputDevice && device.Kind() != bus.AnalogOutputDevice {
-		logger.Error().Msgf("Device %v does not support analog commands", command.ApplianceID)
+	if device.Kind() != bus.AnalogOutputDevice {
+		logger.Error().Msgf("Device %v does not support analog set commands", command.ApplianceID)
 		return
 	}
 	switch command.ValueType {
