@@ -168,9 +168,9 @@ func (d *unipiDevice) AddValue(value float64) {
 	if d.Type < unipiAnalogOutput {
 		logger.Error().Msgf("Cannot set analog value to device %v", d)
 	}
-	status := d.status + int(math.Round(value))
+	status := int(math.Max(0, float64(d.status+int(math.Round(value)))))
 	d.file.Write([]byte(strconv.Itoa(status) + "\n"))
-	d.status = int(math.Max(0, float64(status)))
+	d.status = status
 }
 
 type unipiBus struct {
