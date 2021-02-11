@@ -57,6 +57,10 @@ func (h *actor) executeActions(controller *chik.Controller, currentState map[str
 				composedResult.match && result.match,
 				composedResult.changedSincePreviousEvaluation || result.changedSincePreviousEvaluation,
 			}
+			// Break early if result does not match
+			if !composedResult.match {
+				break
+			}
 		}
 
 		if composedResult.match && composedResult.changedSincePreviousEvaluation {

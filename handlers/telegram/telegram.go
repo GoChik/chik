@@ -99,7 +99,6 @@ func (h *Telegram) sendMessage(content string) {
 }
 
 func (h *Telegram) Setup(controller *chik.Controller) chik.Timer {
-	h.sendMessage(h.StartupMessage)
 	return chik.NewEmptyTimer()
 }
 
