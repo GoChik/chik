@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gochik/chik/handlers/io/bus"
@@ -21,9 +22,9 @@ const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
 const unipiDeviceValue = "%s_value"
 const pwmDutyCycle = "pwm_duty_cycle"
 const pwmPrescale = "pwm_prescale"
-const defaultPwmPrescale = 1500
+const defaultPwmPrescale = 900
 const pwmFrequencyCycle = "pwm_frequency_cycle"
-const defaultPwmFrequencyCycle = 100
+const defaultPwmFrequencyCycle = 200
 const pollSpeed = 50 * time.Millisecond
 
 type unipiPinType uint8
@@ -51,13 +52,14 @@ func (pin unipiPinType) String() string {
 }
 
 type unipiDevice struct {
-	Id     string
-	Group  uint8
-	Pin    uint8
-	Type   unipiPinType
-	status int
-	file   *os.File
-	buffer []byte
+	Id        string
+	Group     uint8
+	Pin       uint8
+	Type      unipiPinType
+	status    int
+	file      *os.File
+	buffer    []byte
+	fadeMutex sync.Mutex
 }
 
 func (d *unipiDevice) path() string {
@@ -155,6 +157,22 @@ func (d *unipiDevice) Toggle() {
 	d.TurnOn()
 }
 
+func (d *unipiDevice) pwmFade(from, to int) {
+	d.fadeMutex.Lock()
+	defer d.fadeMutex.Unlock()
+
+	diff := to - from
+	absDiff := int(math.Abs(float64(diff)))
+	if absDiff == 0 {
+		return
+	}
+
+	for i := 1; i < absDiff+1; i++ {
+		d.file.Write([]byte(strconv.Itoa(from+(i*(absDiff/diff))) + "\n"))
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
 func (d *unipiDevice) SetValue(value float64) {
 	if d.Type < unipiAnalogOutput {
 		logger.Error().Msgf("Cannot set analog value to device %v", d)
@@ -169,7 +187,11 @@ func (d *unipiDevice) AddValue(value float64) {
 		logger.Error().Msgf("Cannot set analog value to device %v", d)
 	}
 	status := int(math.Max(0, float64(d.status+int(math.Round(value)))))
-	d.file.Write([]byte(strconv.Itoa(status) + "\n"))
+	if d.Type == unipiPwmOutput {
+		go d.pwmFade(d.status, status)
+	} else {
+		d.file.Write([]byte(strconv.Itoa(status) + "\n"))
+	}
 	d.status = status
 }
 
