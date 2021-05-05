@@ -10,7 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var remotelog = log.With().Str("component", "remote").Logger()
+var logger = log.With().Str("component", "remote").Logger()
 
 // WriteTimeout defines the time after which a write operation is considered failed
 const WriteTimeout = 1 * time.Minute
@@ -32,36 +32,36 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 
 	// Send function
 	go func() {
-		remotelog.Info().Msg("Sender started")
+		logger.Info().Msg("Sender started")
 		out := controller.Sub(types.AnyOutgoingCommandType.String())
 		for data := range out {
 			message, ok := data.(*Message)
 			if !ok {
-				remotelog.Warn().Msg("Trying to something that's not a message")
+				logger.Warn().Msg("Trying to something that's not a message")
 				continue
 			}
 			if message.sender == uuid.Nil {
 				message.sender = controller.ID
 			}
-			remotelog.Debug().Msgf("Sending message: %v", message)
+			logger.Debug().Msgf("Sending message: %v", message)
 			conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
 			data, err := message.Bytes()
 			if err != nil {
-				remotelog.Warn().Msgf("Cannot encode message: %v", err)
+				logger.Warn().Msgf("Cannot encode message: %v", err)
 			}
 			_, err = remote.conn.Write(data)
 			if err != nil {
-				log.Warn().Msgf("Cannot write data, exiting: %v", err)
+				logger.Warn().Msgf("Cannot write data, exiting: %v", err)
 				remote.Terminate()
 				break
 			}
 		}
-		remotelog.Info().Msg("Sender terminated")
+		logger.Info().Msg("Sender terminated")
 	}()
 
 	// Receive function
 	go func() {
-		remotelog.Info().Msg("Receiver started")
+		logger.Info().Msg("Receiver started")
 		for {
 			if readTimeout != 0 {
 				conn.SetReadDeadline(time.Now().Add(readTimeout))
@@ -69,14 +69,14 @@ func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration)
 
 			message, err := ParseMessage(conn)
 			if err != nil {
-				remotelog.Error().Msgf("Invalid message: %v", err)
+				logger.Error().Msgf("Invalid message: %v", err)
 				remote.Terminate()
 				break
 			}
-			remotelog.Debug().Msgf("Message received: %v", message)
+			logger.Debug().Msgf("Message received: %v", message)
 			controller.PubMessage(message, types.AnyIncomingCommandType.String(), message.Command().Type.String())
 		}
-		remotelog.Info().Msg("Receiver terminated")
+		logger.Info().Msg("Receiver terminated")
 	}()
 
 	return &remote
