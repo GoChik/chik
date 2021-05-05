@@ -75,7 +75,11 @@ func topicsAsStrings(topics []types.CommandType) []string {
 
 func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
 	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
-	timer := h.Setup(c)
+	timer, err := h.Setup(c)
+	if err != nil {
+		log.Err(err).Str("handler", h.String())
+		return
+	}
 	subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
 	g.Go(func() error {
 		stop := func() {

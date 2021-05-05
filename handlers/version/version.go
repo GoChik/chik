@@ -2,7 +2,6 @@ package version
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
@@ -12,6 +11,7 @@ import (
 var logger = log.With().Str("handler", "update").Logger()
 
 type version struct {
+	chik.BaseHandler
 	Current string
 }
 
@@ -19,20 +19,11 @@ type version struct {
 func New(currentVersion string) chik.Handler {
 	logger.Debug().Msgf("Version: %v", currentVersion)
 
-	return &version{currentVersion}
-}
-
-func (h *version) Dependencies() []string {
-	return []string{}
+	return &version{Current: currentVersion}
 }
 
 func (h *version) Topics() []types.CommandType {
 	return []types.CommandType{types.VersionRequestCommandType}
-}
-
-func (h *version) Setup(controller *chik.Controller) chik.Timer {
-	// TODO: check periodically for new versions
-	return chik.NewEmptyTimer()
 }
 
 func (h *version) HandleMessage(message *chik.Message, remote *chik.Controller) error {
@@ -51,10 +42,6 @@ func (h *version) HandleMessage(message *chik.Message, remote *chik.Controller) 
 	}
 	return nil
 }
-
-func (h *version) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
-
-func (h *version) Teardown() {}
 
 func (h *version) String() string {
 	return "version"

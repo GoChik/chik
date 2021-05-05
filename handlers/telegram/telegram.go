@@ -13,14 +13,6 @@ import (
 	"gopkg.in/tucnak/telebot.v2"
 )
 
-// Heating implements various logics needed to improve the Telegram system.
-// Particularly the SizeFactor coefficent (from 1 to 100) improve
-// condensing boiler running cycles by grouping together small zones
-// to allow it to start once for multiple zones
-// Eg:
-// A room with SizeFactor of 100 starts alone.
-// A room with SizeFactor of 50 starts with other zones till the total factor is >= 100
-
 var logger = log.With().Str("handler", "telegram").Logger()
 var retryInterval = 20 * time.Second
 
@@ -32,10 +24,10 @@ type Message struct {
 
 // Telegram handler
 type Telegram struct {
-	Token          string   `json:"token" mapstructure:"token"`
-	AllowedUsers   []string `json:"allowed_users" mapstructure:"allowed_users"`
-	StartupMessage string   `json:"startup_message" mapstructure:"startup_message"`
-	bot            *telebot.Bot
+	chik.BaseHandler
+	Token        string   `json:"token" mapstructure:"token"`
+	AllowedUsers []string `json:"allowed_users" mapstructure:"allowed_users"`
+	bot          *telebot.Bot
 }
 
 // New creates a telegram handler. useful for sending notifications about events
@@ -46,10 +38,6 @@ func New() *Telegram {
 		logger.Fatal().Err(err).Msg("Creation failed")
 	}
 	return &t
-}
-
-func (h *Telegram) Dependencies() []string {
-	return []string{}
 }
 
 func (h *Telegram) Topics() []types.CommandType {
@@ -98,10 +86,6 @@ func (h *Telegram) sendMessage(content string) {
 	}
 }
 
-func (h *Telegram) Setup(controller *chik.Controller) chik.Timer {
-	return chik.NewEmptyTimer()
-}
-
 func (h *Telegram) HandleMessage(message *chik.Message, controller *chik.Controller) error {
 	var notification Message
 	err := json.Unmarshal(message.Command().Data, &notification)
@@ -113,8 +97,6 @@ func (h *Telegram) HandleMessage(message *chik.Message, controller *chik.Control
 	h.sendMessage(notification.Message)
 	return nil
 }
-
-func (h *Telegram) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
 
 func (h *Telegram) Teardown() {
 	h.bot.Stop()

@@ -2,7 +2,6 @@ package actor
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
@@ -24,6 +23,7 @@ type Action struct {
 }
 
 type actor struct {
+	chik.BaseHandler
 	actions       []Action
 	previousState map[string]interface{}
 }
@@ -37,7 +37,9 @@ func New() chik.Handler {
 		config.Set(configKey, actions)
 	}
 
-	return &actor{actions, nil}
+	return &actor{
+		actions: actions,
+	}
 }
 
 func (h *actor) executeActions(controller *chik.Controller, currentState map[string]interface{}) {
@@ -83,10 +85,6 @@ func (h *actor) Topics() []types.CommandType {
 	}
 }
 
-func (h *actor) Setup(controller *chik.Controller) chik.Timer {
-	return chik.NewEmptyTimer()
-}
-
 func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller) error {
 	switch message.Command().Type {
 	case types.StatusNotificationCommandType:
@@ -102,10 +100,6 @@ func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller
 
 	return nil
 }
-
-func (h *actor) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
-
-func (h *actor) Teardown() {}
 
 func (h *actor) String() string {
 	return "actions"

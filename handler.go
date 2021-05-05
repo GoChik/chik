@@ -35,11 +35,37 @@ type Handler interface {
 	fmt.Stringer
 	Dependencies() []string
 	Topics() []types.CommandType
-	Setup(controller *Controller) Timer
+	Setup(controller *Controller) (Timer, error)
 	HandleMessage(message *Message, controller *Controller) error
 	HandleTimerEvent(tick time.Time, controller *Controller)
 	Teardown()
 }
+
+type BaseHandler struct{}
+
+func (s *BaseHandler) String() string {
+	return ""
+}
+
+func (s *BaseHandler) Dependencies() []string {
+	return []string{}
+}
+
+func (s *BaseHandler) Topics() []types.CommandType {
+	return []types.CommandType{}
+}
+
+func (s *BaseHandler) Setup(controller *Controller) (Timer, error) {
+	return NewEmptyTimer(), nil
+}
+
+func (s *BaseHandler) HandleMessage(message *Message, controller *Controller) error {
+	return nil
+}
+
+func (s *BaseHandler) HandleTimerEvent(tick time.Time, controller *Controller) {}
+
+func (s *BaseHandler) Teardown() {}
 
 // StatusHolder is a struct that stores status of an handler that needs to trigger status changes
 // when something happens

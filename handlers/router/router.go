@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
@@ -15,6 +14,7 @@ import (
 var logger = log.With().Str("handler", "router").Logger()
 
 type forwarding struct {
+	chik.BaseHandler
 	id    uuid.UUID
 	peers *sync.Map
 }
@@ -26,16 +26,8 @@ func New(peers *sync.Map) chik.Handler {
 	}
 }
 
-func (h *forwarding) Dependencies() []string {
-	return []string{}
-}
-
 func (h *forwarding) Topics() []types.CommandType {
 	return []types.CommandType{types.AnyIncomingCommandType}
-}
-
-func (h *forwarding) Setup(controller *chik.Controller) chik.Timer {
-	return chik.NewEmptyTimer()
 }
 
 func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Controller) error {
@@ -90,8 +82,6 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 	}
 	return nil
 }
-
-func (h *forwarding) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
 
 func (h *forwarding) Teardown() {
 	logger.Info().Msgf("Disconnecting peer: %v", h.id)

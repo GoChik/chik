@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
@@ -35,6 +34,7 @@ type room struct {
 }
 
 type heating struct {
+	chik.BaseHandler
 	Rooms     []*room `mapstructure:"rooms"`
 	Threshold float64 `json:"threshold"`
 }
@@ -61,7 +61,7 @@ func (h *heating) Topics() []types.CommandType {
 	return []types.CommandType{types.StatusNotificationCommandType}
 }
 
-func (h *heating) Setup(controller *chik.Controller) chik.Timer {
+func (h *heating) Setup(controller *chik.Controller) (chik.Timer, error) {
 	for _, r := range h.Rooms {
 		command := types.DigitalCommand{
 			Action:      types.RESET,
@@ -69,7 +69,7 @@ func (h *heating) Setup(controller *chik.Controller) chik.Timer {
 		}
 		controller.Pub(types.NewCommand(types.DigitalCommandType, command), chik.LoopbackID)
 	}
-	return chik.NewEmptyTimer()
+	return chik.NewEmptyTimer(), nil
 }
 
 func getValue(status types.Status, id string) (interface{}, error) {
@@ -140,10 +140,6 @@ func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controll
 
 	return nil
 }
-
-func (h *heating) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
-
-func (h *heating) Teardown() {}
 
 func (h *heating) String() string {
 	return "heating"

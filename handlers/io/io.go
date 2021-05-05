@@ -23,6 +23,7 @@ type currentstatus struct {
 
 type ioStatus map[string]currentstatus
 type io struct {
+	chik.BaseHandler
 	actuators map[string]bus.Bus
 	status    *chik.StatusHolder
 	wg        sync.WaitGroup
@@ -35,9 +36,9 @@ type ioDeviceChanges struct {
 // New creates a new IO handler
 func New() chik.Handler {
 	return &io{
-		platform.CreateBuses(),
-		chik.NewStatusHolder("io"),
-		sync.WaitGroup{},
+		actuators: platform.CreateBuses(),
+		status:    chik.NewStatusHolder("io"),
+		wg:        sync.WaitGroup{},
 	}
 }
 
@@ -175,7 +176,7 @@ func (h *io) Topics() []types.CommandType {
 	}
 }
 
-func (h *io) Setup(controller *chik.Controller) chik.Timer {
+func (h *io) Setup(controller *chik.Controller) (chik.Timer, error) {
 	initialStatus := make(ioStatus, 0)
 	for k, v := range h.actuators {
 		v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
@@ -194,7 +195,7 @@ func (h *io) Setup(controller *chik.Controller) chik.Timer {
 	}
 	logger.Debug().Msgf("Initial status: %v", initialStatus)
 	h.status.Set(initialStatus, controller)
-	return chik.NewEmptyTimer()
+	return chik.NewEmptyTimer(), nil
 }
 
 func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) error {
@@ -215,8 +216,6 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) e
 	}
 	return nil
 }
-
-func (h *io) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
 
 func (h *io) Teardown() {
 	for _, v := range h.actuators {

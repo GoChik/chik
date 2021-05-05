@@ -30,6 +30,7 @@ type data struct {
 }
 
 type datetime struct {
+	chik.BaseHandler
 	data   data
 	conf   timeConfig
 	status *chik.StatusHolder
@@ -65,11 +66,9 @@ func (h *datetime) Topics() []types.CommandType {
 	return []types.CommandType{} // TODO: adjust timezone?
 }
 
-func (h *datetime) Setup(controller *chik.Controller) chik.Timer {
-	return chik.NewTimer(30*time.Second, true)
+func (h *datetime) Setup(controller *chik.Controller) (chik.Timer, error) {
+	return chik.NewTimer(30*time.Second, true), nil
 }
-
-func (h *datetime) HandleMessage(message *chik.Message, controller *chik.Controller) error { return nil }
 
 func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
 	if h.data.Minute == tick.Minute() {
@@ -89,5 +88,3 @@ func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 	h.data.Minute = tick.Minute()
 	h.status.Set(h.data, controller)
 }
-
-func (h *datetime) Teardown() {}

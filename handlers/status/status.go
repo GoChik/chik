@@ -20,6 +20,7 @@ type subscrier struct {
 }
 
 type handler struct {
+	chik.BaseHandler
 	subscribers   map[uuid.UUID]subscrier
 	currentStatus types.Status
 }
@@ -46,10 +47,6 @@ func (h *handler) Topics() []types.CommandType {
 		types.StatusSubscriptionCommandType,
 		types.StatusUpdateCommandType,
 	}
-}
-
-func (h *handler) Setup(controller *chik.Controller) chik.Timer {
-	return chik.NewEmptyTimer()
 }
 
 func (h *handler) getStatus(query string) types.Status {
@@ -120,10 +117,6 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 	}
 	return nil
 }
-
-func (h *handler) HandleTimerEvent(tick time.Time, controller *chik.Controller) {}
-
-func (h *handler) Teardown() {}
 
 func (h *handler) String() string {
 	return "status"
