@@ -106,7 +106,7 @@ func ParseConfig() error {
 		fullPath := filepath.Join(path, conf.fileName)
 		_, err := os.Stat(fullPath)
 		if err == nil {
-			conf.currentPath = fullPath
+			conf.currentPath = path
 		}
 	}
 
@@ -114,7 +114,7 @@ func ParseConfig() error {
 		return &FileNotFoundError{}
 	}
 
-	return parse(conf.currentPath)
+	return parse(filepath.Join(conf.currentPath, conf.fileName))
 }
 
 // Get returns a value from the current config
@@ -178,15 +178,17 @@ func Sync() error {
 
 	if conf.currentPath == "" {
 		if len(conf.searchPaths) > 0 {
-			conf.currentPath = filepath.Join(conf.searchPaths[0], conf.fileName)
+			conf.currentPath = conf.searchPaths[0]
 		} else {
 			return errors.New("Unable to set a config path")
 		}
 	} else {
-		os.Rename(conf.currentPath, conf.currentPath+".old")
+		os.Rename(
+			filepath.Join(conf.currentPath, conf.fileName),
+			filepath.Join(conf.currentPath, conf.fileName+".old"))
 	}
 
-	fd, err := os.Create(conf.currentPath)
+	fd, err := os.Create(filepath.Join(conf.currentPath, conf.fileName))
 	defer fd.Close()
 
 	if err != nil {
