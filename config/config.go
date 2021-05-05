@@ -47,23 +47,6 @@ func init() {
 	})
 }
 
-func parse(path string) error {
-	fd, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
-
-	decoder := json.NewDecoder(fd)
-	err = decoder.Decode(&conf.data)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // AddSearchPath adds a path to the list of folders scanned in order to search the config file.
 // When opening the config file paths are scanned the order they are added
 func AddSearchPath(path string) error {
@@ -209,5 +192,22 @@ func Sync() error {
 	}
 
 	fd.Sync()
+	return nil
+}
+
+func parse(path string) error {
+	fd, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer fd.Close()
+
+	decoder := json.NewDecoder(fd)
+	err = decoder.Decode(&conf.data)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
