@@ -54,6 +54,12 @@ func NewEmptyTimer() Timer {
 		&time.Ticker{C: make(chan time.Time, 0)},
 	}
 }
+
+type Interrupts struct {
+	Timer Timer
+	Event <-chan interface{}
+}
+
 type Controller struct {
 	ID         uuid.UUID
 	pubSub     *pubsub.PubSub
@@ -103,7 +109,7 @@ func topicsAsStrings(topics []types.CommandType) []string {
 
 func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
 	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
-	timer, err := h.Setup(c)
+	interrupts, err := h.Setup(c)
 	if err != nil {
 		log.Err(err).Str("handler", h.String())
 		return
@@ -111,13 +117,13 @@ func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
 	subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
 	g.Go(func() error {
 		stop := func() {
-			timer.ticker.Stop()
+			interrupts.Timer.ticker.Stop()
 			h.Teardown()
 			log.Debug().
 				Str("handler", h.String()).
 				Msg("Stopping handler")
 		}
-		if timer.triggerAtStart {
+		if interrupts.Timer.triggerAtStart {
 			h.HandleTimerEvent(time.Now(), c)
 		}
 		for {
@@ -125,6 +131,7 @@ func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
 			case <-ctx.Done():
 				stop()
 				return ctx.Err()
+
 			case rawMessage, ok := <-subscribedTopics:
 				if !ok {
 					log.Error().
@@ -138,8 +145,11 @@ func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
 					return err
 				}
 
-			case tick := <-timer.ticker.C:
+			case tick := <-interrupts.Timer.ticker.C:
 				h.HandleTimerEvent(tick, c)
+
+			case event := <-interrupts.Event:
+				h.HandleChannelEvent(event, c)
 			}
 		}
 	})

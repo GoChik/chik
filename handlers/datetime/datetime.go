@@ -66,8 +66,8 @@ func (h *datetime) Topics() []types.CommandType {
 	return []types.CommandType{} // TODO: adjust timezone?
 }
 
-func (h *datetime) Setup(controller *chik.Controller) (chik.Timer, error) {
-	return chik.NewTimer(30*time.Second, true), nil
+func (h *datetime) Setup(controller *chik.Controller) (chik.Interrupts, error) {
+	return chik.Interrupts{Timer: chik.NewTimer(30*time.Second, true)}, nil
 }
 
 func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) {

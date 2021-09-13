@@ -14,9 +14,10 @@ type Handler interface {
 	fmt.Stringer
 	Dependencies() []string
 	Topics() []types.CommandType
-	Setup(controller *Controller) (Timer, error)
+	Setup(controller *Controller) (Interrupts, error)
 	HandleMessage(message *Message, controller *Controller) error
 	HandleTimerEvent(tick time.Time, controller *Controller)
+	HandleChannelEvent(event interface{}, controller *Controller)
 	Teardown()
 }
 
@@ -34,8 +35,8 @@ func (s *BaseHandler) Topics() []types.CommandType {
 	return []types.CommandType{}
 }
 
-func (s *BaseHandler) Setup(controller *Controller) (Timer, error) {
-	return NewEmptyTimer(), nil
+func (s *BaseHandler) Setup(controller *Controller) (Interrupts, error) {
+	return Interrupts{Timer: NewEmptyTimer()}, nil
 }
 
 func (s *BaseHandler) HandleMessage(message *Message, controller *Controller) error {
@@ -43,6 +44,8 @@ func (s *BaseHandler) HandleMessage(message *Message, controller *Controller) er
 }
 
 func (s *BaseHandler) HandleTimerEvent(tick time.Time, controller *Controller) {}
+
+func (s *BaseHandler) HandleChannelEvent(event interface{}, controller *Controller) {}
 
 func (s *BaseHandler) Teardown() {}
 
@@ -76,9 +79,10 @@ func (s *StatusHolder) Set(status interface{}, controller *Controller) {
 }
 
 // Edit the current status via editFunction
-func (s *StatusHolder) Edit(controller *Controller, editFunction func(interface{}) interface{}) {
-	newStatus := editFunction(s.status)
-	if reflect.DeepEqual(newStatus, s.status) {
+func (s *StatusHolder) Edit(controller *Controller, editFunction func(interface{}) (interface{}, bool)) {
+	newStatus, forceChange := editFunction(s.status)
+
+	if !forceChange && reflect.DeepEqual(newStatus, s.status) {
 		return
 	}
 	s.status = newStatus

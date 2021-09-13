@@ -16,29 +16,27 @@ import (
 
 var logger = log.With().Str("handler", "io").Logger()
 
-type currentstatus struct {
+type CurrentStatus struct {
 	bus.DeviceDescription
-	LastStateChange types.TimeIndication `json:"last_state_change"`
+	LastStateChange types.TimeIndication `json:"last_state_change" mapstructure:"last_state_change,string"`
 }
 
-type ioStatus map[string]currentstatus
+type Status map[string]CurrentStatus
 type io struct {
 	chik.BaseHandler
-	actuators map[string]bus.Bus
-	status    *chik.StatusHolder
-	wg        sync.WaitGroup
-}
-
-type ioDeviceChanges struct {
-	DeviceID string
+	actuators     map[string]bus.Bus
+	status        *chik.StatusHolder
+	wg            sync.WaitGroup
+	deviceChanges chan interface{}
 }
 
 // New creates a new IO handler
 func New() chik.Handler {
 	return &io{
-		actuators: platform.CreateBuses(),
-		status:    chik.NewStatusHolder("io"),
-		wg:        sync.WaitGroup{},
+		actuators:     platform.CreateBuses(),
+		status:        chik.NewStatusHolder("io"),
+		wg:            sync.WaitGroup{},
+		deviceChanges: make(chan interface{}, 5),
 	}
 }
 
@@ -56,22 +54,21 @@ func (h *io) listenForDeviceChanges(channel <-chan string, controller *chik.Cont
 	h.wg.Add(1)
 	go func() {
 		for device := range channel {
-			controller.Pub(types.NewCommand(types.IODeviceStatusChangedCommandType, ioDeviceChanges{device}),
-				chik.LoopbackID)
+			h.deviceChanges <- device
 		}
 		h.wg.Done()
 	}()
 }
 
 func (h *io) setStatus(controller *chik.Controller, applianceID string) {
-	h.status.Edit(controller, func(rawStatus interface{}) interface{} {
-		var status ioStatus
+	h.status.Edit(controller, func(rawStatus interface{}) (interface{}, bool) {
+		var status Status
 		types.Decode(rawStatus, &status)
 		if status == nil {
-			status = make(ioStatus)
+			status = make(Status)
 		}
 		if device, err := h.getDevice(applianceID); err == nil {
-			status[applianceID] = currentstatus{
+			status[applianceID] = CurrentStatus{
 				device.Description(),
 				types.TimeIndication{
 					Hour:   time.Now().Hour(),
@@ -79,7 +76,7 @@ func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 				},
 			}
 		}
-		return status
+		return status, false
 	})
 }
 
@@ -172,18 +169,17 @@ func (h *io) Topics() []types.CommandType {
 	return []types.CommandType{
 		types.DigitalCommandType,
 		types.AnalogCommandType,
-		types.IODeviceStatusChangedCommandType,
 	}
 }
 
-func (h *io) Setup(controller *chik.Controller) (chik.Timer, error) {
-	initialStatus := make(ioStatus, 0)
+func (h *io) Setup(controller *chik.Controller) (chik.Interrupts, error) {
+	initialStatus := make(Status, 0)
 	for k, v := range h.actuators {
 		v.Initialize(config.Get(fmt.Sprintf("actuators.%s", k)))
 		for _, id := range v.DeviceIds() {
 			// ignoring errors because we trust device apis
 			device, _ := v.Device(id)
-			initialStatus[id] = currentstatus{
+			initialStatus[id] = CurrentStatus{
 				device.Description(),
 				types.TimeIndication{
 					Hour:   time.Now().Hour(),
@@ -195,7 +191,10 @@ func (h *io) Setup(controller *chik.Controller) (chik.Timer, error) {
 	}
 	logger.Debug().Msgf("Initial status: %v", initialStatus)
 	h.status.Set(initialStatus, controller)
-	return chik.NewEmptyTimer(), nil
+	return chik.Interrupts{
+		Timer: chik.NewEmptyTimer(),
+		Event: h.deviceChanges,
+	}, nil
 }
 
 func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) error {
@@ -205,16 +204,16 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) e
 
 	case types.AnalogCommandType:
 		h.parseAnalogCommand(controller, message)
-
-	case types.IODeviceStatusChangedCommandType:
-		var data ioDeviceChanges
-		err := json.Unmarshal(message.Command().Data, &data)
-		if err != nil {
-			logger.Warn().Msgf("Cannot parse device update %v", err)
-		}
-		h.setStatus(controller, data.DeviceID)
 	}
 	return nil
+}
+
+func (h *io) HandleChannelEvent(event interface{}, controller *chik.Controller) {
+	device, ok := event.(string)
+	if !ok {
+		return
+	}
+	h.setStatus(controller, device)
 }
 
 func (h *io) Teardown() {
@@ -222,6 +221,7 @@ func (h *io) Teardown() {
 		v.Deinitialize()
 	}
 	h.wg.Wait()
+	close(h.deviceChanges)
 }
 
 func (h *io) String() string {

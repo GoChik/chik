@@ -47,7 +47,7 @@ func New() chik.Handler {
 
 	err := config.GetStruct("heating", &h)
 	if err != nil {
-		logger.Err(err)
+		logger.Err(err).Msg("failed parsing conf")
 	}
 	logger.Debug().Msgf("Heating: %v", h)
 	return &h
@@ -61,7 +61,7 @@ func (h *heating) Topics() []types.CommandType {
 	return []types.CommandType{types.StatusNotificationCommandType}
 }
 
-func (h *heating) Setup(controller *chik.Controller) (chik.Timer, error) {
+func (h *heating) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 	for _, r := range h.Rooms {
 		command := types.DigitalCommand{
 			Action:      types.RESET,
@@ -69,7 +69,7 @@ func (h *heating) Setup(controller *chik.Controller) (chik.Timer, error) {
 		}
 		controller.Pub(types.NewCommand(types.DigitalCommandType, command), chik.LoopbackID)
 	}
-	return chik.NewEmptyTimer(), nil
+	return chik.Interrupts{Timer: chik.NewEmptyTimer()}, nil
 }
 
 func getValue(status types.Status, id string) (interface{}, error) {

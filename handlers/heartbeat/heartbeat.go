@@ -35,9 +35,8 @@ func (h *heartbeat) Topics() []types.CommandType {
 	return []types.CommandType{types.HeartbeatType}
 }
 
-func (h *heartbeat) Setup(controller *chik.Controller) (t chik.Timer, err error) {
-	t = chik.NewTimer(h.interval, true)
-	return
+func (h *heartbeat) Setup(controller *chik.Controller) (chik.Interrupts, error) {
+	return chik.Interrupts{Timer: chik.NewTimer(h.interval, true)}, nil
 }
 
 func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Controller) error {
