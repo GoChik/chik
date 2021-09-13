@@ -8,27 +8,6 @@ import (
 	"github.com/gochik/chik/types"
 )
 
-type Timer struct {
-	triggerAtStart bool
-	ticker         *time.Ticker
-}
-
-// NewTimer creates a new timer given an interval and the option to fire when started
-func NewTimer(interval time.Duration, triggerAtStart bool) Timer {
-	return Timer{
-		triggerAtStart,
-		time.NewTicker(interval),
-	}
-}
-
-// NewEmptyTimer creates a timer that does never fire
-func NewEmptyTimer() Timer {
-	return Timer{
-		false,
-		&time.Ticker{C: make(chan time.Time, 0)},
-	}
-}
-
 // Handler is the interface that handles network messages
 // and optionally can return a reply
 type Handler interface {

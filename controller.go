@@ -26,6 +26,34 @@ const MaxIdleTime = 5 * time.Minute
 // LoopbackID is the id internal only messages are sent to
 var LoopbackID = uuid.Nil
 
+type Timer struct {
+	triggerAtStart bool
+	ticker         *time.Ticker
+}
+
+// NewTimer creates a new timer given an interval and the option to fire when started
+func NewTimer(interval time.Duration, triggerAtStart bool) Timer {
+	return Timer{
+		triggerAtStart,
+		time.NewTicker(interval),
+	}
+}
+
+// NewStartupActionTimer creates a timer that fires only at start and then never triggers again
+func NewStartupActionTimer() Timer {
+	return Timer{
+		true,
+		&time.Ticker{C: make(chan time.Time, 0)},
+	}
+}
+
+// NewEmptyTimer creates a timer that does never fire
+func NewEmptyTimer() Timer {
+	return Timer{
+		false,
+		&time.Ticker{C: make(chan time.Time, 0)},
+	}
+}
 type Controller struct {
 	ID         uuid.UUID
 	pubSub     *pubsub.PubSub
