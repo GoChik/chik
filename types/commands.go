@@ -21,7 +21,7 @@ const (
 	HeartbeatType CommandType = iota
 	DigitalCommandType
 	AnalogCommandType
-	StatusSubscriptionCommandType
+	StatusCommandType
 	StatusNotificationCommandType
 	VersionRequestCommandType
 	VersionReplyCommandType
@@ -32,7 +32,7 @@ const (
 
 	// private commands (sent on the loopback address)
 	StatusUpdateCommandType
-	IODeviceStatusChangedCommandType
+	NullCommandType
 
 	// Telegram notifications
 	TelegramNotificationCommandType

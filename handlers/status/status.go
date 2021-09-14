@@ -25,9 +25,10 @@ type handler struct {
 	currentStatus types.Status
 }
 
-type SubscriptionCommand struct {
+type StatusCommand struct {
 	Action types.Action `json:",int"`
 	Query  string       `json:",omitempty"`
+	Value  interface{}  `json:",omitempty"`
 }
 
 // New creates a new status handler
@@ -44,7 +45,7 @@ func (h *handler) Dependencies() []string {
 
 func (h *handler) Topics() []types.CommandType {
 	return []types.CommandType{
-		types.StatusSubscriptionCommandType,
+		types.StatusCommandType,
 		types.StatusUpdateCommandType,
 	}
 }
@@ -62,8 +63,8 @@ func (h *handler) getStatus(query string) types.Status {
 
 func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) error {
 	switch message.Command().Type {
-	case types.StatusSubscriptionCommandType:
-		var content SubscriptionCommand
+	case types.StatusCommandType:
+		var content StatusCommand
 		err := json.Unmarshal(message.Command().Data, &content)
 		if err != nil {
 			logger.Error().Msgf("Failed to decode status subscription command: %v", err)
