@@ -7,7 +7,7 @@ require (
 	github.com/PaesslerAG/gval v1.1.0
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
-	github.com/creachadair/jrpc2 v0.12.0
+	github.com/creachadair/jrpc2 v0.25.0
 	github.com/cskr/pubsub v1.0.2
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
