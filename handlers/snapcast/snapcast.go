@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/creachadair/jrpc2"
+	"github.com/creachadair/jrpc2/channel"
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
@@ -89,7 +90,7 @@ func (h *snapcast) connect() error {
 		return err
 	}
 
-	h.client = jrpc2.NewClient(LineJSON(conn, conn), &jrpc2.ClientOptions{
+	h.client = jrpc2.NewClient(channel.Line(conn, conn), &jrpc2.ClientOptions{
 		OnNotify: h.notify,
 	})
 	return nil
