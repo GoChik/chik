@@ -37,6 +37,10 @@ const (
 	// Telegram notifications
 	TelegramNotificationCommandType
 
+	// Systemd
+	SystemdRequestCommandType
+	SystemdReplyCommandType
+
 	// special command types
 	AnyIncomingCommandType
 	AnyOutgoingCommandType
