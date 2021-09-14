@@ -35,7 +35,7 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 	sender := message.SenderUUID()
 	if sender == uuid.Nil {
 		err := errors.New("Unable to get sender UUID")
-		logger.Err(err)
+		logger.Err(err).Msg("handle failed")
 		return err
 	}
 
@@ -50,7 +50,7 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 		h.peers.Store(h.id, controller)
 	} else if h.id != sender {
 		err := fmt.Errorf("Unexpected sender, expecting: %v got: %v", h.id, sender)
-		logger.Err(err)
+		logger.Err(err).Msg("handle failed")
 		return err
 	}
 
