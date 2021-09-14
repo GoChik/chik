@@ -11,23 +11,28 @@ func _() {
 	_ = x[HeartbeatType-0]
 	_ = x[DigitalCommandType-1]
 	_ = x[AnalogCommandType-2]
-	_ = x[StatusSubscriptionCommandType-3]
+	_ = x[StatusCommandType-3]
 	_ = x[StatusNotificationCommandType-4]
 	_ = x[VersionRequestCommandType-5]
 	_ = x[VersionReplyCommandType-6]
 	_ = x[ActionRequestCommandType-7]
 	_ = x[ActionReplyCommandType-8]
 	_ = x[StatusUpdateCommandType-9]
-	_ = x[IODeviceStatusChangedCommandType-10]
+	_ = x[NullCommandType-10]
 	_ = x[TelegramNotificationCommandType-11]
-	_ = x[AnyIncomingCommandType-12]
-	_ = x[AnyOutgoingCommandType-13]
-	_ = x[messageBound-14]
+	_ = x[SystemdRequestCommandType-12]
+	_ = x[SystemdReplyCommandType-13]
+	_ = x[SnapcastManagerCommandType-14]
+	_ = x[SnapcastClientCommandType-15]
+	_ = x[SnapcastGroupCommandType-16]
+	_ = x[AnyIncomingCommandType-17]
+	_ = x[AnyOutgoingCommandType-18]
+	_ = x[messageBound-19]
 }
 
-const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusSubscriptionCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeIODeviceStatusChangedCommandTypeTelegramNotificationCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
+const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeNullCommandTypeTelegramNotificationCommandTypeSystemdRequestCommandTypeSystemdReplyCommandTypeSnapcastManagerCommandTypeSnapcastClientCommandTypeSnapcastGroupCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
 
-var _CommandType_index = [...]uint16{0, 13, 31, 48, 77, 106, 131, 154, 178, 200, 223, 255, 286, 308, 330, 342}
+var _CommandType_index = [...]uint16{0, 13, 31, 48, 65, 94, 119, 142, 166, 188, 211, 226, 257, 282, 305, 331, 356, 380, 402, 424, 436}
 
 func (i CommandType) String() string {
 	if i >= CommandType(len(_CommandType_index)-1) {

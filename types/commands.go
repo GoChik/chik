@@ -41,6 +41,11 @@ const (
 	SystemdRequestCommandType
 	SystemdReplyCommandType
 
+	// Snapcast
+	SnapcastManagerCommandType
+	SnapcastClientCommandType
+	SnapcastGroupCommandType
+
 	// special command types
 	AnyIncomingCommandType
 	AnyOutgoingCommandType
