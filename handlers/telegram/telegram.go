@@ -2,6 +2,8 @@ package telegram
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +18,8 @@ import (
 
 var logger = log.With().Str("handler", "telegram").Logger()
 var retryInterval = 20 * time.Second
+var onButton = &telebot.InlineButton{Unique: "1", Text: "Accendi"}
+var offButton = &telebot.InlineButton{Unique: "2", Text: "Spegni"}
 
 // Message is the message the bot can send
 // it needs to be of type: TelegramNotificationCommandType
@@ -26,13 +30,15 @@ type Message struct {
 // Telegram handler
 type Telegram struct {
 	chik.BaseHandler
-	Token         string            `json:"token" mapstructure:"token"`
-	AllowedUsers  []string          `json:"allowed_users" mapstructure:"allowed_users"`
-	DevicesByName map[string]string `json:"devices_by_name" mapstructure:"devices_by_name"`
-	SetStrings    []string          `json:"set_strings"`
-	ResetStrings  []string          `json:"reset_strings"`
-	bot           *telebot.Bot
-	notifications chan interface{}
+	Token            string            `json:"token" mapstructure:"token"`
+	AllowedUsers     []string          `json:"allowed_users" mapstructure:"allowed_users"`
+	AppliancesByName map[string]string `json:"appliances_by_name" mapstructure:"appliances_by_name"`
+	SetStrings       []string          `json:"set_strings" mapstructure:"set_strings"`
+	ResetStrings     []string          `json:"reset_strings" mapstructure:"reset_strings"`
+	SetDoneMessage   string            `json:"set_done_message" mapstructure:"set_done_message"`
+	ReseDonetMessage string            `json:"reset_done_message" mapstructure:"reset_done_message"`
+	bot              *telebot.Bot
+	notifications    chan interface{}
 }
 
 // New creates a telegram handler. useful for sending notifications about events
@@ -42,7 +48,8 @@ func New() *Telegram {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Creation failed")
 	}
-	t.notifications = make(chan interface{})
+	logger.Debug().Msgf("Telegram stuff: %v", t)
+	t.notifications = make(chan interface{}, 5)
 	return &t
 }
 
@@ -59,6 +66,22 @@ func findWord(text string, candidates []string) bool {
 		}
 	}
 	return false
+}
+
+func (h *Telegram) execAction(device string, action types.Action) (reply string, err error) {
+	reply = "Device not found!"
+
+	if val, ok := h.AppliancesByName[device]; ok {
+		h.notifications <- types.DigitalCommand{ApplianceID: val, Action: action}
+		message := h.SetDoneMessage
+		if action == types.RESET {
+			message = h.ReseDonetMessage
+		}
+		reply = fmt.Sprintf(message, device)
+		return
+	}
+	err = errors.New("Device not found")
+	return
 }
 
 func (h *Telegram) startBot() error {
@@ -80,11 +103,24 @@ func (h *Telegram) startBot() error {
 		}),
 	})
 
+	h.bot.Handle(onButton, func(callback *telebot.Callback) {
+		reply, _ := h.execAction(callback.Data, types.SET)
+		h.bot.Respond(callback, &telebot.CallbackResponse{Text: reply})
+	})
+
+	h.bot.Handle(offButton, func(callback *telebot.Callback) {
+		reply, _ := h.execAction(callback.Data, types.RESET)
+		h.bot.Respond(callback, &telebot.CallbackResponse{Text: reply})
+	})
+
 	h.bot.Handle(telebot.OnText, func(m *telebot.Message) {
 		applyAction := func(action types.Action) {
 			for _, token := range strings.Split(m.Text, " ") {
-				if val, ok := h.DevicesByName[strings.ToLower(token)]; ok {
-					h.notifications <- types.DigitalCommand{ApplianceID: val, Action: action}
+				normalizedToken := strings.ToLower(token)
+				if reply, err := h.execAction(normalizedToken, action); err == nil {
+					h.bot.Reply(m, reply, &telebot.ReplyMarkup{InlineKeyboard: [][]telebot.InlineButton{{
+						*onButton.With(normalizedToken), *offButton.With(normalizedToken),
+					}}})
 				}
 			}
 		}
