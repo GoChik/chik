@@ -23,6 +23,7 @@ type data struct {
 	Year    int                  `json:"year"`
 	Month   int                  `json:"month"`
 	Day     int                  `json:"day"`
+	Weekday int                  `json:"weekday"`
 	Hour    int                  `json:"hour"`
 	Minute  int                  `json:"minute"`
 	Sunrise types.TimeIndication `json:"sunrise"`
@@ -84,6 +85,7 @@ func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 	h.data.Year = tick.Year()
 	h.data.Month = int(tick.Month())
 	h.data.Day = tick.Day()
+	h.data.Weekday = int(tick.Weekday())
 	h.data.Hour = tick.Hour()
 	h.data.Minute = tick.Minute()
 	h.status.Set(h.data, controller)
