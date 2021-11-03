@@ -25,7 +25,22 @@ type TestClient struct {
 
 var address net.Addr
 var peers = sync.Map{}
-var serverID = uuid.Nil
+var serverID = struct {
+	sync.Mutex
+	uuid.UUID
+}{UUID: uuid.Nil}
+
+func getServerID() uuid.UUID {
+	serverID.Lock()
+	defer serverID.Unlock()
+	return serverID.UUID
+}
+
+func setServerID(id uuid.UUID) {
+	serverID.Lock()
+	defer serverID.Unlock()
+	serverID.UUID = id
+}
 
 func createController() *chik.Controller {
 	f, err := ioutil.TempFile("", "tst")
@@ -56,7 +71,7 @@ func CreateServer(t *testing.T) net.Listener {
 			if srv == nil {
 				t.Fatal("Cannot create controller")
 			}
-			serverID = srv.ID
+			setServerID(srv.ID)
 			go func() {
 				ctx, cancel := context.WithCancel(context.Background())
 				go srv.Start(ctx, []chik.Handler{

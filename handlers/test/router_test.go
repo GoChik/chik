@@ -22,9 +22,9 @@ func TestForwarding(t *testing.T) {
 	}
 
 	forwarded := client1.remote.Sub(types.DigitalCommandType.String())
-	client2.remote.PubMessage(chik.NewMessage(serverID, types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
+	client2.remote.PubMessage(chik.NewMessage(getServerID(), types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
 	time.Sleep(100 * time.Millisecond)
-	client1.remote.PubMessage(chik.NewMessage(serverID, types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
+	client1.remote.PubMessage(chik.NewMessage(getServerID(), types.NewCommand(types.HeartbeatType, nil)), types.AnyOutgoingCommandType.String())
 	time.Sleep(100 * time.Millisecond)
 	client2.remote.Pub(types.NewCommand(types.DigitalCommandType, types.SimpleCommand{}), client1.id)
 
