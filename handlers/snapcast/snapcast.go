@@ -272,7 +272,18 @@ func (h *snapcast) handleGroupCommand(message *chik.Message, controller *chik.Co
 			h.snapcastRequest("Group.SetClients", map[string]interface{}{"id": command.GroupID, "clients": command.Clients})
 		}
 	case types.GET:
-		// TODO: get group description
+		var reply *jrpc2.Response
+		reply, err = h.snapcastRequest("Server.GetStatus", nil)
+		if err != nil {
+			logger.Err(err).Msg("Failed to get server status")
+			return
+		}
+		var status Status
+		err = reply.UnmarshalResult(&status)
+		if err != nil {
+			return
+		}
+		h.handleServerStatusUpdate(&status, controller)
 	}
 
 	return
