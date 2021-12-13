@@ -220,6 +220,7 @@ func (b *unipiBus) startPoll(frequency time.Duration) {
 				err := device.fetchStatus()
 				if err != nil {
 					logger.Error().Msgf("Error fetching device status: %v", err)
+					continue
 				}
 				if oldStatus != device.status {
 					b.deviceNotifications <- device.Id
