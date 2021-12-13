@@ -2,6 +2,7 @@ package actor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -132,6 +133,47 @@ func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
 	return
 }
 
+type StateQueries []StateQuery
+
+func queryFromRawData(raw map[string]interface{}) (StateQuery, error) {
+	setValue := func(value interface{}) (StateQuery, error) {
+		resultValue := reflect.ValueOf(value).Elem()
+		for k, v := range raw {
+			val := resultValue.FieldByName(strings.Title(k))
+			if !val.IsValid() {
+				return nil, fmt.Errorf("Cannot store key %s in %v", k, resultValue.Type())
+			}
+			val.Set(reflect.ValueOf(v))
+		}
+		return value.(StateQuery), nil
+	}
+
+	_, ok1 := raw["Const"]
+	_, ok2 := raw["const"]
+	if ok1 || ok2 {
+		return setValue(&MixedQuery{})
+	}
+	return setValue(&StructQuery{})
+}
+
+func (sq *StateQueries) UnmarshalJSON(data []byte) error {
+	temp := make([]interface{}, 0)
+	err := json.Unmarshal(data, &temp)
+	if err != nil {
+		return err
+	}
+	res := make(StateQueries, 0, len(temp))
+	for _, q := range temp {
+		value, err := queryFromRawData(q.(map[string]interface{}))
+		if err != nil {
+			return err
+		}
+		res = append(res, value)
+	}
+	*sq = res
+	return nil
+}
+
 func StringInterfaceToStateQuery(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {
 	if sourceType.Kind() != reflect.Map {
 		return sourceData, nil
@@ -141,23 +183,5 @@ func StringInterfaceToStateQuery(sourceType, targetType reflect.Type, sourceData
 		return sourceData, nil
 	}
 
-	mapSource := sourceData.(map[string]interface{})
-	setValue := func(value interface{}) (interface{}, error) {
-		resultValue := reflect.ValueOf(value).Elem()
-		for k, v := range mapSource {
-			val := resultValue.FieldByName(strings.Title(k))
-			if !val.IsValid() {
-				return nil, fmt.Errorf("Cannot store key %s in %v", k, resultValue.Type())
-			}
-			val.Set(reflect.ValueOf(v))
-		}
-		return value, nil
-	}
-
-	_, ok1 := mapSource["Const"]
-	_, ok2 := mapSource["const"]
-	if ok1 || ok2 {
-		return setValue(&MixedQuery{})
-	}
-	return setValue(&StructQuery{})
+	return queryFromRawData(sourceData.(map[string]interface{}))
 }
