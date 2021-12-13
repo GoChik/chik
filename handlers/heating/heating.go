@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sort"
+	"time"
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
@@ -12,25 +12,23 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// Heating implements various logics needed to improve the heating system.
-// Particularly the SizeFactor coefficent (from 1 to 100) improve
-// condensing boiler running cycles by grouping together small zones
-// to allow it to start once for multiple zones
-// Eg:
-// A room with SizeFactor of 100 starts alone.
-// A room with SizeFactor of 50 starts with other zones till the total factor is >= 100
-
 var logger = log.With().Str("handler", "heating").Logger()
+
+const MinimumRunningTime = time.Hour * 2
 
 type room struct {
 	ID                   string `mapstructure:"id"`
 	CurrentTemperatureID string `mapstructure:"current_temperature_id"`
 	TargetTemperatureID  string `mapstructure:"target_temperature_id"`
 	ThermalValveID       string `mapstructure:"thermal_valve_id"`
-	SizeFactor           uint8  `mapstructure:"size_factor"`
+}
 
-	currentTemperature float64
-	targetTemperature  float64
+type roomStatus struct {
+	room                    *room
+	currentTemperature      float64
+	targetTemperature       float64
+	isHeating               bool
+	lastHeatingStatusChange time.Time
 }
 
 type heating struct {
@@ -72,7 +70,7 @@ func (h *heating) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 	return chik.Interrupts{Timer: chik.NewEmptyTimer()}, nil
 }
 
-func getValue(status types.Status, id string) (interface{}, error) {
+func getValue(status types.Status, id string, key string) (interface{}, error) {
 	v, ok := status["io"].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("Cannot find io in status")
@@ -81,7 +79,7 @@ func getValue(status types.Status, id string) (interface{}, error) {
 	if !ok {
 		return nil, fmt.Errorf("Cannot find thermal element %v in status", id)
 	}
-	return v["state"], nil
+	return v[key], nil
 }
 
 func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controller) error {
@@ -92,47 +90,45 @@ func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controll
 		return nil
 	}
 
+	rooms := make([]roomStatus, 0, len(h.Rooms))
+
 	for _, r := range h.Rooms {
-		tmp, _ := getValue(status, r.CurrentTemperatureID)
-		r.currentTemperature = tmp.(float64)
-		tmp, _ = getValue(status, r.TargetTemperatureID)
-		r.targetTemperature = tmp.(float64)
+		room := roomStatus{
+			room: r,
+		}
+		tmp, _ := getValue(status, r.CurrentTemperatureID, "state")
+		room.currentTemperature = tmp.(float64)
+		tmp, _ = getValue(status, r.TargetTemperatureID, "state")
+		room.targetTemperature = tmp.(float64)
+		tmp, _ = getValue(status, r.ThermalValveID, "state")
+		room.isHeating = tmp.(bool)
+		tmp, _ = getValue(status, r.ThermalValveID, "last_state_change")
+		var tmpTime types.TimeIndication
+		types.Decode(tmp, &tmpTime)
+		now := time.Now()
+		room.lastHeatingStatusChange = time.Date(now.Year(), now.Month(), now.Day(), tmpTime.Hour, tmpTime.Minute, 0, 0, now.Location())
+		if room.lastHeatingStatusChange.After(now) {
+			room.lastHeatingStatusChange = room.lastHeatingStatusChange.Add(-24 * time.Hour)
+		}
+		rooms = append(rooms, room)
 	}
 
-	sort.Slice(h.Rooms, func(i, j int) bool {
-		return (h.Rooms[i].currentTemperature - h.Rooms[i].targetTemperature) <
-			(h.Rooms[j].currentTemperature - h.Rooms[j].targetTemperature)
-	})
-
-	currentSizeFactor := uint8(0)
 	logger.Debug().Msg("Cycling through rooms")
-	for _, r := range h.Rooms {
-		logger.Debug().Msgf("%v current:%v target:%v, factor:%v", r.ID, r.currentTemperature, r.targetTemperature, currentSizeFactor)
-
-		wantsToBeTurnedOn := r.currentTemperature-r.targetTemperature < 0 ||
-			(currentSizeFactor > 0 && currentSizeFactor < 100)
-		wantsToBeTurnedOff := (r.currentTemperature-r.targetTemperature > h.Threshold) && (currentSizeFactor == 0 || currentSizeFactor >= 100)
-		isTurnedOn, err := getValue(status, r.ThermalValveID)
-		if err != nil {
-			logger.Error().Msgf("Cannot read Valve state: %v", err)
-			return nil
-		}
-
-		if wantsToBeTurnedOn {
-			currentSizeFactor += r.SizeFactor
-			if !isTurnedOn.(bool) {
-				command := types.DigitalCommand{
-					Action:      types.SET,
-					ApplianceID: r.ThermalValveID,
-				}
-				controller.Pub(types.NewCommand(types.DigitalCommandType, command), chik.LoopbackID)
+	for _, r := range rooms {
+		logger.Debug().Msgf("%v current:%v target:%v, is_heating:%v", r.room.ID, r.currentTemperature, r.targetTemperature, r.isHeating)
+		if r.currentTemperature < r.targetTemperature-h.Threshold && !r.isHeating {
+			command := types.DigitalCommand{
+				Action:      types.SET,
+				ApplianceID: r.room.ThermalValveID,
 			}
+			controller.Pub(types.NewCommand(types.DigitalCommandType, command), chik.LoopbackID)
+			continue
 		}
-
-		if wantsToBeTurnedOff && isTurnedOn.(bool) {
+		timeDiff := time.Now().Sub(r.lastHeatingStatusChange)
+		if r.currentTemperature > r.targetTemperature+h.Threshold && r.isHeating && (timeDiff < 15*time.Minute || timeDiff > MinimumRunningTime) {
 			command := types.DigitalCommand{
 				Action:      types.RESET,
-				ApplianceID: r.ThermalValveID,
+				ApplianceID: r.room.ThermalValveID,
 			}
 			controller.Pub(types.NewCommand(types.DigitalCommandType, command), chik.LoopbackID)
 		}
