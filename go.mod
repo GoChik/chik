@@ -1,6 +1,6 @@
 module github.com/gochik/chik
 
-go 1.13
+go 1.16
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2 // indirect
@@ -25,28 +25,27 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/juju/ansiterm v0.0.0-20210706145210-9283cdf370b5 // indirect
-	github.com/klauspost/compress v1.13.4 // indirect
+	github.com/klauspost/compress v1.13.5 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/micromdm/scep/v2 v2.1.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.1
-	github.com/newrelic/go-agent v3.14.1+incompatible // indirect
-	github.com/rs/xid v1.3.0 // indirect
-	github.com/rs/zerolog v1.23.0
-	github.com/smallstep/certificates v0.17.0
+	github.com/newrelic/go-agent v3.15.0+incompatible // indirect
+	github.com/rs/zerolog v1.25.0
+	github.com/smallstep/certificates v0.17.2
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
-	github.com/thoas/go-funk v0.7.0
+	github.com/thoas/go-funk v0.9.1
 	github.com/urfave/cli v1.22.5 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	go.mozilla.org/pkcs7 v0.0.0-20210825163651-cb9e57c6b7ac // indirect
+	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.step.sm/cli-utils v0.5.0 // indirect
-	go.step.sm/crypto v0.9.1
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
-	golang.org/x/net v0.0.0-20210825183410-e898025ed96a
+	go.step.sm/crypto v0.10.0
+	golang.org/x/net v0.0.0-20210913180222-943fd674d43e
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
+	golang.org/x/sys v0.0.0-20210910150752-751e447fb3d0 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20210825212027-de86158e7fda // indirect
+	google.golang.org/genproto v0.0.0-20210909211513-a8c4777a87af // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/tucnak/telebot.v2 v2.3.5
 )
