@@ -178,8 +178,12 @@ func (d *unipiDevice) SetValue(value float64) {
 		logger.Error().Msgf("Cannot set analog value to device %v", d)
 	}
 	status := int(math.Round(value))
-	d.file.Write([]byte(strconv.Itoa(status) + "\n"))
-	d.status = int(status)
+	if d.Type == unipiPwmOutput {
+		go d.pwmFade(d.status, status)
+	} else {
+		d.file.Write([]byte(strconv.Itoa(status) + "\n"))
+	}
+	d.status = status
 }
 
 func (d *unipiDevice) AddValue(value float64) {
