@@ -4,7 +4,8 @@ go 1.16
 
 require (
 	github.com/PaesslerAG/gval v1.1.2
-	github.com/creachadair/jrpc2 v0.34.2
+	github.com/cpuguy83/go-md2man/v2 v2.0.1 // indirect
+	github.com/creachadair/jrpc2 v0.35.3
 	github.com/cskr/pubsub v1.0.2
 	github.com/gochik/gpio v1.2.0
 	github.com/gochik/modbus v0.0.0-20200809120227-19556d19cd9e
