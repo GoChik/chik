@@ -13,7 +13,7 @@ import (
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
-	"gopkg.in/tucnak/telebot.v2"
+	telebot "gopkg.in/tucnak/telebot.v2"
 )
 
 var logger = log.With().Str("handler", "telegram").Logger()
@@ -93,7 +93,7 @@ func (h *Telegram) startBot() error {
 				return true
 			}
 
-			if funk.InStrings(h.AllowedUsers, strconv.Itoa(upd.Message.Sender.ID)) {
+			if funk.InStrings(h.AllowedUsers, strconv.FormatInt(int64(upd.Message.Sender.ID), 10)) {
 				logger.Debug().Msg("Sender allowed to communicate")
 				return true
 			}
@@ -147,15 +147,17 @@ func (h *Telegram) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 	return chik.Interrupts{Timer: chik.NewStartupActionTimer(), Event: h.notifications}, nil
 }
 
-func (h *Telegram) sendMessage(content string) {
+func (h *Telegram) sendMessage(content string) error {
 	for _, id := range h.AllowedUsers {
 		idAsInt, _ := strconv.Atoi(id)
 		logger.Debug().Str("content", content).Str("user_id", id).Msg("Sending a message")
 		_, err := h.bot.Send(telebot.ChatID(idAsInt), content)
 		if err != nil {
 			logger.Err(err).Msg("failed sending message")
+			return err
 		}
 	}
+	return nil
 }
 
 func (h *Telegram) HandleMessage(message *chik.Message, controller *chik.Controller) error {
@@ -163,23 +165,24 @@ func (h *Telegram) HandleMessage(message *chik.Message, controller *chik.Control
 	err := json.Unmarshal(message.Command().Data, &notification)
 	if err != nil {
 		logger.Warn().Msg("Unexpected message")
-		return nil
+		return err
 	}
 
-	h.sendMessage(notification.Message)
-	return nil
+	return h.sendMessage(notification.Message)
 }
 
-func (h *Telegram) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
-	h.startBot()
+func (h *Telegram) HandleTimerEvent(tick time.Time, controller *chik.Controller) error {
+	return h.startBot()
 }
 
-func (h *Telegram) HandleChannelEvent(event interface{}, controller *chik.Controller) {
+func (h *Telegram) HandleChannelEvent(event interface{}, controller *chik.Controller) error {
 	command, ok := event.(types.DigitalCommand)
 	if !ok {
 		logger.Error().Msg("Unexpected channel event")
+		return errors.New("Unexpected channel event")
 	}
 	controller.Pub(types.NewCommand(types.DigitalCommandType, command), chik.LoopbackID)
+	return nil
 }
 
 func (h *Telegram) Teardown() {

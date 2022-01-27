@@ -2,12 +2,9 @@ package chik
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 
 	"github.com/cskr/pubsub"
 	"github.com/gochik/chik/config"
@@ -65,6 +62,7 @@ type Controller struct {
 	pubSub     *pubsub.PubSub
 	remote     *Remote
 	disconnect sync.Mutex
+	wg     sync.WaitGroup
 }
 
 // NewController creates a new controller
@@ -107,64 +105,94 @@ func topicsAsStrings(topics []types.CommandType) []string {
 	return result
 }
 
-func (c *Controller) run(ctx context.Context, g *errgroup.Group, h Handler) {
-	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
+func (c *Controller) runHandler(ctx context.Context, h Handler) {
+	ctx, cancel := context.WithCancel(ctx)
 	interrupts, err := h.Setup(c)
 	if err != nil {
-		log.Err(err).Str("handler", h.String())
+		log.Err(err).Str("handler", h.String()).Msg("setup error")
+		cancel()
 		return
 	}
 	subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
-	g.Go(func() error {
-		stop := func() {
+	go func() {
+		defer func() {
+			c.Unsub(subscribedTopics)
 			interrupts.Timer.ticker.Stop()
 			h.Teardown()
-			log.Debug().
-				Str("handler", h.String()).
-				Msg("Stopping handler")
-		}
+			cancel()
+		}()
+
 		if interrupts.Timer.triggerAtStart {
-			h.HandleTimerEvent(time.Now(), c)
+			if err := h.HandleTimerEvent(time.Now(), c); err != nil {
+				log.Err(err).Str("handler", h.String()).Msg("Error during first timer call")
+				return
+			}
 		}
 		for {
 			select {
 			case <-ctx.Done():
-				stop()
-				return ctx.Err()
+				return
 
 			case rawMessage, ok := <-subscribedTopics:
 				if !ok {
 					log.Error().
 						Str("handler", h.String()).
 						Msg("Message channel closed. Quitting")
-					stop()
-					return fmt.Errorf("Channel closed on handler %v", h.String())
+					return
 				}
-				err := h.HandleMessage(rawMessage.(*Message), c)
-				if err != nil {
-					return err
+
+				if err := h.HandleMessage(rawMessage.(*Message), c); err != nil {
+					log.Err(err).Str("handler", h.String()).Msg("Error during first timer call")
+					return
 				}
 
 			case tick := <-interrupts.Timer.ticker.C:
-				h.HandleTimerEvent(tick, c)
+				if err := h.HandleTimerEvent(tick, c); err != nil {
+					return
+				}
 
 			case event := <-interrupts.Event:
-				h.HandleChannelEvent(event, c)
+				if err := h.HandleChannelEvent(event, c); err != nil {
+					return
+				}
 			}
 		}
-	})
+	}()
+}
+
+func (c *Controller) executeHandler(ctx context.Context, h Handler) (err error) {
+	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
+	subCtx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		c.wg.Done()
+	}()
+
+	c.runHandler(subCtx, h)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+
+		case <-subCtx.Done():
+			<-time.After(10 * time.Second)
+			c.wg.Add(1)
+			go c.executeHandler(ctx, h)
+			return
+		}
+	}
 }
 
 // Start starts every registered handler
 func (c *Controller) Start(ctx context.Context, handlers []Handler) {
 	// TODO: order handlers by dependencies
-	g, ctx := errgroup.WithContext(ctx)
 	for _, h := range handlers {
-		c.run(ctx, g, h)
+		c.wg.Add(1)
+		go c.executeHandler(ctx, h)
 	}
-	g.Wait()
+	c.wg.Wait()
 	log.Info().Msg("Controller terminated")
-	c.Disconnect()
 	c.pubSub.Shutdown()
 }
 
@@ -209,6 +237,19 @@ func (c *Controller) Sub(topics ...string) chan interface{} {
 // SubOnce subscribes to the first event of one of the given topics, then it deletes the subscription
 func (c *Controller) SubOnce(topics ...string) chan interface{} {
 	return c.pubSub.SubOnce(topics...)
+}
+
+func (c *Controller) Unsub(subscription chan interface{}) {
+	for {
+		select {
+		case <-subscription:
+			continue
+
+		default:
+			c.pubSub.Unsub(subscription)
+			return
+		}
+	}
 }
 
 // Reply sends back a reply message

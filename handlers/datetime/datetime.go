@@ -71,9 +71,9 @@ func (h *datetime) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 	return chik.Interrupts{Timer: chik.NewTimer(30*time.Second, true)}, nil
 }
 
-func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
+func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) error {
 	if h.data.Minute == tick.Minute() {
-		return
+		return nil
 	}
 	if h.data.Day != tick.Day() {
 		sunrise, sunset, _ := sunrisesunset.GetSunriseSunset(h.conf.Latitude, h.conf.Longitude, tick)
@@ -89,4 +89,5 @@ func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 	h.data.Hour = tick.Hour()
 	h.data.Minute = tick.Minute()
 	h.status.Set(h.data, controller)
+	return nil
 }

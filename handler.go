@@ -16,8 +16,8 @@ type Handler interface {
 	Topics() []types.CommandType
 	Setup(controller *Controller) (Interrupts, error)
 	HandleMessage(message *Message, controller *Controller) error
-	HandleTimerEvent(tick time.Time, controller *Controller)
-	HandleChannelEvent(event interface{}, controller *Controller)
+	HandleTimerEvent(tick time.Time, controller *Controller) error
+	HandleChannelEvent(event interface{}, controller *Controller) error
 	Teardown()
 }
 
@@ -43,9 +43,13 @@ func (s *BaseHandler) HandleMessage(message *Message, controller *Controller) er
 	return nil
 }
 
-func (s *BaseHandler) HandleTimerEvent(tick time.Time, controller *Controller) {}
+func (s *BaseHandler) HandleTimerEvent(tick time.Time, controller *Controller) error {
+	return nil
+}
 
-func (s *BaseHandler) HandleChannelEvent(event interface{}, controller *Controller) {}
+func (s *BaseHandler) HandleChannelEvent(event interface{}, controller *Controller) error {
+	return nil
+}
 
 func (s *BaseHandler) Teardown() {}
 

@@ -2,6 +2,7 @@ package io
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -208,12 +209,13 @@ func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) e
 	return nil
 }
 
-func (h *io) HandleChannelEvent(event interface{}, controller *chik.Controller) {
+func (h *io) HandleChannelEvent(event interface{}, controller *chik.Controller) error {
 	device, ok := event.(string)
 	if !ok {
-		return
+		return errors.New("Unexpected event received")
 	}
 	h.setStatus(controller, device)
+	return nil
 }
 
 func (h *io) Teardown() {

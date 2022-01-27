@@ -2,6 +2,7 @@ package snapcast
 
 import (
 	"encoding/json"
+	"errors"
 	"net"
 	"time"
 
@@ -124,12 +125,12 @@ func (h *snapcast) snapcastRequest(method string, params interface{}) (resp *jrp
 	return
 }
 
-func (h *snapcast) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
+func (h *snapcast) HandleTimerEvent(tick time.Time, controller *chik.Controller) (err error) {
 	if h.client != nil {
 		return
 	}
 
-	if err := h.connect(); err != nil {
+	if err = h.connect(); err != nil {
 		logger.Err(err).Msg("Server connection failed")
 		return
 	}
@@ -141,9 +142,10 @@ func (h *snapcast) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 		return
 	}
 
-	if err := h.setStatus(resp, controller); err != nil {
+	if err = h.setStatus(resp, controller); err != nil {
 		logger.Err(err).Msg("status unmarshal error")
 	}
+	return
 }
 
 func (h *snapcast) handleServerStatusUpdate(status *Status, controller *chik.Controller) {
@@ -181,18 +183,18 @@ func (h *snapcast) handleGroupStreamChanged(groupStream *GroupStreamChanged, con
 	})
 }
 
-func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Controller) {
+func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Controller) (err error) {
 	req, ok := event.(*jrpc2.Request)
 	if !ok {
 		logger.Error().Msgf("unexpected channel event %v", req)
-		return
+		return errors.New("Unexpected channel event")
 	}
 	logger.Info().Str("method", req.Method()).Msg("Notification received")
 
 	switch req.Method() {
 	case "Server.OnUpdate":
 		var status Status
-		err := req.UnmarshalParams(&status)
+		err = req.UnmarshalParams(&status)
 		if err != nil {
 			logger.Err(err).Msg("notify decode failed")
 			return
@@ -201,7 +203,7 @@ func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Contro
 
 	case "Client.OnVolumeChanged":
 		var clientVolume ClientVolume
-		err := req.UnmarshalParams(&clientVolume)
+		err = req.UnmarshalParams(&clientVolume)
 		if err != nil {
 			logger.Err(err).Msg("client volume notification decoding failed")
 			return
@@ -210,14 +212,14 @@ func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Contro
 
 	case "Group.OnStreamChanged":
 		var groupStream GroupStreamChanged
-		err := req.UnmarshalParams(&groupStream)
+		err = req.UnmarshalParams(&groupStream)
 		if err != nil {
 			logger.Err(err).Msg("Failed to decode group stream changed notification")
 			return
 		}
 		h.handleGroupStreamChanged(&groupStream, controller)
 	}
-
+	return
 }
 
 func (h *snapcast) handleClientCommand(message *chik.Message, controller *chik.Controller) (err error) {
@@ -289,15 +291,15 @@ func (h *snapcast) handleGroupCommand(message *chik.Message, controller *chik.Co
 	return
 }
 
-func (h *snapcast) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *snapcast) HandleMessage(message *chik.Message, controller *chik.Controller) (err error) {
 	logger.Debug().Msg("message received")
 	switch message.Command().Type {
 	case types.SnapcastClientCommandType:
-		h.handleClientCommand(message, controller)
+		err = h.handleClientCommand(message, controller)
 	case types.SnapcastGroupCommandType:
-		h.handleGroupCommand(message, controller)
+		err = h.handleGroupCommand(message, controller)
 	}
-	return nil
+	return
 }
 
 func (h *snapcast) String() string {

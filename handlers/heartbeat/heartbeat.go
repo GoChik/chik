@@ -51,7 +51,7 @@ func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Contro
 	return nil
 }
 
-func (h *heartbeat) HandleTimerEvent(tick time.Time, controller *chik.Controller) {
+func (h *heartbeat) HandleTimerEvent(tick time.Time, controller *chik.Controller) error {
 	logger.Debug().Msg("Sending heartbeat")
 	controller.PubMessage(chik.NewMessage(h.remoteID, types.NewCommand(types.HeartbeatType, nil)),
 		types.AnyOutgoingCommandType.String())
@@ -61,6 +61,7 @@ func (h *heartbeat) HandleTimerEvent(tick time.Time, controller *chik.Controller
 		controller.Disconnect()
 		return
 	}
+	return nil
 }
 
 func (h *heartbeat) String() string {
