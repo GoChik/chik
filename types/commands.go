@@ -49,6 +49,7 @@ const (
 	// special command types
 	AnyIncomingCommandType
 	AnyOutgoingCommandType
+	RemoteStopCommandType
 
 	messageBound
 )

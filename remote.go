@@ -1,92 +1,110 @@
 package chik
 
 import (
+	"context"
+	"errors"
 	"net"
-	"sync"
 	"time"
 
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 var logger = log.With().Str("component", "remote").Logger()
 
-// WriteTimeout defines the time after which a write operation is considered failed
-const WriteTimeout = 1 * time.Minute
-
-// Remote represents a remote endpoint, data can be sent or received through
-// InBuffer and OutBuffer
+// Remote represents a remote endpoint, data are sent via Controller.Pub() and received directly by the interested Handler
 type Remote struct {
-	Closed   chan bool
-	conn     net.Conn
-	stopOnce sync.Once
+	conn    net.Conn
+	timeout time.Duration
 }
 
-// NewRemote creates a new Remote
-func newRemote(controller *Controller, conn net.Conn, readTimeout time.Duration) *Remote {
-	remote := Remote{
-		Closed: make(chan bool, 1),
-		conn:   conn,
-	}
+func (r Remote) send(ctx context.Context, controller *Controller) error {
+	logger.Info().Msg("Sender started")
+	out := controller.Sub(types.AnyOutgoingCommandType.String(), types.RemoteStopCommandType.String())
+	defer func() {
+		controller.Unsub(out)
+		logger.Info().Msg("Sender terminated")
+	}()
 
-	// Send function
-	go func() {
-		logger.Info().Msg("Sender started")
-		out := controller.Sub(types.AnyOutgoingCommandType.String())
-		for data := range out {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		case data := <-out:
 			message, ok := data.(*Message)
 			if !ok {
 				logger.Warn().Msg("Trying to something that's not a message")
 				continue
 			}
+			if message.command.Type == types.RemoteStopCommandType {
+				logger.Info().Msg("Stop command received. Terminating Sender")
+				return errors.New("Stop received")
+			}
 			if message.sender == uuid.Nil {
 				message.sender = controller.ID
 			}
 			logger.Debug().Msgf("Sending message: %v", message)
-			conn.SetWriteDeadline(time.Now().Add(WriteTimeout))
-			data, err := message.Bytes()
+			r.conn.SetWriteDeadline(time.Now().Add(r.timeout))
+			bytes, err := message.Bytes()
 			if err != nil {
 				logger.Warn().Msgf("Cannot encode message: %v", err)
 			}
-			_, err = remote.conn.Write(data)
+			_, err = r.conn.Write(bytes)
 			if err != nil {
-				logger.Warn().Msgf("Cannot write data, exiting: %v", err)
-				remote.Terminate()
-				break
+				logger.Warn().Msgf("Cannot write bytes, exiting: %v", err)
+				return err
 			}
 		}
-		logger.Info().Msg("Sender terminated")
-	}()
+	}
+}
 
-	// Receive function
-	go func() {
-		logger.Info().Msg("Receiver started")
-		for {
-			if readTimeout != 0 {
-				conn.SetReadDeadline(time.Now().Add(readTimeout))
+func (r Remote) receive(ctx context.Context, controller *Controller) error {
+	logger.Info().Msg("Receiver started")
+	defer logger.Info().Msg("Receiver terminated")
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+
+		default:
+			if r.timeout != 0 {
+				r.conn.SetReadDeadline(time.Now().Add(r.timeout))
 			}
-
-			message, err := ParseMessage(conn)
+			message, err := ParseMessage(r.conn)
 			if err != nil {
 				logger.Error().Msgf("Invalid message: %v", err)
-				remote.Terminate()
-				break
+				return err
 			}
 			logger.Debug().Msgf("Message received: %v", message)
 			controller.PubMessage(message, types.AnyIncomingCommandType.String(), message.Command().Type.String())
 		}
-		logger.Info().Msg("Receiver terminated")
-	}()
-
-	return &remote
+	}
 }
 
-// Terminate closes the connection and the send channel
-func (r *Remote) Terminate() {
-	r.stopOnce.Do(func() {
-		r.conn.Close()
-		r.Closed <- true
-		close(r.Closed)
-	})
+// Start starts a new remote and returns a context and a cancel function to stop remote operations.
+// The returned context can also be closed by an error or a timeout in the send/receive routine
+func StartRemote(controller *Controller, conn net.Conn, readTimeout time.Duration) (context.Context, context.CancelFunc) {
+	remote := Remote{
+		conn:    conn,
+		timeout: readTimeout,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		g, innerCtx := errgroup.WithContext(ctx)
+		// Send function
+		g.Go(func() error { return remote.send(innerCtx, controller) })
+
+		// Receive function
+		g.Go(func() error { return remote.receive(innerCtx, controller) })
+		g.Wait()
+		cancel()
+	}()
+
+	return ctx, cancel
 }

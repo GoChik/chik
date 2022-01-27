@@ -1,12 +1,13 @@
 package chik
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
 )
 
-var stopChannel <-chan bool
+var ctx context.Context
 
 func testRoutine(t *testing.T, f func(c net.Conn, controller *Controller)) {
 	srv, err := net.Listen("tcp", "127.0.0.1:")
@@ -22,8 +23,9 @@ func testRoutine(t *testing.T, f func(c net.Conn, controller *Controller)) {
 		t.Fatal(err)
 	}
 	controller := NewController()
-	stopChannel = controller.Connect(s)
-	defer controller.Disconnect()
+	var cancel context.CancelFunc
+	ctx, cancel = StartRemote(controller, s, MaxIdleTime)
+	defer cancel()
 
 	f(c, controller)
 }
@@ -31,7 +33,7 @@ func testRoutine(t *testing.T, f func(c net.Conn, controller *Controller)) {
 func hasStopped() bool {
 	for {
 		select {
-		case <-stopChannel:
+		case <-ctx.Done():
 			return true
 
 		case <-time.After(1 * time.Second):

@@ -27,12 +27,13 @@ func _() {
 	_ = x[SnapcastGroupCommandType-16]
 	_ = x[AnyIncomingCommandType-17]
 	_ = x[AnyOutgoingCommandType-18]
-	_ = x[messageBound-19]
+	_ = x[RemoteStopCommandType-19]
+	_ = x[messageBound-20]
 }
 
-const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeNullCommandTypeTelegramNotificationCommandTypeSystemdRequestCommandTypeSystemdReplyCommandTypeSnapcastManagerCommandTypeSnapcastClientCommandTypeSnapcastGroupCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypemessageBound"
+const _CommandType_name = "HeartbeatTypeDigitalCommandTypeAnalogCommandTypeStatusCommandTypeStatusNotificationCommandTypeVersionRequestCommandTypeVersionReplyCommandTypeActionRequestCommandTypeActionReplyCommandTypeStatusUpdateCommandTypeNullCommandTypeTelegramNotificationCommandTypeSystemdRequestCommandTypeSystemdReplyCommandTypeSnapcastManagerCommandTypeSnapcastClientCommandTypeSnapcastGroupCommandTypeAnyIncomingCommandTypeAnyOutgoingCommandTypeRemoteStopCommandTypemessageBound"
 
-var _CommandType_index = [...]uint16{0, 13, 31, 48, 65, 94, 119, 142, 166, 188, 211, 226, 257, 282, 305, 331, 356, 380, 402, 424, 436}
+var _CommandType_index = [...]uint16{0, 13, 31, 48, 65, 94, 119, 142, 166, 188, 211, 226, 257, 282, 305, 331, 356, 380, 402, 424, 445, 457}
 
 func (i CommandType) String() string {
 	if i >= CommandType(len(_CommandType_index)-1) {

@@ -2,7 +2,6 @@ package chik
 
 import (
 	"context"
-	"net"
 	"sync"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 const BufferSize = 10
 
 // MaxIdleTime is the maximum time to wait before closing a connection for inactivity
-const MaxIdleTime = 5 * time.Minute
+const MaxIdleTime = 2 * time.Minute
 
 // LoopbackID is the id internal only messages are sent to
 var LoopbackID = uuid.Nil
@@ -58,10 +57,8 @@ type Interrupts struct {
 }
 
 type Controller struct {
-	ID         uuid.UUID
-	pubSub     *pubsub.PubSub
-	remote     *Remote
-	disconnect sync.Mutex
+	ID     uuid.UUID
+	pubSub *pubsub.PubSub
 	wg     sync.WaitGroup
 }
 
@@ -194,24 +191,6 @@ func (c *Controller) Start(ctx context.Context, handlers []Handler) {
 	c.wg.Wait()
 	log.Info().Msg("Controller terminated")
 	c.pubSub.Shutdown()
-}
-
-// Connect tries to brign up the remoe connection
-// it returns a channel that gets closed when the connection goes down
-func (c *Controller) Connect(connection net.Conn) <-chan bool {
-	c.Disconnect()
-	c.remote = newRemote(c, connection, MaxIdleTime)
-	return c.remote.Closed
-}
-
-// Disconnect disconnects the remote connection (if any)
-func (c *Controller) Disconnect() {
-	c.disconnect.Lock()
-	if c.remote != nil {
-		c.remote.Terminate()
-		c.remote = nil
-	}
-	c.disconnect.Unlock()
 }
 
 // PubMessage publishes a Message

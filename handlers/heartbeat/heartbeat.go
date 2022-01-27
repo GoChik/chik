@@ -58,8 +58,7 @@ func (h *heartbeat) HandleTimerEvent(tick time.Time, controller *chik.Controller
 	h.errors = h.errors + 1
 	if h.errors >= maxErrors {
 		logger.Error().Msg("Heartbeat threshold exceeded: shutting down remote connection")
-		controller.Disconnect()
-		return
+		controller.Pub(types.NewCommand(types.RemoteStopCommandType, nil), h.remoteID)
 	}
 	return nil
 }
