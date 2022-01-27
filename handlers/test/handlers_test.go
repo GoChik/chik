@@ -63,7 +63,8 @@ func CreateServer(t *testing.T) net.Listener {
 					router.New(&peers),
 					heartbeat.New(1 * time.Second),
 				})
-				<-srv.Connect(conn)
+				remote, _ := chik.StartRemote(srv, conn, 10*time.Second)
+				<-remote.Done()
 				cancel()
 			}()
 		}
@@ -81,7 +82,7 @@ func CreateClient() (client TestClient, err error) {
 		err = errors.New("failed to create a controller")
 		return
 	}
-	controller.Connect(conn)
+	chik.StartRemote(controller, conn, 10*time.Second)
 	client = TestClient{controller, controller.ID}
 	return
 }
