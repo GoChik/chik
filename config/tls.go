@@ -81,8 +81,10 @@ func TLSConfig(ctx context.Context, token string) (*tls.Config, error) {
 	return &tls.Config{
 		RootCAs:              client.GetRootCAs(),
 		InsecureSkipVerify:   false,
+		ClientCAs:            client.GetRootCAs(),
 		GetClientCertificate: renewer.GetClientCertificate,
 		GetCertificate:       renewer.GetCertificate,
+		ClientAuth:           tls.RequireAndVerifyClientCert,
 	}, nil
 }
 
