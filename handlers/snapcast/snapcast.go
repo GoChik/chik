@@ -45,7 +45,7 @@ func New() chik.Handler {
 
 func (h *snapcast) Setup(controller *chik.Controller) (i chik.Interrupts, err error) {
 	i = chik.Interrupts{
-		Timer: chik.NewTimer(60*time.Second, true),
+		Timer: chik.NewStartupActionTimer(),
 		Event: h.events,
 	}
 	return
@@ -54,6 +54,7 @@ func (h *snapcast) Setup(controller *chik.Controller) (i chik.Interrupts, err er
 func (h *snapcast) Teardown() {
 	if h.client != nil {
 		h.client.Close()
+		h.client = nil
 	}
 }
 
@@ -81,7 +82,20 @@ func (h *snapcast) notify(req *jrpc2.Request) {
 	h.events <- req
 }
 
-func (h *snapcast) connect() error {
+func (h *snapcast) getServerStatus(controller *chik.Controller) (err error) {
+	resp, err := h.snapcastRequest(controller, "Server.GetStatus", nil)
+	if err != nil {
+		logger.Err(err).Msg("status request error")
+		return
+	}
+
+	if err = h.setStatus(resp, controller); err != nil {
+		logger.Err(err).Msg("status unmarshal error")
+	}
+	return
+}
+
+func (h *snapcast) connect(controller *chik.Controller) error {
 	if h.client != nil {
 		h.client.Close()
 	}
@@ -94,17 +108,18 @@ func (h *snapcast) connect() error {
 	h.client = jrpc2.NewClient(channel.Line(conn, conn), &jrpc2.ClientOptions{
 		OnNotify: h.notify,
 	})
-	return nil
+
+	return h.getServerStatus(controller)
 }
 
-func (h *snapcast) snapcastRequest(method string, params interface{}) (resp *jrpc2.Response, err error) {
+func (h *snapcast) snapcastRequest(controller *chik.Controller, method string, params interface{}) (resp *jrpc2.Response, err error) {
 	logger.Debug().Str("method", method).Msg("sending a snapcast request")
 	if h.client == nil {
 		logger.Info().Msg("connecting to server")
 		if h.client != nil {
 			h.client.Close()
 		}
-		if err = h.connect(); err != nil {
+		if err = h.connect(controller); err != nil {
 			logger.Err(err).Msg("connection failed")
 			return
 		}
@@ -114,14 +129,6 @@ func (h *snapcast) snapcastRequest(method string, params interface{}) (resp *jrp
 	defer cancel()
 
 	resp, err = h.client.Call(ctx, method, params)
-	if err != nil {
-		logger.Err(err).Msg("call failed")
-		logger.Info().Msg("attempting another iteration of call")
-		h.client.Close()
-		h.client = nil
-		h.snapcastRequest(method, params)
-	}
-
 	return
 }
 
@@ -130,22 +137,7 @@ func (h *snapcast) HandleTimerEvent(tick time.Time, controller *chik.Controller)
 		return
 	}
 
-	if err = h.connect(); err != nil {
-		logger.Err(err).Msg("Server connection failed")
-		return
-	}
-
-	logger.Debug().Msg("Timer event received")
-	resp, err := h.snapcastRequest("Server.GetStatus", nil)
-	if err != nil {
-		logger.Err(err).Msg("status request error")
-		return
-	}
-
-	if err = h.setStatus(resp, controller); err != nil {
-		logger.Err(err).Msg("status unmarshal error")
-	}
-	return
+	return h.connect(controller)
 }
 
 func (h *snapcast) handleServerStatusUpdate(status *Status, controller *chik.Controller) {
@@ -241,7 +233,7 @@ func (h *snapcast) handleClientCommand(message *chik.Message, controller *chik.C
 		logger.Error().Msgf("Unknown action %v", command.Action)
 		return
 	}
-	h.snapcastRequest("Client.SetVolume", map[string]interface{}{"id": command.ClientID, "volume": volume})
+	h.snapcastRequest(controller, "Client.SetVolume", map[string]interface{}{"id": command.ClientID, "volume": volume})
 	return
 }
 
@@ -257,7 +249,7 @@ func (h *snapcast) handleGroupCommand(message *chik.Message, controller *chik.Co
 	case types.SET:
 		if command.Stream != "" {
 			var reply *jrpc2.Response
-			reply, err = h.snapcastRequest("Group.SetStream", map[string]interface{}{"id": command.GroupID, "stream_id": command.Stream})
+			reply, err = h.snapcastRequest(controller, "Group.SetStream", map[string]interface{}{"id": command.GroupID, "stream_id": command.Stream})
 			if err != nil {
 				return
 			}
@@ -271,11 +263,11 @@ func (h *snapcast) handleGroupCommand(message *chik.Message, controller *chik.Co
 		}
 
 		if len(command.Clients) > 0 {
-			h.snapcastRequest("Group.SetClients", map[string]interface{}{"id": command.GroupID, "clients": command.Clients})
+			h.snapcastRequest(controller, "Group.SetClients", map[string]interface{}{"id": command.GroupID, "clients": command.Clients})
 		}
 	case types.GET:
 		var reply *jrpc2.Response
-		reply, err = h.snapcastRequest("Server.GetStatus", nil)
+		reply, err = h.snapcastRequest(controller, "Server.GetStatus", nil)
 		if err != nil {
 			logger.Err(err).Msg("Failed to get server status")
 			return
