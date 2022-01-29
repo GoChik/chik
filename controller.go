@@ -102,8 +102,8 @@ func topicsAsStrings(topics []types.CommandType) []string {
 	return result
 }
 
-func (c *Controller) runHandler(ctx context.Context, h Handler) {
-	ctx, cancel := context.WithCancel(ctx)
+func (c *Controller) runHandler(ctx context.Context, h Handler) (subContext context.Context) {
+	subContext, cancel := context.WithCancel(ctx)
 	interrupts, err := h.Setup(c)
 	if err != nil {
 		log.Err(err).Str("handler", h.String()).Msg("setup error")
@@ -155,24 +155,24 @@ func (c *Controller) runHandler(ctx context.Context, h Handler) {
 			}
 		}
 	}()
+
+	return
 }
 
 func (c *Controller) executeHandler(ctx context.Context, h Handler) (err error) {
 	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
-	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
-		cancel()
 		c.wg.Done()
 	}()
 
-	c.runHandler(subCtx, h)
+	subctx := c.runHandler(ctx, h)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 
-		case <-subCtx.Done():
+		case <-subctx.Done():
 			<-time.After(10 * time.Second)
 			c.wg.Add(1)
 			go c.executeHandler(ctx, h)
