@@ -96,13 +96,25 @@ func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controll
 		room := roomStatus{
 			room: r,
 		}
-		tmp, _ := getValue(status, r.CurrentTemperatureID, "state")
+		tmp, err := getValue(status, r.CurrentTemperatureID, "state")
+		if err != nil {
+			continue
+		}
 		room.currentTemperature = tmp.(float64)
-		tmp, _ = getValue(status, r.TargetTemperatureID, "state")
+		tmp, err = getValue(status, r.TargetTemperatureID, "state")
+		if err != nil {
+			continue
+		}
 		room.targetTemperature = tmp.(float64)
-		tmp, _ = getValue(status, r.ThermalValveID, "state")
+		tmp, err = getValue(status, r.ThermalValveID, "state")
+		if err != nil {
+			continue
+		}
 		room.isHeating = tmp.(bool)
-		tmp, _ = getValue(status, r.ThermalValveID, "last_state_change")
+		tmp, err = getValue(status, r.ThermalValveID, "last_state_change")
+		if err != nil {
+			continue
+		}
 		var tmpTime types.TimeIndication
 		types.Decode(tmp, &tmpTime)
 		now := time.Now()
