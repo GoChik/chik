@@ -15,20 +15,13 @@ const maxErrors uint32 = 300
 
 type heartbeat struct {
 	chik.BaseHandler
-	interval time.Duration
 	errors   uint32
 	remoteID uuid.UUID
 }
 
 // New creates a new heartbeat handler
-func New(interval time.Duration) chik.Handler {
-	if interval <= 100*time.Millisecond {
-		logger.Error().Msgf("Interval value too low: %v", interval)
-		return nil
-	}
-	return &heartbeat{
-		interval: interval,
-	}
+func New() chik.Handler {
+	return &heartbeat{}
 }
 
 func (h *heartbeat) Topics() []types.CommandType {
@@ -36,7 +29,7 @@ func (h *heartbeat) Topics() []types.CommandType {
 }
 
 func (h *heartbeat) Setup(controller *chik.Controller) (chik.Interrupts, error) {
-	return chik.Interrupts{Timer: chik.NewTimer(h.interval, true)}, nil
+	return chik.Interrupts{Timer: chik.NewTimer((chik.MaxIdleTime/3)*2, true)}, nil
 }
 
 func (h *heartbeat) HandleMessage(message *chik.Message, controller *chik.Controller) error {

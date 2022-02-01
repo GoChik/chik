@@ -61,7 +61,7 @@ func CreateServer(t *testing.T) net.Listener {
 				ctx, cancel := context.WithCancel(context.Background())
 				go srv.Start(ctx, []chik.Handler{
 					router.New(&peers),
-					heartbeat.New(1 * time.Second),
+					heartbeat.New(),
 				})
 				remote, _ := chik.StartRemote(srv, conn, 10*time.Second)
 				<-remote.Done()
