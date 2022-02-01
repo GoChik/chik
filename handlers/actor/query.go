@@ -65,9 +65,10 @@ type StateQuery interface {
 
 // StructQuery compares two elements of the State oin every state change
 type StructQuery struct {
-	Var1 string `json:"var1"`
-	Op   string `json:"op"`
-	Var2 string `json:"var2"`
+	Var1      string `json:"var1"`
+	Op        string `json:"op"`
+	Var2      string `json:"var2"`
+	Detrigger bool   `json:"disable_trigger_on_change,omitempty"`
 }
 
 func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
@@ -96,7 +97,7 @@ func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
 
 	res = QueryResult{
 		match:                          match,
-		changedSincePreviousEvaluation: firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate,
+		changedSincePreviousEvaluation: !q.Detrigger && (firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate),
 	}
 
 	return
@@ -104,9 +105,10 @@ func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
 
 // MixedQuery compares an element of State.Current with a constant only if that element is different from the same in State.Previous
 type MixedQuery struct {
-	Var1  string      `json:"var1"`
-	Op    string      `json:"op"`
-	Const interface{} `json:"const"`
+	Var1      string      `json:"var1"`
+	Op        string      `json:"op"`
+	Const     interface{} `json:"const"`
+	Detrigger bool        `json:"disable_trigger_on_change,omitempty"`
 }
 
 func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
@@ -127,7 +129,7 @@ func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
 
 	res = QueryResult{
 		match:                          match,
-		changedSincePreviousEvaluation: currentValue.changedSincePreviousUpdate,
+		changedSincePreviousEvaluation: !q.Detrigger && currentValue.changedSincePreviousUpdate,
 	}
 
 	return
@@ -139,11 +141,23 @@ func queryFromRawData(raw map[string]interface{}) (StateQuery, error) {
 	setValue := func(value interface{}) (StateQuery, error) {
 		resultValue := reflect.ValueOf(value).Elem()
 		for k, v := range raw {
-			val := resultValue.FieldByName(strings.Title(k))
-			if !val.IsValid() {
-				return nil, fmt.Errorf("Cannot store key %s in %v", k, resultValue.Type())
+			val, ok := resultValue.Type().FieldByNameFunc(func(fieldName string) bool {
+				field, _ := resultValue.Type().FieldByName(fieldName)
+				tagName := strings.Split(field.Tag.Get("json"), ",")[0]
+				switch tagName {
+				case k:
+					return true
+				case "":
+					if fieldName == k {
+						return true
+					}
+				}
+				return false
+			})
+			if !ok {
+				return nil, fmt.Errorf("Cannot store key %s in %v", k, resultValue)
 			}
-			val.Set(reflect.ValueOf(v))
+			resultValue.FieldByIndex(val.Index).Set(reflect.ValueOf(v))
 		}
 		return value.(StateQuery), nil
 	}
