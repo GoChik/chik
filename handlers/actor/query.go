@@ -3,11 +3,14 @@ package actor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/PaesslerAG/gval"
+	"github.com/gochik/chik/types"
 )
 
 type State struct {
@@ -38,7 +41,37 @@ func valueMatch(value reflect.StructField, name string) bool {
 }
 
 func (s *State) GetFieldDescriptor(key string) (*fieldDescriptor, error) {
-	expression, err := gval.Full().NewEvaluable(key)
+	expression, err := gval.Full(
+		gval.Function("time", func(args ...interface{}) (interface{}, error) {
+			strdate, ok := args[0].(string)
+			if !ok {
+				intdate, ok := args[0].(int64)
+				if ok {
+					return types.TimeIndication(intdate), nil
+				}
+				return nil, errors.New("Wrong argument given to function duration")
+			}
+			return types.ParseTimeIndication(strdate)
+		}),
+
+		gval.Function("duration", func(args ...interface{}) (interface{}, error) {
+			strdate, ok := args[0].(string)
+			if !ok {
+				return nil, errors.New("Wrong argument given to function duration")
+			}
+			return time.ParseDuration(strdate)
+		}),
+
+		gval.InfixOperator("after", func(a, b interface{}) (interface{}, error) {
+			date, ok1 := a.(types.TimeIndication)
+			duration, ok2 := b.(time.Duration)
+			if ok1 && ok2 {
+				return types.TimeIndication(time.Unix(int64(date), 0).Add(duration).Unix()), nil
+			}
+			return nil, fmt.Errorf("Failed to execute + on non time arguments: %T %T %v %v", a, duration, ok1, ok2)
+		}),
+	).NewEvaluable(key)
+
 	if err != nil {
 		return nil, err
 	}
@@ -88,9 +121,9 @@ func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
 	}
 
 	logger.Debug().Str("query_type", "struct").Msgf(
-		"Query between %v and %v result: %v, %v",
-		firstValue.value,
-		secondValue.value,
+		"Query between %v:%T and %v:%T result: %v, %v",
+		firstValue.value, firstValue.value,
+		secondValue.value, secondValue.value,
 		match,
 		firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate,
 	)
@@ -125,7 +158,7 @@ func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
 
 	logger.Debug().
 		Str("query_type", "mixed").
-		Msgf("Query between %v and %v result: %v, %v", currentValue.value, q.Const, match, currentValue.changedSincePreviousUpdate)
+		Msgf("Query between %v:%T and %v result: %v, %v", currentValue.value, currentValue.value, q.Const, match, currentValue.changedSincePreviousUpdate)
 
 	res = QueryResult{
 		match:                          match,

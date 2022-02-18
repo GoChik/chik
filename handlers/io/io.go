@@ -71,10 +71,7 @@ func (h *io) setStatus(controller *chik.Controller, applianceID string) {
 		if device, err := h.getDevice(applianceID); err == nil {
 			status[applianceID] = CurrentStatus{
 				device.Description(),
-				types.TimeIndication{
-					Hour:   time.Now().Hour(),
-					Minute: time.Now().Minute(),
-				},
+				types.TimeIndication(time.Now().Unix()),
 			}
 		}
 		return status, false
@@ -182,10 +179,7 @@ func (h *io) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 			device, _ := v.Device(id)
 			initialStatus[id] = CurrentStatus{
 				device.Description(),
-				types.TimeIndication{
-					Hour:   time.Now().Hour(),
-					Minute: time.Now().Minute(),
-				},
+				types.TimeIndication(time.Now().Unix()),
 			}
 		}
 		h.listenForDeviceChanges(v.DeviceChanges(), controller)

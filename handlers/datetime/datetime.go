@@ -24,8 +24,7 @@ type data struct {
 	Month   int                  `json:"month"`
 	Day     int                  `json:"day"`
 	Weekday int                  `json:"weekday"`
-	Hour    int                  `json:"hour"`
-	Minute  int                  `json:"minute"`
+	Time    types.TimeIndication `json:"time"`
 	Sunrise types.TimeIndication `json:"sunrise"`
 	Sunset  types.TimeIndication `json:"sunset"`
 }
@@ -49,14 +48,14 @@ func New() chik.Handler {
 	}
 
 	return &datetime{
-		data:   data{Minute: -1},
+		data:   data{},
 		conf:   conf,
-		status: chik.NewStatusHolder("time"),
+		status: chik.NewStatusHolder("datetime"),
 	}
 }
 
 func (h *datetime) String() string {
-	return "time"
+	return "datetime"
 }
 
 func (h *datetime) Dependencies() []string {
@@ -72,22 +71,19 @@ func (h *datetime) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 }
 
 func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) error {
-	if h.data.Minute == tick.Minute() {
+	if time.Unix(int64(h.data.Time), 0).Minute() == tick.Minute() {
 		return nil
 	}
 	if h.data.Day != tick.Day() {
 		sunrise, sunset, _ := sunrisesunset.GetSunriseSunset(h.conf.Latitude, h.conf.Longitude, tick)
-		h.data.Sunrise.Hour = sunrise.Hour()
-		h.data.Sunrise.Minute = sunrise.Minute()
-		h.data.Sunset.Hour = sunset.Hour()
-		h.data.Sunset.Minute = sunset.Minute()
+		h.data.Sunrise = types.TimeIndication(sunrise.Unix())
+		h.data.Sunset = types.TimeIndication(sunset.Unix())
 	}
 	h.data.Year = tick.Year()
 	h.data.Month = int(tick.Month())
 	h.data.Day = tick.Day()
 	h.data.Weekday = int(tick.Weekday())
-	h.data.Hour = tick.Hour()
-	h.data.Minute = tick.Minute()
+	h.data.Time = types.TimeIndication(tick.Unix())
 	h.status.Set(h.data, controller)
 	return nil
 }

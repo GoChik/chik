@@ -70,7 +70,7 @@ func (h *heating) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 	return chik.Interrupts{Timer: chik.NewEmptyTimer()}, nil
 }
 
-func getValue(status types.Status, id string, key string) (interface{}, error) {
+func getValue(status map[string]interface{}, id string, key string) (interface{}, error) {
 	v, ok := status["io"].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("Cannot find io in status")
@@ -117,11 +117,7 @@ func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controll
 		}
 		var tmpTime types.TimeIndication
 		types.Decode(tmp, &tmpTime)
-		now := time.Now()
-		room.lastHeatingStatusChange = time.Date(now.Year(), now.Month(), now.Day(), tmpTime.Hour, tmpTime.Minute, 0, 0, now.Location())
-		if room.lastHeatingStatusChange.After(now) {
-			room.lastHeatingStatusChange = room.lastHeatingStatusChange.Add(-24 * time.Hour)
-		}
+		room.lastHeatingStatusChange = time.Unix(int64(tmpTime), 0)
 		rooms = append(rooms, room)
 	}
 
