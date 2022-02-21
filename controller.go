@@ -173,7 +173,7 @@ func (c *Controller) executeHandler(ctx context.Context, h Handler) (err error) 
 			return ctx.Err()
 
 		case <-subctx.Done():
-			<-time.After(10 * time.Second)
+			<-time.After(5 * time.Second)
 			c.wg.Add(1)
 			go c.executeHandler(ctx, h)
 			return

@@ -38,7 +38,7 @@ func TestHandlerError(t *testing.T) {
 	)
 
 	trigger <- false
-	time.Sleep(11 * time.Second)
+	time.Sleep(6 * time.Second)
 	word := "works"
 	trigger <- word
 
