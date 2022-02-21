@@ -16,6 +16,44 @@ import (
 type State struct {
 	Current  map[string]interface{} `json:"current"`
 	Previous map[string]interface{} `json:"previous"`
+	language gval.Language
+}
+
+func CreateState(previous, current map[string]interface{}) *State {
+	return &State{
+		Previous: previous,
+		Current:  current,
+		language: gval.Full(
+			gval.Function("time", func(args ...interface{}) (interface{}, error) {
+				strdate, ok := args[0].(string)
+				if !ok {
+					intdate, ok := args[0].(int64)
+					if ok {
+						return types.TimeIndication(intdate), nil
+					}
+					return nil, errors.New("Wrong argument given to function duration")
+				}
+				return types.ParseTimeIndication(strdate)
+			}),
+
+			gval.Function("duration", func(args ...interface{}) (interface{}, error) {
+				strdate, ok := args[0].(string)
+				if !ok {
+					return nil, errors.New("Wrong argument given to function duration")
+				}
+				return time.ParseDuration(strdate)
+			}),
+
+			gval.InfixOperator("after", func(a, b interface{}) (interface{}, error) {
+				date, ok1 := a.(types.TimeIndication)
+				duration, ok2 := b.(time.Duration)
+				if ok1 && ok2 {
+					return types.TimeIndication(time.Unix(int64(date), 0).Add(duration).Unix()), nil
+				}
+				return nil, fmt.Errorf("Failed to execute + on non time arguments: %T %T %v %v", a, duration, ok1, ok2)
+			}),
+		),
+	}
 }
 
 type QueryResult struct {
@@ -41,36 +79,7 @@ func valueMatch(value reflect.StructField, name string) bool {
 }
 
 func (s *State) GetFieldDescriptor(key string) (*fieldDescriptor, error) {
-	expression, err := gval.Full(
-		gval.Function("time", func(args ...interface{}) (interface{}, error) {
-			strdate, ok := args[0].(string)
-			if !ok {
-				intdate, ok := args[0].(int64)
-				if ok {
-					return types.TimeIndication(intdate), nil
-				}
-				return nil, errors.New("Wrong argument given to function duration")
-			}
-			return types.ParseTimeIndication(strdate)
-		}),
-
-		gval.Function("duration", func(args ...interface{}) (interface{}, error) {
-			strdate, ok := args[0].(string)
-			if !ok {
-				return nil, errors.New("Wrong argument given to function duration")
-			}
-			return time.ParseDuration(strdate)
-		}),
-
-		gval.InfixOperator("after", func(a, b interface{}) (interface{}, error) {
-			date, ok1 := a.(types.TimeIndication)
-			duration, ok2 := b.(time.Duration)
-			if ok1 && ok2 {
-				return types.TimeIndication(time.Unix(int64(date), 0).Add(duration).Unix()), nil
-			}
-			return nil, fmt.Errorf("Failed to execute + on non time arguments: %T %T %v %v", a, duration, ok1, ok2)
-		}),
-	).NewEvaluable(key)
+	expression, err := s.language.NewEvaluable(key)
 
 	if err != nil {
 		return nil, err

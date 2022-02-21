@@ -49,10 +49,7 @@ func New() chik.Handler {
 }
 
 func (h *actor) executeActions(controller *chik.Controller, currentState map[string]interface{}) {
-	state := &State{
-		Previous: h.previousState,
-		Current:  currentState,
-	}
+	state := CreateState(h.previousState, currentState)
 
 	for _, action := range h.actions {
 		composedResult := QueryResult{true, false}

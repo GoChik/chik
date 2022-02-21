@@ -30,10 +30,7 @@ func getTestState(date time.Time) *State {
 		json.Unmarshal(js, &data)
 		state[k] = data
 	}
-	return &State{
-		Current:  state,
-		Previous: state,
-	}
+	return CreateState(state, state)
 }
 
 func TestGetFieldDescriptor(t *testing.T) {
