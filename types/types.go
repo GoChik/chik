@@ -41,7 +41,7 @@ func ParseTimeIndication(input string) (data TimeIndication, err error) {
 		if err == nil {
 			if result.Year() == 0 {
 				now := time.Now()
-				result = time.Date(now.Year(), now.Month(), now.Day(), result.Hour(), result.Minute(), result.Second(), 0, now.Location())
+				result = time.Date(now.Year(), now.Month(), now.Day(), result.Hour(), result.Minute(), 59, int(1*time.Second-1*time.Nanosecond), result.Location())
 				if result.Before(now) {
 					result = result.Add(24 * time.Hour)
 				}

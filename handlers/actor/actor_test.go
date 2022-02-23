@@ -49,6 +49,20 @@ func TestGetFieldDescriptor(t *testing.T) {
 	}
 }
 
+func TestParseTime(t *testing.T) {
+	s := getTestState(time.Now())
+
+	f, err := s.GetFieldDescriptor("time(`12:10`)")
+	if err != nil {
+		t.Error(err)
+	}
+	receivedDate := time.Unix(int64(f.value.(types.TimeIndication)), 0)
+	if receivedDate.Hour() != 12 || receivedDate.Minute() != 10 {
+		t.Errorf("Failed parsing time: %v of type %T",
+			f.value, f.value)
+	}
+}
+
 func TestGetFieldDescriptorDuration(t *testing.T) {
 	s := getTestState(time.Now())
 
