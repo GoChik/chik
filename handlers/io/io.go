@@ -26,6 +26,7 @@ type Status map[string]CurrentStatus
 type io struct {
 	chik.BaseHandler
 	actuators     map[string]bus.Bus
+	busByDevice   map[string]bus.Bus
 	status        *chik.StatusHolder
 	wg            sync.WaitGroup
 	deviceChanges chan interface{}
@@ -35,6 +36,7 @@ type io struct {
 func New() chik.Handler {
 	return &io{
 		actuators:     platform.CreateBuses(),
+		busByDevice:   make(map[string]bus.Bus),
 		status:        chik.NewStatusHolder("io"),
 		wg:            sync.WaitGroup{},
 		deviceChanges: make(chan interface{}, 5),
@@ -42,9 +44,14 @@ func New() chik.Handler {
 }
 
 func (h *io) getDevice(deviceID string) (device bus.Device, err error) {
+	if bus, ok := h.busByDevice[deviceID]; ok {
+		device, err = bus.Device(deviceID)
+		return
+	}
 	for _, actuator := range h.actuators {
 		device, err = actuator.Device(deviceID)
 		if err == nil {
+			h.busByDevice[deviceID] = actuator
 			return
 		}
 	}
