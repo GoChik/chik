@@ -160,8 +160,9 @@ func (c *Controller) runHandler(ctx context.Context, h Handler) (subContext cont
 }
 
 func (c *Controller) executeHandler(ctx context.Context, h Handler) (err error) {
-	log.Info().Str("handler", h.String()).Msgf("Starting %s handler", h.String())
+	log.Info().Str("handler", h.String()).Msg("Starting handler")
 	defer func() {
+		log.Info().Str("handler", h.String()).Msg("Stopping handler")
 		c.wg.Done()
 	}()
 
