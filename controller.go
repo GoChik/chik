@@ -220,16 +220,21 @@ func (c *Controller) SubOnce(topics ...string) chan interface{} {
 }
 
 func (c *Controller) Unsub(subscription chan interface{}) {
-	for {
-		select {
-		case <-subscription:
-			continue
+	go func() {
+		for i := 0; i < 100; i++ {
+			select {
+			case _, ok := <-subscription:
+				if !ok {
+					return
+				}
+				continue
 
-		default:
-			c.pubSub.Unsub(subscription)
-			return
+			default:
+				return
+			}
 		}
-	}
+	}()
+	c.pubSub.Unsub(subscription)
 }
 
 // Reply sends back a reply message
