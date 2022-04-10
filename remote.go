@@ -99,10 +99,10 @@ func StartRemote(controller *Controller, conn net.Conn, readTimeout time.Duratio
 		g, innerCtx := errgroup.WithContext(ctx)
 		// Send function
 		g.Go(func() error { return remote.send(innerCtx, controller) })
-
 		// Receive function
 		g.Go(func() error { return remote.receive(innerCtx, controller) })
 		g.Wait()
+		remote.conn.Close()
 		cancel()
 	}()
 
