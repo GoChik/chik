@@ -68,7 +68,7 @@ func (h *snapcast) Topics() []types.CommandType {
 
 func (h *snapcast) setStatus(resp *jrpc2.Response, controller *chik.Controller) error {
 	logger.Debug().Interface("raw_reply", resp)
-	var serverStatus Status
+	var serverStatus SimplifiedStatus
 	err := resp.UnmarshalResult(&serverStatus)
 	if err != nil {
 		return err
@@ -145,25 +145,9 @@ func (h *snapcast) handleServerStatusUpdate(status *Status, controller *chik.Con
 	return
 }
 
-func (h *snapcast) handleClientVolumeChange(volume *ClientVolume, controller *chik.Controller) {
-	h.status.Edit(controller, func(current interface{}) (interface{}, bool) {
-		status := current.(ServerStatus)
-		forceChange := false
-		for gidx, group := range status.Groups {
-			for cidx, client := range group.Clients {
-				if client.ID == volume.ID {
-					status.Groups[gidx].Clients[cidx].Config.Volume = volume.Volume
-					forceChange = true
-				}
-			}
-		}
-		return status, forceChange
-	})
-}
-
 func (h *snapcast) handleGroupStreamChanged(groupStream *GroupStreamChanged, controller *chik.Controller) {
 	h.status.Edit(controller, func(current interface{}) (interface{}, bool) {
-		status := current.(ServerStatus)
+		status := current.(SimplifiedServerStatus)
 		forceChange := false
 		for gidx, group := range status.Groups {
 			if group.ID == groupStream.ID {
@@ -192,15 +176,6 @@ func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Contro
 			return
 		}
 		h.handleServerStatusUpdate(&status, controller)
-
-	case "Client.OnVolumeChanged":
-		var clientVolume ClientVolume
-		err = req.UnmarshalParams(&clientVolume)
-		if err != nil {
-			logger.Err(err).Msg("client volume notification decoding failed")
-			return
-		}
-		h.handleClientVolumeChange(&clientVolume, controller)
 
 	case "Group.OnStreamChanged":
 		var groupStream GroupStreamChanged
