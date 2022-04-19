@@ -43,6 +43,7 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 		_, loaded := h.peers.LoadOrStore(sender, controller)
 		if loaded {
 			logger.Warn().Msgf("Peer %v is already running. dropping this connection", sender)
+			controller.Pub(types.NewCommand(types.RemoteStopCommandType, nil), sender)
 			return errors.New("Cannot allocate an already existing peer")
 		}
 		logger.Debug().Msgf("Adding peer %v", sender)
