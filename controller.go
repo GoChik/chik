@@ -113,7 +113,7 @@ func (c *Controller) runHandler(ctx context.Context, h Handler) (subContext cont
 	subscribedTopics := c.Sub(topicsAsStrings(h.Topics())...)
 	go func() {
 		defer func() {
-			c.Unsub(subscribedTopics)
+			// FIXME: c.Unsub(subscribedTopics)
 			interrupts.Timer.ticker.Stop()
 			h.Teardown()
 			cancel()
