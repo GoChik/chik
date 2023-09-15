@@ -103,6 +103,11 @@ func (h *Telegram) startBot() error {
 		}),
 	})
 
+	if err != nil {
+		logger.Err(err).Msgf("setup failed")
+		return err
+	}
+
 	h.bot.Handle(onButton, func(callback *telebot.Callback) {
 		reply, _ := h.execAction(callback.Data, types.SET)
 		h.bot.Respond(callback, &telebot.CallbackResponse{Text: reply})
@@ -135,10 +140,6 @@ func (h *Telegram) startBot() error {
 		}
 	})
 
-	if err != nil {
-		logger.Err(err).Msgf("Setup failed")
-		return err
-	}
 	go h.bot.Start()
 	return nil
 }
@@ -186,7 +187,9 @@ func (h *Telegram) HandleChannelEvent(event interface{}, controller *chik.Contro
 }
 
 func (h *Telegram) Teardown() {
-	h.bot.Stop()
+	if h.bot != nil {
+		h.bot.Stop()
+	}
 }
 
 func (h *Telegram) String() string {
