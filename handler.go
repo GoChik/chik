@@ -73,6 +73,10 @@ func (s *StatusHolder) emitStatusChanged(c *Controller) {
 	c.Pub(types.NewCommand(types.StatusUpdateCommandType, status), LoopbackID)
 }
 
+func (s *StatusHolder) Get() interface{} {
+	return s.status
+}
+
 // Set stores the status and emits it if it is changed
 func (s *StatusHolder) Set(status interface{}, controller *Controller) {
 	if reflect.DeepEqual(s.status, status) {

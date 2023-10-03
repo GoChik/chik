@@ -11,6 +11,7 @@ import (
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 	"golang.org/x/net/context"
 )
 
@@ -45,7 +46,7 @@ func New() chik.Handler {
 
 func (h *snapcast) Setup(controller *chik.Controller) (i chik.Interrupts, err error) {
 	i = chik.Interrupts{
-		Timer: chik.NewStartupActionTimer(),
+		Timer: chik.NewTimer(3*time.Second, true),
 		Event: h.events,
 	}
 	return
@@ -66,18 +67,6 @@ func (h *snapcast) Topics() []types.CommandType {
 	}
 }
 
-func (h *snapcast) setStatus(resp *jrpc2.Response, controller *chik.Controller) error {
-	logger.Debug().Interface("raw_reply", resp)
-	var serverStatus SimplifiedStatus
-	err := resp.UnmarshalResult(&serverStatus)
-	if err != nil {
-		return err
-	}
-
-	h.status.Set(serverStatus.Server, controller)
-	return nil
-}
-
 func (h *snapcast) notify(req *jrpc2.Request) {
 	h.events <- req
 }
@@ -89,10 +78,40 @@ func (h *snapcast) getServerStatus(controller *chik.Controller) (err error) {
 		return
 	}
 
-	if err = h.setStatus(resp, controller); err != nil {
-		logger.Err(err).Msg("status unmarshal error")
+	var serverStatus SimplifiedStatus
+	err = resp.UnmarshalResult(&serverStatus)
+	if err != nil {
+		return err
+	}
+
+	rawStatus := h.status.Get()
+	if rawStatus == nil {
+		h.status.Set(serverStatus.Server, controller)
+		return
+	}
+	currentStatus := rawStatus.(SimplifiedServerStatus)
+	// if currentStatus has group stream changes
+	// set the status of snapcast to our current status
+	for _, group := range currentStatus.Groups {
+		idx := slices.IndexFunc(currentStatus.Groups, func(g SimplifiedGroup) bool {
+			return g.ID == group.ID
+		})
+		if idx == -1 {
+			continue
+		}
+		if group.StreamID != currentStatus.Groups[idx].StreamID {
+			h.snapcastRequest(controller, "Group.SetStream", map[string]interface{}{
+				"id":        group.ID,
+				"stream_id": currentStatus.Groups[idx].StreamID,
+			})
+		}
 	}
 	return
+}
+
+func (h *snapcast) isServerAlive(controller *chik.Controller) bool {
+	_, err := h.snapcastRequest(controller, "Server.GetRPCVersion", nil)
+	return err == nil
 }
 
 func (h *snapcast) connect(controller *chik.Controller) error {
@@ -116,9 +135,6 @@ func (h *snapcast) snapcastRequest(controller *chik.Controller, method string, p
 	logger.Debug().Str("method", method).Msg("sending a snapcast request")
 	if h.client == nil {
 		logger.Info().Msg("connecting to server")
-		if h.client != nil {
-			h.client.Close()
-		}
 		if err = h.connect(controller); err != nil {
 			logger.Err(err).Msg("connection failed")
 			return
@@ -133,11 +149,11 @@ func (h *snapcast) snapcastRequest(controller *chik.Controller, method string, p
 }
 
 func (h *snapcast) HandleTimerEvent(tick time.Time, controller *chik.Controller) (err error) {
-	if h.client != nil {
-		return
+	if h.client == nil || !h.isServerAlive(controller) {
+		h.connect(controller)
 	}
 
-	return h.connect(controller)
+	return nil
 }
 
 func (h *snapcast) handleServerStatusUpdate(status *Status, controller *chik.Controller) {
