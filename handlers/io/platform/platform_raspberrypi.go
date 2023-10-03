@@ -1,3 +1,4 @@
+//go:build platform_raspberrypi
 // +build platform_raspberrypi
 
 package platform
@@ -8,5 +9,8 @@ import (
 )
 
 func init() {
-	initializeBus(softbus.New, gpiobus.New)
+	initializeBus(
+		softbus.New,
+		gpiobus.New,
+	)
 }
