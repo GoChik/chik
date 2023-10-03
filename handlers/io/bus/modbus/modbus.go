@@ -33,6 +33,7 @@ type device struct {
 	Register      uint16
 	BitNumber     uint8
 	DeviceAddress uint8
+	IsCoil        bool
 	Type          bus.DeviceKind // supported only DigitalInput and DigitalOutput
 	status        bool
 	actions       chan<- *deviceAction
@@ -140,7 +141,7 @@ func (b *modbus) Initialize(conf interface{}) {
 		Name:        c.SerialPort,
 		Baud:        c.BaudRate,
 		Parity:      serial.ParityNone,
-		ReadTimeout: 5 * time.Second,
+		ReadTimeout: 200 * time.Millisecond,
 	})
 	if err != nil {
 		logger.Fatal().Msgf("Cannot open serial port %v: %v", c.SerialPort, err)
@@ -177,8 +178,18 @@ func (b *modbus) String() string {
 	return "modbus"
 }
 
-func (b *modbus) sendAction(action *deviceAction) {
-	device := b.devices[action.id]
+func (b *modbus) writeCoil(device *device, high bool) error {
+	b.handler.SetSlave(device.DeviceAddress)
+	value := uint16(0x0000)
+	if high {
+		value = 0xff00
+	}
+	reply, err := b.client.WriteSingleCoil(device.Register, value)
+	logger.Debug().Msgf("Changed status of digital appliance, reply: %v", reply)
+	return err
+}
+
+func (b *modbus) writeRegister(device *device, high bool) error {
 	var command uint16
 	for _, d := range b.devices {
 		if d.Kind() == bus.DigitalOutputDevice &&
@@ -187,7 +198,7 @@ func (b *modbus) sendAction(action *deviceAction) {
 			command = command | (0x0001 << d.BitNumber)
 		}
 	}
-	if action.action {
+	if high {
 		command = command | (0x0001 << device.BitNumber)
 	} else {
 		command = command & (0xffff ^ (0x0001 << device.BitNumber))
@@ -195,10 +206,25 @@ func (b *modbus) sendAction(action *deviceAction) {
 
 	b.handler.SetSlave(device.DeviceAddress)
 	reply, err := b.client.WriteSingleRegister(device.Register, command)
-	if err != nil {
-		logger.Error().Msgf("Failed changing status of %v: %v", device.ID(), err)
-	}
 	logger.Debug().Msgf("Changed status of digital appliance, reply: %v", reply)
+	return err
+}
+
+func (b *modbus) sendAction(action *deviceAction) {
+	device := b.devices[action.id]
+	var err error
+	for i := 0; i < 5; i++ {
+		if device.IsCoil {
+			err = b.writeCoil(device, action.action)
+		} else {
+			err = b.writeRegister(device, action.action)
+		}
+		if err != nil {
+			logger.Err(err).Msgf("Failed changing status of %v, attempt: %v", device.ID(), i+1)
+		} else {
+			break
+		}
+	}
 }
 
 type mbDeviceGroup struct {
@@ -208,27 +234,27 @@ type mbDeviceGroup struct {
 type mbDeviceGroupByRegisterAddress map[uint16]mbDeviceGroup
 type mbDescriptionByAddress map[uint8]mbDeviceGroupByRegisterAddress
 
-func (b *modbus) polledDevicesList() mbDescriptionByAddress {
+func (b *modbus) polledRegistersList() mbDescriptionByAddress {
 	polledDevices := make(mbDescriptionByAddress)
 	for _, d := range b.devices {
+		if d.Kind() != bus.DigitalInputDevice || d.IsCoil {
+			continue
+		}
 		if polledDevices[d.DeviceAddress] == nil {
 			polledDevices[d.DeviceAddress] = make(mbDeviceGroupByRegisterAddress)
 		}
-		if d.Kind() == bus.DigitalInputDevice {
-			currentGroup := polledDevices[d.DeviceAddress][d.Register]
-			if currentGroup.devices == nil {
-				currentGroup.devices = make([]*device, 0, 1)
-			}
-			currentGroup.devices = append(currentGroup.devices, d)
-			polledDevices[d.DeviceAddress][d.Register] = currentGroup
+		currentGroup := polledDevices[d.DeviceAddress][d.Register]
+		if currentGroup.devices == nil {
+			currentGroup.devices = make([]*device, 0, 1)
 		}
-
+		currentGroup.devices = append(currentGroup.devices, d)
+		polledDevices[d.DeviceAddress][d.Register] = currentGroup
 	}
 	return polledDevices
 }
 
 func (b *modbus) startModbusWorker() {
-	polledDevices := b.polledDevicesList()
+	polledRegisters := b.polledRegistersList()
 	b.pollingTimer = time.NewTicker(pollTime)
 	go func() {
 		for {
@@ -237,7 +263,7 @@ func (b *modbus) startModbusWorker() {
 				if !ok {
 					return
 				}
-				b.queryDeviceChanges(polledDevices)
+				b.queryDeviceChanges(polledRegisters)
 			case action := <-b.devicesActions:
 				b.sendAction(action)
 			}
@@ -245,13 +271,13 @@ func (b *modbus) startModbusWorker() {
 	}()
 }
 
-func (b *modbus) queryDeviceChanges(polledDevices map[uint8]mbDeviceGroupByRegisterAddress) {
+func (b *modbus) queryDeviceChanges(polledDevices mbDescriptionByAddress) {
 	for k, v := range polledDevices {
 		b.handler.SetSlave(k)
 		for registerAddress, groupData := range v {
 			response, err := b.client.ReadHoldingRegisters(registerAddress, 1)
 			if err != nil {
-				logger.Error().Msgf("Failed to read address %v: %v", registerAddress, err)
+				logger.Error().Msgf("Failed to read device: %v, address: %v, error: %v", k, registerAddress, err)
 				continue
 			}
 			if response == nil || len(response) != 2 {
