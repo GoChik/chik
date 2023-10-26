@@ -25,7 +25,7 @@ func (t TimeIndication) Compare(other Comparable) (int8, error) {
 	thist := time.Unix(int64(t), 0)
 	othert := time.Unix(int64(otherc), 0)
 	diff := thist.Sub(othert)
-	if time.Duration(math.Abs(float64(diff))) < 1*time.Minute {
+	if time.Duration(math.Abs(float64(diff))) < 10*time.Second {
 		return 0, nil
 	}
 	if diff > 0 {
@@ -36,7 +36,7 @@ func (t TimeIndication) Compare(other Comparable) (int8, error) {
 
 func ParseTimeIndication(input string) (data TimeIndication, err error) {
 	var result time.Time
-	for _, format := range []string{"15:04", "2006-01-02 15:04"} {
+	for _, format := range []string{"15:04", "15:04:05", "2006-01-02 15:04", "2006-01-02 15:04:05"} {
 		result, err = time.ParseInLocation(format, input, time.Local)
 		if err == nil {
 			if result.Year() == 0 {
@@ -66,7 +66,7 @@ func (sq *TimeIndication) UnmarshalJSON(data []byte) (err error) {
 }
 
 func (sq TimeIndication) MarshalJSON() ([]byte, error) {
-	return []byte(time.Unix(int64(sq), 0).Format("\"2006-01-02 15:04\"")), nil
+	return []byte(time.Unix(int64(sq), 0).Format("\"2006-01-02 15:04:05\"")), nil
 }
 
 func StringToTimeIndication(sourceType, targetType reflect.Type, sourceData interface{}) (interface{}, error) {
