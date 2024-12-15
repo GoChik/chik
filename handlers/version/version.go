@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 )
@@ -26,7 +27,7 @@ func (h *version) Topics() []types.CommandType {
 	return []types.CommandType{types.VersionRequestCommandType}
 }
 
-func (h *version) HandleMessage(message *chik.Message, remote *chik.Controller) error {
+func (h *version) HandleMessage(message *message.Message, remote *chik.Controller) error {
 	var command types.SimpleCommand
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {

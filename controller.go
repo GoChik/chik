@@ -7,6 +7,7 @@ import (
 
 	"github.com/cskr/pubsub"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/rs/zerolog"
@@ -138,7 +139,7 @@ func (c *Controller) runHandler(ctx context.Context, h Handler) (subContext cont
 					return
 				}
 
-				if err := h.HandleMessage(rawMessage.(*Message), c); err != nil {
+				if err := h.HandleMessage(rawMessage.(*message.Message), c); err != nil {
 					log.Err(err).Str("handler", h.String()).Msg("Error during first timer call")
 					return
 				}
@@ -184,6 +185,13 @@ func (c *Controller) executeHandler(ctx context.Context, h Handler) (err error) 
 
 // Start starts every registered handler
 func (c *Controller) Start(ctx context.Context, handlers []Handler) {
+	stopRouter, err := StartRouter(ctx, c)
+	if err != nil {
+		log.Err(err).Msg("failed to start router")
+		return
+	}
+	defer stopRouter()
+
 	// TODO: order handlers by dependencies
 	for _, h := range handlers {
 		c.wg.Add(1)
@@ -195,7 +203,7 @@ func (c *Controller) Start(ctx context.Context, handlers []Handler) {
 }
 
 // PubMessage publishes a Message
-func (c *Controller) PubMessage(message *Message, topics ...string) {
+func (c *Controller) PubMessage(message *message.Message, topics ...string) {
 	c.pubSub.TryPub(message, topics...)
 }
 
@@ -206,7 +214,7 @@ func (c *Controller) Pub(command *types.Command, receiverID uuid.UUID) {
 		messageKind = command.Type.String()
 	}
 
-	c.PubMessage(NewMessage(receiverID, command), messageKind)
+	c.PubMessage(message.New(receiverID, command), messageKind)
 }
 
 // Sub Subscribes to one or more message types
@@ -238,8 +246,8 @@ func (c *Controller) Unsub(subscription chan interface{}) {
 }
 
 // Reply sends back a reply message
-func (c *Controller) Reply(request *Message, replyType types.CommandType, replyContent interface{}) {
-	receiver := request.SenderUUID()
+func (c *Controller) Reply(request *message.Message, replyType types.CommandType, replyContent interface{}) {
+	receiver := request.Sender()
 	command := types.NewCommand(replyType, replyContent)
 
 	// If sender is null the message is internal, otherwise it needs to go out

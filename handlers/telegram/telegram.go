@@ -10,6 +10,7 @@ import (
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
@@ -161,7 +162,7 @@ func (h *Telegram) sendMessage(content string) error {
 	return nil
 }
 
-func (h *Telegram) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *Telegram) HandleMessage(message *message.Message, controller *chik.Controller) error {
 	var notification Message
 	err := json.Unmarshal(message.Command().Data, &notification)
 	if err != nil {

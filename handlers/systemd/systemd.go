@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/godbus/dbus/v5"
 	"github.com/rs/zerolog/log"
@@ -59,7 +60,7 @@ type SignalListener struct {
 	Stop func()
 }
 
-func (h *Systemd) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *Systemd) HandleMessage(message *message.Message, controller *chik.Controller) error {
 	var command SystemdRequestCommand
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {

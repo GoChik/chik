@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 )
 
@@ -15,7 +16,7 @@ type Handler interface {
 	Dependencies() []string
 	Topics() []types.CommandType
 	Setup(controller *Controller) (Interrupts, error)
-	HandleMessage(message *Message, controller *Controller) error
+	HandleMessage(message *message.Message, controller *Controller) error
 	HandleTimerEvent(tick time.Time, controller *Controller) error
 	HandleChannelEvent(event interface{}, controller *Controller) error
 	Teardown()
@@ -39,7 +40,7 @@ func (s *BaseHandler) Setup(controller *Controller) (Interrupts, error) {
 	return Interrupts{Timer: NewEmptyTimer()}, nil
 }
 
-func (s *BaseHandler) HandleMessage(message *Message, controller *Controller) error {
+func (s *BaseHandler) HandleMessage(message *message.Message, controller *Controller) error {
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/rs/zerolog/log"
@@ -34,27 +35,27 @@ func (r Remote) send(ctx context.Context, controller *Controller) error {
 			return nil
 
 		case data := <-out:
-			message, ok := data.(*Message)
+			message, ok := data.(*message.Message)
 			if !ok {
 				logger.Warn().Msg("Trying to something that's not a message")
 				continue
 			}
-			if message.command.Type == types.RemoteStopCommandType {
+			if message.Command().Type == types.RemoteStopCommandType {
 				logger.Info().Msg("Stop command received. Terminating Sender")
 				return errors.New("Stop received")
 			}
-			if message.sender == uuid.Nil {
-				message.sender = controller.ID
+			if message.Sender() == uuid.Nil {
+				message.SetSender(controller.ID)
 			}
 			logger.Debug().Msgf("Sending message: %v", message)
 			r.conn.SetWriteDeadline(time.Now().Add(r.timeout))
-			bytes, err := message.Bytes()
+			bytes, err := message.Encode()
 			if err != nil {
-				logger.Warn().Msgf("Cannot encode message: %v", err)
+				logger.Warn().Err(err).Msgf("cannot encode message")
 			}
 			_, err = r.conn.Write(bytes)
 			if err != nil {
-				logger.Warn().Msgf("Cannot write bytes, exiting: %v", err)
+				logger.Warn().Err(err).Msgf("cannot write bytes, exiting")
 				return err
 			}
 		}
@@ -74,7 +75,7 @@ func (r Remote) receive(ctx context.Context, controller *Controller) error {
 			if r.timeout != 0 {
 				r.conn.SetReadDeadline(time.Now().Add(r.timeout))
 			}
-			message, err := ParseMessage(r.conn)
+			message, err := message.Decode(r.conn)
 			if err != nil {
 				logger.Error().Msgf("Invalid message: %v", err)
 				return err

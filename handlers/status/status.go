@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/gofrs/uuid"
 	"github.com/rs/zerolog/log"
@@ -61,7 +62,7 @@ func (h *handler) getStatus(query string) types.Status {
 	return map[string]interface{}{query: val}
 }
 
-func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) error {
+func (h *handler) HandleMessage(message *message.Message, remote *chik.Controller) error {
 	switch message.Command().Type {
 	case types.StatusCommandType:
 		var content StatusCommand
@@ -72,16 +73,16 @@ func (h *handler) HandleMessage(message *chik.Message, remote *chik.Controller) 
 		}
 
 		if content.Action == types.SET &&
-			message.SenderUUID() != chik.LoopbackID &&
-			message.SenderUUID() != remote.ID {
-			logger.Info().Msgf("Subscribing %v to %v", message.SenderUUID(), content.Query)
-			current := h.subscribers[message.SenderUUID()]
+			message.Sender() != chik.LoopbackID &&
+			message.Sender() != remote.ID {
+			logger.Info().Msgf("Subscribing %v to %v", message.Sender(), content.Query)
+			current := h.subscribers[message.Sender()]
 			if current.listeners == nil {
 				current.listeners = make(map[string]set, 1)
 			}
 			current.listeners[content.Query] = set{}
 			current.lastConact = time.Now()
-			h.subscribers[message.SenderUUID()] = current
+			h.subscribers[message.Sender()] = current
 		}
 
 		remote.Reply(message, types.StatusNotificationCommandType, h.getStatus(content.Query))

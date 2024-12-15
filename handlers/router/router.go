@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	uuid "github.com/gofrs/uuid"
 	"github.com/rs/zerolog/log"
@@ -20,6 +21,11 @@ type forwarding struct {
 }
 
 func New(peers *sync.Map) chik.Handler {
+	if peers == nil {
+		logger.Info().Msg("peers map is nil. Creating a new map")
+		peers = &sync.Map{}
+	}
+
 	return &forwarding{
 		id:    uuid.Nil,
 		peers: peers,
@@ -30,9 +36,9 @@ func (h *forwarding) Topics() []types.CommandType {
 	return []types.CommandType{types.AnyIncomingCommandType}
 }
 
-func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *forwarding) HandleMessage(message *message.Message, controller *chik.Controller) error {
 	logger.Debug().Msg("Received a message to route")
-	sender := message.SenderUUID()
+	sender := message.Sender()
 	if sender == uuid.Nil {
 		err := errors.New("Unable to get sender UUID")
 		logger.Err(err).Msg("handle failed")
@@ -54,12 +60,7 @@ func (h *forwarding) HandleMessage(message *chik.Message, controller *chik.Contr
 		return err
 	}
 
-	receiver, err := message.ReceiverUUID()
-	if err != nil {
-		logger.Warn().Msgf("Unable to read receiver UUID: %v", err)
-		return nil
-	}
-
+	receiver := message.Receiver()
 	switch receiver {
 	case uuid.Nil:
 		logger.Warn().Msg("No receiver specified")

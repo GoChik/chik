@@ -9,6 +9,7 @@ import (
 	"github.com/creachadair/jrpc2"
 	"github.com/creachadair/jrpc2/channel"
 	"github.com/gochik/chik"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
@@ -205,7 +206,7 @@ func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Contro
 	return
 }
 
-func (h *snapcast) handleClientCommand(message *chik.Message, controller *chik.Controller) (err error) {
+func (h *snapcast) handleClientCommand(message *message.Message, controller *chik.Controller) (err error) {
 	var command SnapcastClientCommand
 	err = json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
@@ -228,7 +229,7 @@ func (h *snapcast) handleClientCommand(message *chik.Message, controller *chik.C
 	return
 }
 
-func (h *snapcast) handleGroupCommand(message *chik.Message, controller *chik.Controller) (err error) {
+func (h *snapcast) handleGroupCommand(message *message.Message, controller *chik.Controller) (err error) {
 	var command SnapcastGroupCommand
 	err = json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
@@ -274,7 +275,7 @@ func (h *snapcast) handleGroupCommand(message *chik.Message, controller *chik.Co
 	return
 }
 
-func (h *snapcast) HandleMessage(message *chik.Message, controller *chik.Controller) (err error) {
+func (h *snapcast) HandleMessage(message *message.Message, controller *chik.Controller) (err error) {
 	logger.Debug().Msg("message received")
 	switch message.Command().Type {
 	case types.SnapcastClientCommandType:

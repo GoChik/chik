@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -129,7 +130,7 @@ func Get(key string) interface{} {
 func GetStruct(key string, output interface{}, hooks ...mapstructure.DecodeHookFunc) error {
 	data := Get(key)
 	if data == nil {
-		return errors.New("Null data")
+		return fmt.Errorf("config file: missing %s", key)
 	}
 	return types.Decode(data, output, hooks...)
 }

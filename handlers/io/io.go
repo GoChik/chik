@@ -11,6 +11,7 @@ import (
 	"github.com/gochik/chik/config"
 	"github.com/gochik/chik/handlers/io/bus"
 	"github.com/gochik/chik/handlers/io/platform"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 )
@@ -110,7 +111,7 @@ func executeDigitalCommand(action types.Action, device bus.DigitalDevice, remote
 	}
 }
 
-func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message) {
+func (h *io) parseDigitalCommand(remote *chik.Controller, message *message.Message) {
 	command := types.DigitalCommand{}
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
@@ -134,7 +135,7 @@ func (h *io) parseDigitalCommand(remote *chik.Controller, message *chik.Message)
 	}
 }
 
-func (h *io) parseAnalogCommand(controller *chik.Controller, message *chik.Message) {
+func (h *io) parseAnalogCommand(controller *chik.Controller, message *message.Message) {
 	var command types.AnalogCommand
 	err := json.Unmarshal(message.Command().Data, &command)
 	if err != nil {
@@ -199,7 +200,7 @@ func (h *io) Setup(controller *chik.Controller) (chik.Interrupts, error) {
 	}, nil
 }
 
-func (h *io) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *io) HandleMessage(message *message.Message, controller *chik.Controller) error {
 	switch message.Command().Type {
 	case types.DigitalCommandType:
 		h.parseDigitalCommand(controller, message)

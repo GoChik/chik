@@ -8,6 +8,7 @@ import (
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 )
@@ -82,7 +83,7 @@ func getValue(status map[string]interface{}, id string, key string) (interface{}
 	return v[key], nil
 }
 
-func (h *heating) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *heating) HandleMessage(message *message.Message, controller *chik.Controller) error {
 	var status types.Status
 	err := json.Unmarshal(message.Command().Data, &status)
 	if err != nil {

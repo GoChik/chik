@@ -5,6 +5,7 @@ import (
 
 	"github.com/gochik/chik"
 	"github.com/gochik/chik/config"
+	"github.com/gochik/chik/message"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
@@ -88,7 +89,7 @@ func (h *actor) Topics() []types.CommandType {
 	}
 }
 
-func (h *actor) HandleMessage(message *chik.Message, controller *chik.Controller) error {
+func (h *actor) HandleMessage(message *message.Message, controller *chik.Controller) error {
 	switch message.Command().Type {
 	case types.StatusNotificationCommandType:
 		var status types.Status
