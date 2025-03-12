@@ -202,6 +202,9 @@ func (h *snapcast) HandleChannelEvent(event interface{}, controller *chik.Contro
 			return
 		}
 		h.handleGroupStreamChanged(&groupStream, controller)
+
+	default:
+		logger.Warn().Str("event", req.Method()).Msg("unhandled snapcast event")
 	}
 	return
 }

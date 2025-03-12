@@ -27,9 +27,9 @@ type handler struct {
 }
 
 type StatusCommand struct {
-	Action types.Action `json:",int"`
-	Query  string       `json:",omitempty"`
-	Value  interface{}  `json:",omitempty"`
+	Action types.Action
+	Query  string      `json:",omitempty"`
+	Value  interface{} `json:",omitempty"`
 }
 
 // New creates a new status handler
@@ -88,11 +88,10 @@ func (h *handler) HandleMessage(message *message.Message, remote *chik.Controlle
 		remote.Reply(message, types.StatusNotificationCommandType, h.getStatus(content.Query))
 
 	case types.StatusUpdateCommandType:
-		logger.Debug().Msgf("Status update received: %v", message)
 		var status types.Status
 		err := json.Unmarshal(message.Command().Data, &status)
 		if err != nil {
-			logger.Warn().Msgf("Failed to decode Status update: %v", err)
+			logger.Err(err).Msg("Failed to decode Status update")
 			return nil
 		}
 
@@ -101,7 +100,7 @@ func (h *handler) HandleMessage(message *message.Message, remote *chik.Controlle
 		for k, v := range status {
 			h.currentStatus[k] = v
 			for id, data := range h.subscribers {
-				if time.Now().Sub(data.lastConact) > 10*time.Minute {
+				if time.Since(data.lastConact) > 10*time.Minute {
 					inactiveSubscribers = append(inactiveSubscribers, id)
 				}
 				_, exists := data.listeners[k]

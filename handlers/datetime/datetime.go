@@ -63,7 +63,7 @@ func (h *datetime) Dependencies() []string {
 }
 
 func (h *datetime) Setup(controller *chik.Controller) (chik.Interrupts, error) {
-	return chik.Interrupts{Timer: chik.NewTimer(10*time.Second, true)}, nil
+	return chik.Interrupts{Timer: chik.NewTimer(30*time.Second, true)}, nil
 }
 
 func (h *datetime) HandleTimerEvent(tick time.Time, controller *chik.Controller) error {

@@ -129,14 +129,6 @@ func (q *StructQuery) Execute(state *State) (res QueryResult, err error) {
 		return
 	}
 
-	logger.Debug().Str("query_type", "struct").Msgf(
-		"Query between %v:%T and %v:%T result: %v, %v",
-		firstValue.value, firstValue.value,
-		secondValue.value, secondValue.value,
-		match,
-		firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate,
-	)
-
 	res = QueryResult{
 		match:                          match,
 		changedSincePreviousEvaluation: !q.Detrigger && (firstValue.changedSincePreviousUpdate || secondValue.changedSincePreviousUpdate),
@@ -154,7 +146,6 @@ type MixedQuery struct {
 }
 
 func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
-	logger.Info().Str("query_type", "mixed").Msgf("Executing mixed query: %v %v %v", q.Var1, q.Op, q.Const)
 	currentValue, err := state.GetFieldDescriptor(q.Var1)
 	if err != nil {
 		return
@@ -164,10 +155,6 @@ func (q *MixedQuery) Execute(state *State) (res QueryResult, err error) {
 	if err != nil {
 		return
 	}
-
-	logger.Debug().
-		Str("query_type", "mixed").
-		Msgf("Query between %v:%T and %v result: %v, %v", currentValue.value, currentValue.value, q.Const, match, currentValue.changedSincePreviousUpdate)
 
 	res = QueryResult{
 		match:                          match,
