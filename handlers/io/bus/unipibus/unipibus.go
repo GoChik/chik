@@ -2,15 +2,16 @@ package unipibus
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/gochik/chik/handlers/io/bus"
+	"github.com/gochik/chik/handlers/io/bus/unipibus/device"
 	"github.com/gochik/chik/types"
 	"github.com/rs/zerolog/log"
 	funk "github.com/thoas/go-funk"
@@ -18,8 +19,6 @@ import (
 
 var logger = log.With().Str("handler", "io").Str("bus", "unipi").Logger()
 
-const unipiDevicePath = "/sys/devices/platform/unipi_plc/io_group%d/%s_%d_%02d"
-const unipiDeviceValue = "%s_value"
 const pwmDutyCycle = "pwm_duty_cycle"
 const pwmPrescale = "pwm_prescale"
 const defaultPwmPrescale = 800
@@ -27,61 +26,33 @@ const pwmFrequencyCycle = "pwm_frequency_cycle"
 const defaultPwmFrequencyCycle = 200
 const pollSpeed = 50 * time.Millisecond
 
-type unipiPinType uint8
-
-const (
-	unipiDigitalInput unipiPinType = iota
-	unipiDigitalOutput
-	unipiRelayOutput
-	unipiAnalogOutput
-	unipiPwmOutput
-)
-
-func (pin unipiPinType) String() string {
-	switch pin {
-	case unipiDigitalInput:
-		return "di"
-	case unipiDigitalOutput, unipiPwmOutput:
-		return "do"
-	case unipiRelayOutput:
-		return "ro"
-	case unipiAnalogOutput:
-		return "ao"
-	}
-	return ""
-}
-
 type unipiDevice struct {
 	Id        string
 	Group     uint8
 	Pin       uint8
-	Type      unipiPinType
+	Type      device.PinType
 	status    int
 	file      *os.File
 	buffer    []byte
 	fadeMutex sync.Mutex
 }
 
-func (d *unipiDevice) path() string {
-	return fmt.Sprintf(unipiDevicePath, d.Group, d.Type.String(), d.Group, d.Pin)
-}
-
-func (d *unipiDevice) writeDefaults(filename, value string) {
-	ioutil.WriteFile(
-		strings.Join([]string{d.path(), filename}, "/"),
+func (d *unipiDevice) writeDefaults(filepath, value string) {
+	os.WriteFile(
+		filepath,
 		[]byte(value),
 		0644,
 	)
 }
 
-func (d *unipiDevice) initialize() (err error) {
-	filename := fmt.Sprintf(unipiDeviceValue, d.Type.String())
-	if d.Type == unipiPwmOutput {
+func (d *unipiDevice) initialize(conf device.Configurer) (err error) {
+	filename := conf.ValueFilename(d.Type)
+	if d.Type == device.PwmOutput {
 		filename = pwmDutyCycle
-		d.writeDefaults(pwmPrescale, strconv.Itoa(defaultPwmPrescale))
-		d.writeDefaults(pwmFrequencyCycle, strconv.Itoa(defaultPwmFrequencyCycle))
+		d.writeDefaults(path.Join(conf.Path(d.Type, d.Group, d.Pin), pwmPrescale), strconv.Itoa(defaultPwmPrescale))
+		d.writeDefaults(path.Join(conf.Path(d.Type, d.Group, d.Pin), pwmFrequencyCycle), strconv.Itoa(defaultPwmFrequencyCycle))
 	}
-	path := []string{d.path(), filename}
+	path := []string{conf.Path(d.Type, d.Group, d.Pin), filename}
 	openMode := os.O_RDWR
 	if d.Kind() == bus.DigitalInputDevice {
 		openMode = os.O_RDONLY
@@ -115,13 +86,13 @@ func (d *unipiDevice) ID() string {
 
 func (d *unipiDevice) Kind() bus.DeviceKind {
 	switch d.Type {
-	case unipiDigitalInput:
+	case device.DigitalInput:
 		return bus.DigitalInputDevice
 
-	case unipiDigitalOutput, unipiRelayOutput:
+	case device.DigitalOutput, device.RelayOutput:
 		return bus.DigitalOutputDevice
 
-	case unipiAnalogOutput, unipiPwmOutput:
+	case device.AnalogOutput, device.PwmOutput:
 		return bus.AnalogOutputDevice
 	}
 	return bus.DigitalInputDevice
@@ -129,7 +100,7 @@ func (d *unipiDevice) Kind() bus.DeviceKind {
 
 func (d *unipiDevice) Description() bus.DeviceDescription {
 	var status interface{} = d.status
-	if d.Type < unipiAnalogOutput {
+	if d.Type < device.AnalogOutput {
 		status = (d.status == 1)
 	}
 	return bus.DeviceDescription{
@@ -174,11 +145,11 @@ func (d *unipiDevice) pwmFade(from, to int) {
 }
 
 func (d *unipiDevice) SetValue(value float64) {
-	if d.Type < unipiAnalogOutput {
+	if d.Type < device.AnalogOutput {
 		logger.Error().Msgf("Cannot set analog value to device %v", d)
 	}
 	status := int(math.Round(value))
-	if d.Type == unipiPwmOutput {
+	if d.Type == device.PwmOutput {
 		go d.pwmFade(d.status, status)
 	} else {
 		d.file.Write([]byte(strconv.Itoa(status) + "\n"))
@@ -187,11 +158,11 @@ func (d *unipiDevice) SetValue(value float64) {
 }
 
 func (d *unipiDevice) AddValue(value float64) {
-	if d.Type < unipiAnalogOutput {
+	if d.Type < device.AnalogOutput {
 		logger.Error().Msgf("Cannot set analog value to device %v", d)
 	}
 	status := int(math.Max(0, float64(d.status+int(math.Round(value)))))
-	if d.Type == unipiPwmOutput {
+	if d.Type == device.PwmOutput {
 		go d.pwmFade(d.status, status)
 	} else {
 		d.file.Write([]byte(strconv.Itoa(status) + "\n"))
@@ -237,17 +208,18 @@ func (b *unipiBus) String() string {
 
 func (b *unipiBus) Initialize(config interface{}) {
 	logger.Debug().Msg("Initialising bus")
+	conf := device.GetConf()
 	var devices []*unipiDevice
 	err := types.Decode(config, &devices)
 	if err != nil {
 		logger.Error().Msgf("Failed initializing bus: %v", err)
 	}
 	b.polledDevices = make([]*unipiDevice, 0)
-	for _, device := range devices {
-		device.initialize()
-		if device.Type == unipiDigitalInput {
-			logger.Debug().Msgf("Add %s to polled devices", device.Id)
-			b.polledDevices = append(b.polledDevices, device)
+	for _, d := range devices {
+		d.initialize(conf)
+		if d.Type == device.DigitalInput {
+			logger.Debug().Msgf("Add %s to polled devices", d.Id)
+			b.polledDevices = append(b.polledDevices, d)
 		}
 	}
 	b.devices = funk.ToMap(devices, "Id").(map[string]*unipiDevice)
@@ -264,7 +236,7 @@ func (b *unipiBus) Deinitialize() {
 func (b *unipiBus) Device(id string) (bus.Device, error) {
 	device, ok := b.devices[id]
 	if !ok {
-		return nil, fmt.Errorf("No soft device with ID: %s found", id)
+		return nil, fmt.Errorf("no soft device with ID: %s found", id)
 	}
 	return device, nil
 }
